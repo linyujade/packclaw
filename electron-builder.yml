@@ -1,0 +1,70 @@
+appId: com.oneclaw.app
+productName: OneClaw
+copyright: Copyright © 2025 OneClaw
+
+directories:
+  output: out
+
+files:
+  - dist/**/*
+  - chat-ui/dist/**/*
+  - shared/**/*
+  - assets/**/*
+  - setup/**/*
+  - package.json
+  - release-notes.json
+
+# afterPack 钩子：绕过 node_modules 剥离，直接注入 resources/ 到 app bundle
+afterPack: ./scripts/afterPack.js
+
+# --- macOS ---
+mac:
+  target:
+    - dmg   # 手动分发
+    - zip   # 自动更新（electron-updater 在 macOS 上要求 zip）
+  icon: assets/icon.icns
+  category: public.app-category.productivity
+  # zip artifactName 含 arch + -mac 后缀，供 electron-updater findFile 按架构匹配
+  # dmg.artifactName 会覆盖 DMG 的命名
+  artifactName: "OneClaw-${version}-${arch}-mac.${ext}"
+  # 签名身份由 CSC_NAME 环境变量指定（见 .env），避免把证书名写入仓库
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  notarize: true
+  extraResources:
+    - from: "resources/targets/darwin-${arch}/officecli"
+      to: "resources/officecli"
+
+# 自动更新：指向阿里云 CDN
+publish:
+  provider: generic
+  url: https://oneclaw.cn/releases/
+
+dmg:
+  sign: false
+  # 关闭 DMG 差分更新元数据，避免生成 .dmg.blockmap
+  writeUpdateInfo: false
+  artifactName: "OneClaw-${version}-${arch}.${ext}"
+
+# --- Windows ---
+win:
+  target: nsis
+  icon: assets/icon.ico
+  extraResources:
+    - from: "resources/targets/win32-${arch}/officecli"
+      to: "resources/officecli"
+
+nsis:
+  oneClick: false
+  perMachine: false
+  # 允许用户自选安装目录
+  allowToChangeInstallationDirectory: true
+  # 安装前强制终止旧进程，避免托盘模式下 WM_CLOSE 被拦截
+  include: "scripts/installer.nsh"
+  # "always" 确保更新安装时也重新创建快捷方式（默认 true 只在首次安装创建）
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  runAfterFinish: true
+  # 关闭 NSIS 差分包，避免生成 .exe.blockmap
+  differentialPackage: false
+  artifactName: "OneClaw-Setup-${version}-${arch}.${ext}"

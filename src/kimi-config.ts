@@ -1,0 +1,392 @@
+import * as fs from "fs";
+import * as path from "path";
+import { resolveGatewayPort, resolveGatewayPackageDir, resolveUserStateDir } from "./constants";
+import { ensureDeviceId } from "./oneclaw-config";
+
+export const KIMI_PLUGIN_ID = "kimi-claw";
+export const KIMI_SEARCH_PLUGIN_ID = "kimi-search";
+export const DEFAULT_KIMI_BRIDGE_WS_URL = "wss://www.kimi.com/api-claw/bots/agent-ws";
+
+// 当某 plugin 被启用时，若 plugins.allow 已为非空数组（用户/启动配置主动配置过白名单），
+// 把该 id 也补进去，避免 openclaw config-state 的 "allow 非空 + 不在 allow → 静默禁用" 把
+// entries.enabled=true 直接吃掉。allow 缺失或为空数组时不动它（语义是"未启用白名单"）。
+// 反向（disable）不从 allow 移除：用户可能临时禁用想保留授权，删除是另一个语义。
+export function syncPluginAllowOnEnable(config: any, pluginId: string): void {
+  const allow = config?.plugins?.allow;
+  if (!Array.isArray(allow) || allow.length === 0) return;
+  if (!allow.includes(pluginId)) allow.push(pluginId);
+}
+
+// 解析 bridge WS URL：override 非空 → 用 override（手动/从粘贴命令解析出的 --ws-url）；
+// 否则返回生产默认。前缀推断不做——环境信息永远来自显式字符串。
+export function resolveKimiBridgeURL(override?: string): string {
+  const explicit = typeof override === "string" ? override.trim() : "";
+  return explicit || DEFAULT_KIMI_BRIDGE_WS_URL;
+}
+
+// 解析 install 命令字符串，抽取 --bot-token / --ws-url / --kimiapi-host 三项。
+// 容错：任何一项缺失都返回空字符串；纯 token（无空格）直接当作 botToken。
+export interface ParsedKimiInstallCommand {
+  botToken: string;
+  wsURL: string;
+  kimiapiHost: string;
+}
+export function parseKimiInstallCommand(input: string): ParsedKimiInstallCommand {
+  const text = typeof input === "string" ? input : "";
+  const pick = (flag: string): string => {
+    const m = text.match(new RegExp(`${flag}\\s+(\\S+)`));
+    return m ? m[1] : "";
+  };
+  let botToken = pick("--bot-token");
+  if (!botToken) {
+    const trimmed = text.trim();
+    if (trimmed && !/\s/.test(trimmed)) botToken = trimmed;
+  }
+  return {
+    botToken,
+    wsURL: pick("--ws-url"),
+    kimiapiHost: pick("--kimiapi-host"),
+  };
+}
+
+export interface SaveKimiPluginParams {
+  botToken: string;
+  gatewayToken: string;
+  wsURL?: string;
+  kimiapiHost?: string;
+}
+
+// 写入 kimi-claw 插件配置（启用 + bridge/gateway 参数 + log + kimi-search 联动）
+export function saveKimiPluginConfig(config: any, params: SaveKimiPluginParams): void {
+  config.plugins ??= {};
+  config.plugins.entries ??= {};
+
+  const existingEntry =
+    typeof config.plugins.entries[KIMI_PLUGIN_ID] === "object" &&
+    config.plugins.entries[KIMI_PLUGIN_ID] !== null
+      ? config.plugins.entries[KIMI_PLUGIN_ID]
+      : {};
+  const existingConfig =
+    typeof existingEntry.config === "object" && existingEntry.config !== null
+      ? existingEntry.config
+      : {};
+
+  const wsURL = resolveKimiBridgeURL(params.wsURL);
+  const kimiapiHostOverride =
+    typeof params.kimiapiHost === "string" ? params.kimiapiHost.trim() : "";
+
+  const existingBridge =
+    typeof existingConfig.bridge === "object" && existingConfig.bridge !== null
+      ? existingConfig.bridge
+      : {};
+  const newBridge: any = {
+    ...existingBridge,
+    mode: "acp",
+    url: wsURL,
+    token: params.botToken,
+    // 稳定本机 UUID 传给 kimi-claw，避免 fallback 到 "unknown-device"
+    // 被 Kimi 后端按匿名设备严限流（症状：GetMessages 429 resource_exhausted）。
+    deviceId: ensureDeviceId(),
+  };
+  // kimiapiHost 控制 IM subscribe 的 base_url（默认 https://www.kimi.com/api-ws）
+  // 显式传入非空值 → 写入；传入空字符串 → 删除回默认；未传入 → 保留存量。
+  if (kimiapiHostOverride) {
+    newBridge.kimiapiHost = kimiapiHostOverride;
+  } else if (typeof params.kimiapiHost === "string") {
+    delete newBridge.kimiapiHost;
+  }
+
+  config.plugins.entries[KIMI_PLUGIN_ID] = {
+    ...existingEntry,
+    enabled: true,
+    config: {
+      ...existingConfig,
+      bridge: newBridge,
+      gateway: {
+        ...(typeof existingConfig.gateway === "object" && existingConfig.gateway !== null
+          ? existingConfig.gateway
+          : {}),
+        url: `ws://127.0.0.1:${resolveGatewayPort()}`,
+        token: params.gatewayToken,
+        agentId: "main",
+      },
+      retry: {
+        ...(typeof existingConfig.retry === "object" && existingConfig.retry !== null
+          ? existingConfig.retry
+          : {}),
+        baseMs: 1000,
+        maxMs: 600000,
+        maxAttempts: 0,
+      },
+      log: { enabled: true },
+    },
+  };
+
+  // 同步启用 kimi-search 插件
+  const existingSearch =
+    typeof config.plugins.entries[KIMI_SEARCH_PLUGIN_ID] === "object" &&
+    config.plugins.entries[KIMI_SEARCH_PLUGIN_ID] !== null
+      ? config.plugins.entries[KIMI_SEARCH_PLUGIN_ID]
+      : {};
+  config.plugins.entries[KIMI_SEARCH_PLUGIN_ID] = { ...existingSearch, enabled: true };
+
+  syncPluginAllowOnEnable(config, KIMI_PLUGIN_ID);
+  syncPluginAllowOnEnable(config, KIMI_SEARCH_PLUGIN_ID);
+}
+
+// 解析内置插件目录（packaged/dev 环境统一）
+export function resolveKimiPluginDir(): string {
+  return path.join(resolveGatewayPackageDir(), "dist", "extensions", KIMI_PLUGIN_ID);
+}
+
+// 检查 kimi-claw 插件是否随应用内置（缺失则拒绝写配置，避免网关启动失败）
+export function isKimiPluginBundled(): boolean {
+  const pluginDir = resolveKimiPluginDir();
+  // 入口可能是源码 index.ts 或编译产物 dist/index.js
+  const hasEntry =
+    fs.existsSync(path.join(pluginDir, "index.ts")) ||
+    fs.existsSync(path.join(pluginDir, "dist", "index.js"));
+  return hasEntry && fs.existsSync(path.join(pluginDir, "openclaw.plugin.json"));
+}
+
+/**
+ * 幂等补齐 kimi-claw.config.bridge.deviceId。
+ *
+ * 存量 / 升级用户的 openclaw.json 里 kimi-claw.config.bridge 只有 mode/url/token，
+ * 没有 deviceId。kimi-claw extension 读不到就 fallback 到 "unknown-device"，
+ * 然后 Kimi 后端把所有 unknown-device 挤到同一个 rate-limit bucket，导致
+ * GetMessages HTTP 429 resource_exhausted，现象是"连上了但发消息没响应"。
+ *
+ * @returns 是否实际修改了 config（供调用方决定是否重写文件）
+ */
+export function ensureKimiPluginDeviceId(config: any): boolean {
+  const entry = config?.plugins?.entries?.[KIMI_PLUGIN_ID];
+  if (!entry || typeof entry !== "object") return false; // 没启用 kimi-claw：不动它
+  const cfg = entry.config;
+  if (!cfg || typeof cfg !== "object") return false;
+  const bridge = cfg.bridge;
+  if (!bridge || typeof bridge !== "object") return false;
+
+  const existing = typeof bridge.deviceId === "string" ? bridge.deviceId.trim() : "";
+  if (existing) return false; // 已有就不覆盖
+
+  bridge.deviceId = ensureDeviceId();
+  return true;
+}
+
+// 从已有配置中提取 kimi-claw 插件信息（供 settings 回显）
+// 附带 kimi-search serviceBaseUrl（作为 kimiapiHost 回显），让 UI 能展示配对的测试/生产环境
+export function extractKimiConfig(config: any): {
+  enabled: boolean;
+  botToken: string;
+  wsURL: string;
+  kimiapiHost: string;
+} {
+  const entry = config?.plugins?.entries?.[KIMI_PLUGIN_ID];
+  const search = extractKimiSearchConfig(config);
+  // 优先取 kimi-claw bridge.kimiapiHost（真实权威），回退到 kimi-search 反推（旧配置兼容）
+  const bridgeKimiapiHost =
+    typeof entry?.config?.bridge?.kimiapiHost === "string"
+      ? entry.config.bridge.kimiapiHost.trim()
+      : "";
+  const kimiapiHost = bridgeKimiapiHost || search.serviceBaseUrl;
+  if (!entry || typeof entry !== "object") {
+    return { enabled: false, botToken: "", wsURL: "", kimiapiHost };
+  }
+  return {
+    enabled: entry.enabled === true,
+    botToken: entry.config?.bridge?.token ?? "",
+    wsURL: entry.config?.bridge?.url ?? "",
+    kimiapiHost,
+  };
+}
+
+// ── Kimi Search 配置 ──
+
+const KIMI_SEARCH_API_KEY_FILE = "kimi-search-api-key";
+
+// sidecar 文件路径（~/.openclaw/credentials/kimi-search-api-key）
+function resolveKimiSearchApiKeyPath(): string {
+  return path.join(resolveUserStateDir(), "credentials", KIMI_SEARCH_API_KEY_FILE);
+}
+
+// 读取 sidecar 文件中的专属 key
+export function readKimiSearchDedicatedApiKey(): string {
+  try {
+    const filePath = resolveKimiSearchApiKeyPath();
+    if (!fs.existsSync(filePath)) return "";
+    return fs.readFileSync(filePath, "utf-8").trim();
+  } catch {
+    return "";
+  }
+}
+
+// 写入专属 key 到 sidecar 文件（空字符串则删除文件）
+export function writeKimiSearchDedicatedApiKey(apiKey: string): void {
+  const filePath = resolveKimiSearchApiKeyPath();
+  const trimmed = apiKey.trim();
+  if (!trimmed) {
+    try { fs.unlinkSync(filePath); } catch {}
+    return;
+  }
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(filePath, trimmed, "utf-8");
+}
+
+// 按优先级解析 kimi-search API key：专属 key > OAuth token > 手动 key sidecar
+// 注意：不再从 config 的 apiKey 读取（代理模式下为占位符 "proxy-managed"）
+export function resolveKimiSearchApiKey(_config?: any): string {
+  // 1. sidecar 文件中的专属 key
+  const dedicatedKey = readKimiSearchDedicatedApiKey();
+  if (dedicatedKey) return dedicatedKey;
+
+  // 2. OAuth token
+  try {
+    const { loadOAuthToken } = require("./kimi-oauth");
+    const oauthToken = loadOAuthToken();
+    if (oauthToken?.access_token) return oauthToken.access_token;
+  } catch {}
+
+  // 3. 手动 key sidecar
+  const manualKey = readKimiApiKey();
+  if (manualKey) return manualKey;
+
+  return "";
+}
+
+// 提取 kimi-search 配置（供 settings 回显）
+export function extractKimiSearchConfig(config: any): {
+  enabled: boolean;
+  apiKey: string;
+  isKimiCodeConfigured: boolean;
+  serviceBaseUrl: string;
+} {
+  const searchEntry = config?.plugins?.entries?.[KIMI_SEARCH_PLUGIN_ID];
+  const dedicatedKey = readKimiSearchDedicatedApiKey();
+  const kimiCodingKey = config?.models?.providers?.["kimi-coding"]?.apiKey ?? "";
+
+  // 从插件 config.search.baseUrl 反推 serviceBaseUrl（去掉末尾 /search）
+  const searchBaseUrl = searchEntry?.config?.search?.baseUrl ?? "";
+  const serviceBaseUrl = typeof searchBaseUrl === "string" && searchBaseUrl.endsWith("/search")
+    ? searchBaseUrl.slice(0, -"/search".length)
+    : "";
+
+  return {
+    enabled: searchEntry?.enabled === true,
+    apiKey: dedicatedKey,
+    isKimiCodeConfigured: typeof kimiCodingKey === "string" && kimiCodingKey.trim().length > 0,
+    serviceBaseUrl,
+  };
+}
+
+// 写入 kimi-search 配置（enabled + 可选的自定义 service base URL）
+export function saveKimiSearchConfig(
+  config: any,
+  params: { enabled: boolean; serviceBaseUrl?: string },
+): void {
+  config.plugins ??= {};
+  config.plugins.entries ??= {};
+
+  const existing =
+    typeof config.plugins.entries[KIMI_SEARCH_PLUGIN_ID] === "object" &&
+    config.plugins.entries[KIMI_SEARCH_PLUGIN_ID] !== null
+      ? config.plugins.entries[KIMI_SEARCH_PLUGIN_ID]
+      : {};
+
+  const entry: any = { ...existing, enabled: params.enabled };
+
+  // 有自定义 base URL 时写入 search/fetch 端点，空字符串则清除回默认
+  const baseUrl = params.serviceBaseUrl?.trim();
+  if (baseUrl) {
+    entry.config = {
+      ...(typeof existing.config === "object" && existing.config !== null ? existing.config : {}),
+      search: { baseUrl: `${baseUrl}/search` },
+      fetch: { baseUrl: `${baseUrl}/fetch` },
+    };
+  } else {
+    delete entry.config;
+  }
+
+  config.plugins.entries[KIMI_SEARCH_PLUGIN_ID] = entry;
+
+  if (params.enabled) syncPluginAllowOnEnable(config, KIMI_SEARCH_PLUGIN_ID);
+}
+
+// ── Memory Search Embedding 配置（通过 auth proxy 透传鉴权） ──
+
+const KIMI_EMBEDDING_MODEL = "bge_m3_embed";
+
+// 将 memorySearch 指向本地 auth proxy（代理注入最新 token，免密钥刷新）
+export function ensureMemorySearchProxyConfig(config: any, proxyPort: number): boolean {
+  if (proxyPort <= 0) return false;
+
+  config.agents ??= {};
+  config.agents.defaults ??= {};
+  config.agents.defaults.memorySearch ??= {};
+
+  const ms = config.agents.defaults.memorySearch;
+  const expectedBase = `http://127.0.0.1:${proxyPort}/coding/v1/`;
+
+  // 配置未变则跳过写入
+  if (
+    ms.enabled === true &&
+    ms.provider === "openai" &&
+    ms.model === KIMI_EMBEDDING_MODEL &&
+    ms.remote?.baseUrl === expectedBase &&
+    ms.remote?.apiKey === "proxy-managed"
+  ) {
+    return false;
+  }
+
+  ms.enabled = true;
+  ms.provider = "openai";
+  ms.model = KIMI_EMBEDDING_MODEL;
+  ms.remote ??= {};
+  ms.remote.baseUrl = expectedBase;
+  ms.remote.apiKey = "proxy-managed";
+  return true;
+}
+
+// 检查 kimi-search 插件是否随应用内置
+export function isKimiSearchPluginBundled(): boolean {
+  const pluginDir = path.join(resolveGatewayPackageDir(), "dist", "extensions", KIMI_SEARCH_PLUGIN_ID);
+  const hasEntry =
+    fs.existsSync(path.join(pluginDir, "index.ts")) ||
+    fs.existsSync(path.join(pluginDir, "dist", "index.js"));
+  return hasEntry && fs.existsSync(path.join(pluginDir, "openclaw.plugin.json"));
+}
+
+// ── Kimi API Key sidecar（手动输入的 key，与 OAuth token 互斥） ──
+
+const KIMI_API_KEY_FILE = "kimi-api-key";
+
+// sidecar 文件路径
+function resolveKimiApiKeyPath(): string {
+  return path.join(resolveUserStateDir(), "credentials", KIMI_API_KEY_FILE);
+}
+
+// 读取手动 key
+export function readKimiApiKey(): string {
+  try {
+    const filePath = resolveKimiApiKeyPath();
+    if (!fs.existsSync(filePath)) return "";
+    return fs.readFileSync(filePath, "utf-8").trim();
+  } catch {
+    return "";
+  }
+}
+
+// 写入手动 key（空字符串则删除）
+export function writeKimiApiKey(apiKey: string): void {
+  const filePath = resolveKimiApiKeyPath();
+  const trimmed = apiKey.trim();
+  if (!trimmed) {
+    try { fs.unlinkSync(filePath); } catch {}
+    return;
+  }
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(filePath, trimmed, "utf-8");
+  try { fs.chmodSync(filePath, 0o600); } catch {}
+}
