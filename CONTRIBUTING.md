@@ -1,4 +1,4 @@
-# Contributing to OneClaw
+# Contributing to PackClaw
 
 ## 核心原则：先开 Issue，再提 PR
 

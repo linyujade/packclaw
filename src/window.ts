@@ -33,10 +33,10 @@ interface NavigateOptions {
 
 function resolveMainWindowTitle(): string {
   const tag = resolveDevBranchTag();
-  // 主窗口标题直接解释产品定位，方便用户在系统标题栏里理解 OneClaw 是什么。
+  // 主窗口标题直接解释产品定位，方便用户在系统标题栏里理解 PackClaw 是什么。
   return app.getLocale().startsWith("zh")
-    ? `OneClaw 一键安装OpenClaw${tag}`
-    : `OneClaw - One-click installer for OpenClaw${tag}`;
+    ? `PackClaw 一键安装OpenClaw${tag}`
+    : `PackClaw - One-click installer for OpenClaw${tag}`;
 }
 
 function maskToken(token: string): string {
@@ -174,7 +174,7 @@ export class WindowManager {
     }
 
     this.win.show();
-    if (process.env.ONECLAW_DEBUG || process.env.OPENCLAW_DEBUG) {
+    if (process.env.PACKCLAW_DEBUG || process.env.OPENCLAW_DEBUG) {
       this.win.webContents.openDevTools();
     }
     log.info("主窗口显示");
@@ -247,7 +247,7 @@ export class WindowManager {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OneClaw - Error</title>
+  <title>PackClaw - Error</title>
   <style>
     :root { color-scheme: light dark; }
     body {
@@ -283,7 +283,7 @@ export class WindowManager {
 <body>
   <main class="card">
     <h1>Chat UI not available</h1>
-    <p>OneClaw Chat UI 未能加载。请尝试重新启动应用。</p>
+    <p>PackClaw Chat UI 未能加载。请尝试重新启动应用。</p>
     <button id="retryBtn" type="button">Retry</button>
   </main>
   <script>

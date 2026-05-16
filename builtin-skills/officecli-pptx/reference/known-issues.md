@@ -24,7 +24,7 @@ another process holds a write handle on the file. This is most common on Windows
 
 1. **Close any viewer.** PowerPoint, WPS Office, LibreOffice Impress, Keynote, and the Windows File Explorer preview pane all keep an exclusive write lock on the open `.pptx`. Close every window that might have the file open and retry. This is by far the most common cause.
 
-2. **Pause cloud sync.** OneDrive, Dropbox, iCloud Drive, and Google Drive hold a write handle while uploading, especially right after `officecli close` writes the file. The OneClaw workspace `~/.openclaw/workspace/` is often inside `C:\Users\<name>\OneDrive\...` on Windows. Pause sync (taskbar icon → Pause syncing) and retry. After the workflow finishes, resume sync.
+2. **Pause cloud sync.** OneDrive, Dropbox, iCloud Drive, and Google Drive hold a write handle while uploading, especially right after `officecli close` writes the file. The PackClaw workspace `~/.openclaw/workspace/` is often inside `C:\Users\<name>\OneDrive\...` on Windows. Pause sync (taskbar icon → Pause syncing) and retry. After the workflow finishes, resume sync.
 
 3. **Antivirus / Windows Defender real-time scan.** Defender opens the file briefly after every write. If EBUSY is **intermittent** (succeeds on retry within a couple of seconds), this is the cause. Wait 1–2s and retry once.
 

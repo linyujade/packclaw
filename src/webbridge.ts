@@ -806,9 +806,9 @@ function home(): string {
   return process.env.HOME ?? process.env.USERPROFILE ?? os.homedir();
 }
 
-// OneClaw 只关心自己的 OpenClaw runtime（~/.agents/skills/kimi-webbridge）。
+// PackClaw 只关心自己的 OpenClaw runtime（~/.agents/skills/kimi-webbridge）。
 // install-skill -y 会顺手装到检测到的其它 AI runtime（Claude / Codex / Kimi CLI），
-// 但那些不属于 OneClaw 必须保证的能力，所以 precheck 只看这一处。
+// 但那些不属于 PackClaw 必须保证的能力，所以 precheck 只看这一处。
 export const KIMI_WEBBRIDGE_SKILL_PATHS: string[] = [
   path.join(home(), ".agents/skills/kimi-webbridge"),
 ];
@@ -878,9 +878,9 @@ export async function getWebbridgePrecheck(
     try {
       const browsers = await deps.readExtensionStates(deps.extensionId);
       const targetState = browsers.find((b) => b.browserId === def!.target.id);
-      // settings 高级页面只关心"OneClaw 这套组件是否真的坏了 / 缺了 / 被黑名单挡了"。
+      // settings 高级页面只关心"PackClaw 这套组件是否真的坏了 / 缺了 / 被黑名单挡了"。
       // 不再判 presentInChrome：用户在 Chrome 里有没有点"启用"是用户行为，
-      // 不是 OneClaw 能修的状态——左侧栏 pill 单独负责催用户去启用。
+      // 不是 PackClaw 能修的状态——左侧栏 pill 单独负责催用户去启用。
       extMissing = !(
         targetState?.installed &&
         targetState.configured &&

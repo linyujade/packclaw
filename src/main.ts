@@ -36,7 +36,7 @@ import { reconcileExtensionsOnAppLaunch } from "./extension-mirror";
 import { migrateLegacyFeishuPluginEntry } from "./feishu-config";
 import { migrateBrowserProfileForCurrentGateway } from "./browser-profile-config";
 import { uninstallGatewayDaemon, killPortProcess, getPortPid } from "./install-detector";
-import { detectOwnership, migrateFromLegacy, readOneclawConfig, writeOneclawConfig, appendChannelUtm } from "./oneclaw-config";
+import { detectOwnership, migrateFromLegacy, readPackclawConfig, writePackclawConfig, appendChannelUtm } from "./packclaw-config";
 import { startTokenRefresh, stopTokenRefresh, loadOAuthToken } from "./kimi-oauth";
 import { startAuthProxy, stopAuthProxy, setProxyAccessToken, setProxySearchDedicatedKey, getProxyPort } from "./kimi-auth-proxy";
 import * as log from "./logger";
@@ -93,9 +93,9 @@ function attachRendererDebugHandlers(label: string, webContents: Electron.WebCon
   });
 }
 
-// ── 单实例锁（ONECLAW_MULTI_INSTANCE=1 时跳过，允许多 worktree 并行 dev） ──
+// ── 单实例锁（PACKCLAW_MULTI_INSTANCE=1 时跳过，允许多 worktree 并行 dev） ──
 
-if (!process.env.ONECLAW_MULTI_INSTANCE && !app.requestSingleInstanceLock()) {
+if (!process.env.PACKCLAW_MULTI_INSTANCE && !app.requestSingleInstanceLock()) {
   app.quit();
   process.exit(0);
 }
@@ -206,7 +206,7 @@ function promptConfigRecovery(opts: {
 // Gateway 启动失败时提示用户进入备份恢复，避免反复重启无效。
 function reportGatewayStartFailure(source: string): RecoveryAction {
   const logPath = resolveGatewayLogPath();
-  const title = "OneClaw Gateway 启动失败";
+  const title = "PackClaw Gateway 启动失败";
   const detail =
     `来源: ${source}\n` +
     `建议先前往设置 → 备份与恢复，回退到最近可用配置。\n` +
@@ -230,7 +230,7 @@ function reportConfigInvalidFailure(parseError?: string): RecoveryAction {
 
   log.error(`配置文件损坏，JSON 解析失败: ${parseError ?? "unknown"}`);
   return promptConfigRecovery({
-    title: "OneClaw 配置文件损坏",
+    title: "PackClaw 配置文件损坏",
     message: "检测到 openclaw.json 不是有效 JSON，Gateway 无法启动。",
     detail,
   });
@@ -262,7 +262,7 @@ function migrateSessionMemoryHook(): void {
   }
 }
 
-// 禁止 openclaw gateway 自行检查 npm 更新（OneClaw 整包打包，用户无法独立更新 gateway）
+// 禁止 openclaw gateway 自行检查 npm 更新（PackClaw 整包打包，用户无法独立更新 gateway）
 function migrateDisableGatewayUpdateCheck(): void {
   try {
     const config = readUserConfig();
@@ -401,7 +401,8 @@ async function startGatewayAndShowMain(source: string, opts: StartMainOptions = 
   }
 
   // 把内置 channel plugin 从 mirror reconcile 到 ~/.openclaw/extensions/。
-  // 必须在 gateway 启动前 await——openclaw 首次扫描 plugin root 时要看到完整目录。
+  // 必须在 gateway 启动前 await——所有启动路径（含 fresh）都需要，
+  // 否则 setup 完成后 gateway 首次启动时 extensions 目录不存在。
   // 函数自身吞掉所有错误，不会阻断启动。
   await reconcileExtensionsOnAppLaunch();
 
@@ -634,14 +635,14 @@ ipcMain.handle("app:get-release-notes", () => {
     if (!Array.isArray(allEntries)) return null;
 
     const currentVersion = app.getVersion();
-    const config = readOneclawConfig();
+    const config = readPackclawConfig();
     const lastShown = config?.lastShownReleaseNotesVersion;
 
     // 首次安装不弹更新日志，静默标记当前版本
     if (!lastShown) {
       if (config) {
         config.lastShownReleaseNotesVersion = currentVersion;
-        writeOneclawConfig(config);
+        writePackclawConfig(config);
       }
       return { currentVersion, entries: [], locale: app.getLocale() };
     }
@@ -673,10 +674,10 @@ ipcMain.handle("app:dismiss-release-notes", (_e, version: string) => {
   if (typeof version !== "string" || !version.trim()) return;
   try {
     // 配置不存在时直接跳过，避免用空对象覆盖已有字段
-    const config = readOneclawConfig();
+    const config = readPackclawConfig();
     if (!config) return;
     config.lastShownReleaseNotesVersion = version;
-    writeOneclawConfig(config);
+    writePackclawConfig(config);
   } catch (err: any) {
     log.error(`写入 lastShownReleaseNotesVersion 失败: ${err?.message ?? err}`);
   }
@@ -837,7 +838,7 @@ app.whenReady().then(async () => {
 
   // 下载进度 → 更新托盘 tooltip
   setProgressCallback((pct) => {
-    tray.setTooltip(pct != null ? `OneClaw — 下载更新 ${pct.toFixed(0)}%` : "OneClaw");
+    tray.setTooltip(pct != null ? `PackClaw — 下载更新 ${pct.toFixed(0)}%` : "PackClaw");
   });
 
   tray.create({
@@ -881,7 +882,7 @@ app.whenReady().then(async () => {
   log.info(`[startup] config ownership: ${ownership}`);
 
   switch (ownership) {
-    case "oneclaw":
+    case "packclaw":
       // 状态 1：正常启动
       migrateSessionMemoryHook();
       migrateDisableGatewayUpdateCheck();
@@ -894,9 +895,9 @@ app.whenReady().then(async () => {
       await startGatewayAndShowMain("app:startup");
       break;
 
-    case "legacy-oneclaw":
-      // 状态 2：老 OneClaw 用户升级 → 自动迁移
-      log.info("[startup] legacy OneClaw detected, migrating...");
+    case "legacy-packclaw":
+      // 状态 2：老 PackClaw 用户升级 → 自动迁移
+      log.info("[startup] legacy PackClaw detected, migrating...");
       migrateFromLegacy();
       migrateSessionMemoryHook();
       migrateDisableGatewayUpdateCheck();

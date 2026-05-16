@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as os from "os";
 import { execFileSync } from "child_process";
 import { isSetupCompleteFromConfig } from "./setup-completion";
-import { readOneclawConfig } from "./oneclaw-config";
+import { readPackclawConfig } from "./packclaw-config";
 
 // ── 网络端口 ──
 
@@ -65,7 +65,7 @@ export function resolveResourcesPath(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, "resources");
   }
-  const target = process.env.ONECLAW_TARGET ?? `${process.platform}-${process.arch}`;
+  const target = process.env.PACKCLAW_TARGET ?? `${process.platform}-${process.arch}`;
   return path.join(app.getAppPath(), "resources", "targets", target);
 }
 
@@ -393,7 +393,7 @@ export function resolveChatUiPath(): string {
 
 // 多实例模式下读取 git 分支名，拼入窗口标题以区分不同 worktree 实例
 export function resolveDevBranchTag(): string {
-  if (!process.env.ONECLAW_MULTI_INSTANCE) return "";
+  if (!process.env.PACKCLAW_MULTI_INSTANCE) return "";
   try {
     const branch = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
       cwd: app.getAppPath(),
@@ -406,13 +406,13 @@ export function resolveDevBranchTag(): string {
   }
 }
 
-/** 检查 Setup 是否已完成（优先读 oneclaw.config.json，兼容旧版） */
+/** 检查 Setup 是否已完成（优先读 packclaw.config.json，兼容旧版） */
 export function isSetupComplete(): boolean {
-  // 新逻辑：oneclaw.config.json 的 setupCompletedAt
-  const oneclawConfig = readOneclawConfig();
-  if (oneclawConfig?.setupCompletedAt) return true;
+  // 新逻辑：packclaw.config.json 的 setupCompletedAt
+  const packclawConfig = readPackclawConfig();
+  if (packclawConfig?.setupCompletedAt) return true;
 
-  // 兼容：老 OneClaw 用户可能还没迁移
+  // 兼容：老 PackClaw 用户可能还没迁移
   const configPath = resolveUserConfigPath();
   if (!fs.existsSync(configPath)) return false;
   try {

@@ -306,7 +306,7 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
       ${platformUrl ? html`
         <div style="display:flex;gap:16px;margin-bottom:16px">
           <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal(platformUrl); }}>${getPlatformLinkText()}</a>
-          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://oneclaw.cn/docs?utm_source=oneclaw"); }}>${t("setup.provider.docsLink")}</a>
+          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://packclaw.cn/docs?utm_source=packclaw"); }}>${t("setup.provider.docsLink")}</a>
         </div>
       ` : nothing}
 
@@ -392,7 +392,7 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
       ${s.oauthNoMembership ? html`
         <div class="oc-setup-oauth-no-membership">
           <span>${t("setup.provider.oauth.noMembership")}</span>
-          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=oneclaw"); }}>
+          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=packclaw"); }}>
             ${t("setup.provider.oauth.subscribeLink")}
           </a>
         </div>

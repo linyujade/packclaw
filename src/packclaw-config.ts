@@ -5,7 +5,7 @@ import { resolveUserStateDir, resolveUserConfigPath } from "./constants";
 
 // ── 类型定义 ──
 
-export interface OneclawConfig {
+export interface PackclawConfig {
   setupCompletedAt?: string;
   cliPreference?: "installed" | "uninstalled";
   updateChannel?: "stable" | "dev";
@@ -19,16 +19,16 @@ export interface OneclawConfig {
 
 // 四种归属状态
 export type OwnershipState =
-  | "oneclaw"
-  | "legacy-oneclaw"
+  | "packclaw"
+  | "legacy-packclaw"
   | "external-openclaw"
   | "fresh";
 
 // ── 路径 ──
 
-// OneClaw 专属配置文件路径
-export function resolveOneclawConfigPath(): string {
-  return path.join(resolveUserStateDir(), "oneclaw.config.json");
+// PackClaw 专属配置文件路径
+export function resolvePackclawConfigPath(): string {
+  return path.join(resolveUserStateDir(), "packclaw.config.json");
 }
 
 // .device-id 文件路径（与官方 CLI 共用）
@@ -43,24 +43,24 @@ function resolveSkillStoreConfigPath(): string {
 
 // ── 读写 ──
 
-// 读取 OneClaw 专属配置，不存在或解析失败返回 null
-export function readOneclawConfig(): OneclawConfig | null {
+// 读取 PackClaw 专属配置，不存在或解析失败返回 null
+export function readPackclawConfig(): PackclawConfig | null {
   try {
-    const raw = fs.readFileSync(resolveOneclawConfigPath(), "utf-8");
+    const raw = fs.readFileSync(resolvePackclawConfigPath(), "utf-8");
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    return parsed as OneclawConfig;
+    return parsed as PackclawConfig;
   } catch {
     return null;
   }
 }
 
-// 写入 OneClaw 专属配置
-export function writeOneclawConfig(config: OneclawConfig): void {
+// 写入 PackClaw 专属配置
+export function writePackclawConfig(config: PackclawConfig): void {
   const dir = resolveUserStateDir();
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(
-    resolveOneclawConfigPath(),
+    resolvePackclawConfigPath(),
     JSON.stringify(config, null, 2) + "\n",
     "utf-8",
   );
@@ -68,8 +68,8 @@ export function writeOneclawConfig(config: OneclawConfig): void {
 
 // ── 归属检测 ──
 
-// 老版 OneClaw 独有文件：官方 CLI 不会创建 setup-baseline
-function hasLegacyOneclawMarker(): boolean {
+// 老版 PackClaw 独有文件：官方 CLI 不会创建 setup-baseline
+function hasLegacyPackclawMarker(): boolean {
   return fs.existsSync(
     path.join(resolveUserStateDir(), "openclaw-setup-baseline.json"),
   );
@@ -77,12 +77,12 @@ function hasLegacyOneclawMarker(): boolean {
 
 // 判定当前 ~/.openclaw/ 目录的归属状态
 export function detectOwnership(): OwnershipState {
-  const oneclawConfig = readOneclawConfig();
-  if (oneclawConfig?.setupCompletedAt) return "oneclaw";
+  const packclawConfig = readPackclawConfig();
+  if (packclawConfig?.setupCompletedAt) return "packclaw";
 
-  // 老版 OneClaw 没有 oneclaw.config.json，但会创建这些独有文件
+  // 老版 PackClaw 没有 packclaw.config.json，但会创建这些独有文件
   // （.device-id 和 wizard.lastRunAt 不可靠：官方 CLI 也会创建）
-  if (hasLegacyOneclawMarker()) return "legacy-oneclaw";
+  if (hasLegacyPackclawMarker()) return "legacy-packclaw";
 
   const openclawJsonExists = fs.existsSync(resolveUserConfigPath());
   if (openclawJsonExists) return "external-openclaw";
@@ -92,8 +92,8 @@ export function detectOwnership(): OwnershipState {
 
 // ── 迁移 ──
 
-// 从 legacy 文件迁移到 oneclaw.config.json（老 OneClaw 用户升级）
-export function migrateFromLegacy(): OneclawConfig {
+// 从 legacy 文件迁移到 packclaw.config.json（老 PackClaw 用户升级）
+export function migrateFromLegacy(): PackclawConfig {
   // 读取 wizard.lastRunAt
   let setupCompletedAt: string | undefined;
   try {
@@ -105,7 +105,7 @@ export function migrateFromLegacy(): OneclawConfig {
   } catch {}
 
   // 读取 skill-store.json
-  let skillStore: OneclawConfig["skillStore"];
+  let skillStore: PackclawConfig["skillStore"];
   const skillStorePath = resolveSkillStoreConfigPath();
   try {
     const raw = JSON.parse(fs.readFileSync(skillStorePath, "utf-8"));
@@ -114,25 +114,25 @@ export function migrateFromLegacy(): OneclawConfig {
     }
   } catch {}
 
-  const config: OneclawConfig = { setupCompletedAt, skillStore };
-  writeOneclawConfig(config);
+  const config: PackclawConfig = { setupCompletedAt, skillStore };
+  writePackclawConfig(config);
   return config;
 }
 
 // ── 便捷方法 ──
 
-// 标记 Setup 完成（写入 setupCompletedAt 到 oneclaw.config.json）
+// 标记 Setup 完成（写入 setupCompletedAt 到 packclaw.config.json）
 export function markSetupComplete(): void {
-  let config = readOneclawConfig();
+  let config = readPackclawConfig();
   if (!config) {
     config = {};
   }
   config.setupCompletedAt = new Date().toISOString();
-  writeOneclawConfig(config);
+  writePackclawConfig(config);
 }
 
 export function getChannelId(): string {
-  return readOneclawConfig()?.channelId ?? "";
+  return readPackclawConfig()?.channelId ?? "";
 }
 
 export function appendChannelUtm(url: string): string {
@@ -141,10 +141,10 @@ export function appendChannelUtm(url: string): string {
   try {
     const u = new URL(url);
     const isKimiDomain = u.hostname === "kimi.com" || u.hostname.endsWith(".kimi.com");
-    const hasOneclawUtm = u.searchParams.get("utm_source") === "oneclaw";
+    const hasPackclawUtm = u.searchParams.get("utm_source") === "packclaw";
 
-    if (isKimiDomain || hasOneclawUtm) {
-      if (!u.searchParams.has("utm_source")) u.searchParams.set("utm_source", "oneclaw");
+    if (isKimiDomain || hasPackclawUtm) {
+      if (!u.searchParams.has("utm_source")) u.searchParams.set("utm_source", "packclaw");
       if (!u.searchParams.has("utm_campaign")) u.searchParams.set("utm_campaign", channelId);
       return u.toString();
     }

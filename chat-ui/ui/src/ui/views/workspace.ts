@@ -41,13 +41,13 @@ const workspaceState = {
 // 列目录
 async function loadDirectory(state: AppViewState, dirPath: string) {
   const w = window as any;
-  if (!w.oneclaw?.workspaceListDir) return;
+  if (!w.packclaw?.workspaceListDir) return;
 
   workspaceState.loading = true;
   state.requestUpdate();
 
   try {
-    const result = await w.oneclaw.workspaceListDir(dirPath);
+    const result = await w.packclaw.workspaceListDir(dirPath);
     if (result?.success && result.data) {
       workspaceState.items = result.data.items;
       workspaceState.currentPath = dirPath;
@@ -87,7 +87,7 @@ export async function initWorkspace(state: AppViewState) {
         workspaceState.root = newRoot;
         workspaceState.currentPath = newRoot;
         // 通知 main 进程设定路径穿越守卫
-        await w.oneclaw?.workspaceSetRoot?.(newRoot);
+        await w.packclaw?.workspaceSetRoot?.(newRoot);
       }
     }
 
@@ -108,7 +108,7 @@ export async function initWorkspace(state: AppViewState) {
 // 读取文件内容
 async function loadFileContent(state: AppViewState, filePath: string, fileName: string) {
   const w = window as any;
-  if (!w.oneclaw?.workspaceReadFile) return;
+  if (!w.packclaw?.workspaceReadFile) return;
 
   workspaceState.fileLoading = true;
   workspaceState.selectedFile = filePath;
@@ -117,7 +117,7 @@ async function loadFileContent(state: AppViewState, filePath: string, fileName: 
   state.requestUpdate();
 
   try {
-    const result = await w.oneclaw.workspaceReadFile(filePath);
+    const result = await w.packclaw.workspaceReadFile(filePath);
     if (result?.success && result.data) {
       workspaceState.fileContent = result.data.content;
     } else {
@@ -168,13 +168,13 @@ function navigateUp(state: AppViewState) {
 // 系统打开文件
 function openFile(filePath: string) {
   const w = window as any;
-  w.oneclaw?.workspaceOpenFile?.(filePath);
+  w.packclaw?.workspaceOpenFile?.(filePath);
 }
 
 // 系统打开文件夹
 function openFolder(folderPath: string) {
   const w = window as any;
-  w.oneclaw?.workspaceOpenFolder?.(folderPath);
+  w.packclaw?.workspaceOpenFolder?.(folderPath);
 }
 
 // 复制文件内容到剪贴板

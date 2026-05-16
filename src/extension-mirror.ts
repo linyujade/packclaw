@@ -1,7 +1,7 @@
 /**
  * extension-mirror.ts — 第三方 channel plugin 的 reconcile 逻辑
  *
- * OneClaw 不再使用 openclaw 的 `bundled-channel-entry` 契约（那条路径需要 138 行
+ * PackClaw 不再使用 openclaw 的 `bundled-channel-entry` 契约（那条路径需要 138 行
  * shim 模板，且会触发 jiti module-identity 分裂）。改为：
  *
  *   1. package-resources 把 4 个第三方 channel plugin 写入
@@ -44,9 +44,9 @@ function readPluginVersion(dir: string): string | null {
 /**
  * 读 `<dir>/package.json` 的 `openclaw.extensions[0]`。
  *
- * 这是 OneClaw 入口标准化（ensurePluginNativeEntry）在构建期改写的字段。
- * reconcile 时把它一起纳入"相等"判定——即便 plugin version 没变，只要 OneClaw
- * 改了 bundle 策略（如把 `.ts` 入口替换为 `./dist/oneclaw-bundle.mjs`），
+ * 这是 PackClaw 入口标准化（ensurePluginNativeEntry）在构建期改写的字段。
+ * reconcile 时把它一起纳入"相等"判定——即便 plugin version 没变，只要 PackClaw
+ * 改了 bundle 策略（如把 `.ts` 入口替换为 `./dist/packclaw-bundle.mjs`），
  * dest 也会被强制刷新。
  */
 function readPluginEntrySig(dir: string): string | null {
@@ -90,12 +90,12 @@ interface ReconcileOutcome {
   error?: string;
 }
 
-// 曾经被 OneClaw mirror，但已经迁移到 openclaw 内置 vendor / bundled 路径的
+// 曾经被 PackClaw mirror，但已经迁移到 openclaw 内置 vendor / bundled 路径的
 // plugin id。旧用户的 ~/.openclaw/extensions/<id>/ 仍残留旧版本，与 openclaw
 // stock / bundled 同时存在会触发 duplicate plugin id 警告，启动时静默删除一次
 // 即可。
 //
-//   - qqbot：2026.4.5 起由 openclaw 官方 vendor，OneClaw 不再 ship
+//   - qqbot：2026.4.5 起由 openclaw 官方 vendor，PackClaw 不再 ship
 //   - dingtalk-connector：external-channel-loader 短暂放进过 mirror，
 //     Windows 上 jiti register 重入导致 DWS clientId 互踢，已回滚到 bundled
 //     路径（gateway.asar/.../dist/extensions/dingtalk-connector）走 shim。
@@ -142,9 +142,9 @@ function reconcileOne(pluginId: string, mirrorDir: string, userDir: string): Rec
 
   // 两个维度都相等才 skip：
   //   - 插件上游版本（pkg.version）
-  //   - OneClaw 构建期重写的入口（pkg.openclaw.extensions[0]）
-  // 后者是为了让 OneClaw 换 bundle 策略（比如把 `.ts` 入口替换成
-  // `./dist/oneclaw-bundle.mjs`）能触发 reconcile，即使 plugin 版本没变。
+  //   - PackClaw 构建期重写的入口（pkg.openclaw.extensions[0]）
+  // 后者是为了让 PackClaw 换 bundle 策略（比如把 `.ts` 入口替换成
+  // `./dist/packclaw-bundle.mjs`）能触发 reconcile，即使 plugin 版本没变。
   const mirrorSig = readPluginEntrySig(src);
   const destSig = readPluginEntrySig(dest);
   const versionMatch = !!mirrorVersion && !!destVersion && mirrorVersion === destVersion;

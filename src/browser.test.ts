@@ -25,13 +25,13 @@ const chrome = BROWSER_TARGETS.find((t) => t.id === "chrome")!;
 function withFakeHome(fn: (home: string) => void | Promise<void>): () => Promise<void> {
   return async () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), "browser-test-"));
-    const orig = { h: process.env.HOME, u: process.env.USERPROFILE, a: process.env.ONECLAW_BROWSER_APPS_DIRS };
+    const orig = { h: process.env.HOME, u: process.env.USERPROFILE, a: process.env.PACKCLAW_BROWSER_APPS_DIRS };
     process.env.HOME = process.env.USERPROFILE = home;
-    process.env.ONECLAW_BROWSER_APPS_DIRS = path.join(home, "Apps-fake");
+    process.env.PACKCLAW_BROWSER_APPS_DIRS = path.join(home, "Apps-fake");
     try { await fn(home); } finally {
       process.env.HOME = orig.h; process.env.USERPROFILE = orig.u;
-      if (orig.a === undefined) delete process.env.ONECLAW_BROWSER_APPS_DIRS;
-      else process.env.ONECLAW_BROWSER_APPS_DIRS = orig.a;
+      if (orig.a === undefined) delete process.env.PACKCLAW_BROWSER_APPS_DIRS;
+      else process.env.PACKCLAW_BROWSER_APPS_DIRS = orig.a;
     }
   };
 }

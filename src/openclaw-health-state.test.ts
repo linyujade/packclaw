@@ -8,7 +8,7 @@ let configPath: string;
 let healthPath: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-health-test-"));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-health-test-"));
   vi.stubEnv("OPENCLAW_STATE_DIR", tmpDir);
   vi.resetModules();
   configPath = path.join(tmpDir, "openclaw.json");

@@ -23,7 +23,7 @@ function loadAfterPackSandbox(scriptPath = path.join(__dirname, "afterPack.js"))
 
 test("Windows afterPack wrapper 应优先调用 Helper.exe 并回退主 exe", () => {
   const sandbox = loadAfterPackSandbox();
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-afterpack-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-afterpack-"));
   const targetBase = path.join(tmpRoot, "resources");
   const runtimeDir = path.join(targetBase, "runtime");
   fs.mkdirSync(runtimeDir, { recursive: true });
@@ -31,19 +31,19 @@ test("Windows afterPack wrapper 应优先调用 Helper.exe 并回退主 exe", ()
   fs.writeFileSync(path.join(runtimeDir, "npm.cmd"), "@echo off\r\n");
   fs.writeFileSync(path.join(runtimeDir, "npx.cmd"), "@echo off\r\n");
 
-  sandbox.replaceNodeBinary("win32", targetBase, "OneClaw");
+  sandbox.replaceNodeBinary("win32", targetBase, "PackClaw");
 
   const npmCmd = fs.readFileSync(path.join(runtimeDir, "npm.cmd"), "utf-8");
   assert.equal(fs.existsSync(path.join(runtimeDir, "node.exe")), false);
-  assert.match(npmCmd, /OneClaw Helper\.exe/);
+  assert.match(npmCmd, /PackClaw Helper\.exe/);
   assert.match(npmCmd, /if exist/i);
-  assert.match(npmCmd, /OneClaw\.exe/);
+  assert.match(npmCmd, /PackClaw\.exe/);
 
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
 
 test("Windows afterPack 应保留展开的 gateway node_modules 而不是生成 tar", async () => {
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-afterpack-flow-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-afterpack-flow-"));
   const scriptDir = path.join(tmpRoot, "scripts");
   const resourcesDir = path.join(tmpRoot, "resources", "targets", "win32-x64");
   const runtimeDir = path.join(resourcesDir, "runtime");
@@ -78,7 +78,7 @@ test("Windows afterPack 应保留展开的 gateway node_modules 而不是生成 
     arch: "x64",
     packager: {
       appInfo: {
-        productFilename: "OneClaw",
+        productFilename: "PackClaw",
       },
     },
   });

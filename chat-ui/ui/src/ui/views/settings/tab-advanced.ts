@@ -3,7 +3,7 @@
  *
  * 浏览器模式 3 选 radio（值与 settings-ipc.ts 的 browserMode 完全一致）：
  *   - webbridge：通过浏览器扩展接管系统默认浏览器（Chrome/Edge）
- *   - openclaw：OneClaw 启动独立 Chromium 实例
+ *   - openclaw：PackClaw 启动独立 Chromium 实例
  *   - user：OpenClaw 当前会话 —— 复用用户已开的 Chrome 会话（gateway 内置 user profile）
  *
  * 切到 webbridge 时跑 precheck：

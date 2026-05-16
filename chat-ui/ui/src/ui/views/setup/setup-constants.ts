@@ -27,7 +27,7 @@ export const PROVIDERS: Record<string, ProviderDef> = {
   },
   anthropic: {
     placeholder: "sk-ant-...",
-    platformUrl: "https://console.anthropic.com?utm_source=oneclaw",
+    platformUrl: "https://console.anthropic.com?utm_source=packclaw",
     models: [
       "claude-sonnet-4-6",
       "claude-opus-4-6",
@@ -38,12 +38,12 @@ export const PROVIDERS: Record<string, ProviderDef> = {
   },
   openai: {
     placeholder: "sk-...",
-    platformUrl: "https://platform.openai.com?utm_source=oneclaw",
+    platformUrl: "https://platform.openai.com?utm_source=packclaw",
     models: ["gpt-5.4", "gpt-5.2", "gpt-5.2-codex"],
   },
   google: {
     placeholder: "AI...",
-    platformUrl: "https://aistudio.google.com?utm_source=oneclaw",
+    platformUrl: "https://aistudio.google.com?utm_source=packclaw",
     models: ["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-3-flash-preview"],
   },
   custom: {
@@ -111,9 +111,9 @@ export const CUSTOM_PRESETS: Record<string, CustomPresetDef> = {
 export const KIMI_CODE_MODELS = ["k2p5"];
 
 export const SUB_PLATFORM_URLS: Record<string, string> = {
-  "moonshot-cn": "https://platform.moonshot.cn?utm_source=oneclaw",
-  "moonshot-ai": "https://platform.moonshot.ai?utm_source=oneclaw",
-  "kimi-code": "https://kimi.com/code?utm_source=oneclaw",
+  "moonshot-cn": "https://platform.moonshot.cn?utm_source=packclaw",
+  "moonshot-ai": "https://platform.moonshot.ai?utm_source=packclaw",
+  "kimi-code": "https://kimi.com/code?utm_source=packclaw",
 };
 
 export const PROVIDER_DISPLAY_ORDER = ["moonshot", "anthropic", "openai", "google", "custom"] as const;

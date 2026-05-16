@@ -23,13 +23,13 @@ description: "Use this skill when a .docx file is involved — creating, reading
 
 ## Install
 
-`officecli` ships preinstalled with OneClaw. Verify with:
+`officecli` ships preinstalled with PackClaw. Verify with:
 
 ```
 officecli --version
 ```
 
-If the command is not found, the OneClaw installation is broken — please reinstall OneClaw.
+If the command is not found, the PackClaw installation is broken — please reinstall PackClaw.
 
 ---
 

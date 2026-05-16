@@ -23,7 +23,7 @@ import {
   uninstallGatewayDaemon,
   uninstallGlobalOpenclaw,
 } from "./install-detector";
-import { markSetupComplete } from "./oneclaw-config";
+import { markSetupComplete } from "./packclaw-config";
 import { recordSetupBaselineConfigSnapshot } from "./config-backup";
 import type { WindowManager } from "./window";
 import {
@@ -265,7 +265,7 @@ export function registerSetupIpc(deps: SetupIpcDeps): void {
         config.channels.imessage ??= {};
         config.channels.imessage.enabled = false;
 
-        // 禁止 gateway 自行检查 npm 更新（OneClaw 整包打包，用户无法独立更新 gateway）
+        // 禁止 gateway 自行检查 npm 更新（PackClaw 整包打包，用户无法独立更新 gateway）
         config.update ??= {};
         config.update.checkOnStart = false;
 
@@ -343,7 +343,7 @@ export function registerSetupIpc(deps: SetupIpcDeps): void {
         delete config.wizard.pendingAt;
         writeUserConfig(config);
 
-        // 写入 oneclaw.config.json 归属标记
+        // 写入 packclaw.config.json 归属标记
         markSetupComplete();
       } catch (err: any) {
         log.error(`[setup] 写入 setup 完成标记失败: ${err?.message ?? err}`);

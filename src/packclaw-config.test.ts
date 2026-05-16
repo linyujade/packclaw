@@ -10,7 +10,7 @@ vi.mock("electron", () => ({
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-config-test-"));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-config-test-"));
   vi.stubEnv("OPENCLAW_STATE_DIR", tmpDir);
 });
 
@@ -19,56 +19,56 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-test("readOneclawConfig 无文件时返回 null", async () => {
-  const { readOneclawConfig } = await import("./oneclaw-config");
-  expect(readOneclawConfig()).toBeNull();
+test("readPackclawConfig 无文件时返回 null", async () => {
+  const { readPackclawConfig } = await import("./packclaw-config");
+  expect(readPackclawConfig()).toBeNull();
 });
 
-test("writeOneclawConfig + readOneclawConfig 往返一致", async () => {
-  const { readOneclawConfig, writeOneclawConfig } = await import("./oneclaw-config");
+test("writePackclawConfig + readPackclawConfig 往返一致", async () => {
+  const { readPackclawConfig, writePackclawConfig } = await import("./packclaw-config");
   const config = {
     deviceId: "test-uuid",
     setupCompletedAt: "2026-03-10T00:00:00.000Z",
   };
-  writeOneclawConfig(config);
-  expect(readOneclawConfig()).toEqual(config);
+  writePackclawConfig(config);
+  expect(readPackclawConfig()).toEqual(config);
 });
 
 test("detectOwnership 无任何文件时返回 fresh", async () => {
-  const { detectOwnership } = await import("./oneclaw-config");
+  const { detectOwnership } = await import("./packclaw-config");
   expect(detectOwnership()).toBe("fresh");
 });
 
-test("detectOwnership 有 oneclaw.config.json + setupCompletedAt 时返回 oneclaw", async () => {
-  const { writeOneclawConfig, detectOwnership } = await import("./oneclaw-config");
-  writeOneclawConfig({
+test("detectOwnership 有 packclaw.config.json + setupCompletedAt 时返回 packclaw", async () => {
+  const { writePackclawConfig, detectOwnership } = await import("./packclaw-config");
+  writePackclawConfig({
     deviceId: "id",
     setupCompletedAt: "2026-03-10T00:00:00.000Z",
   });
-  expect(detectOwnership()).toBe("oneclaw");
+  expect(detectOwnership()).toBe("packclaw");
 });
 
-test("detectOwnership 有 setup-baseline 文件时返回 legacy-oneclaw", async () => {
-  const { detectOwnership } = await import("./oneclaw-config");
+test("detectOwnership 有 setup-baseline 文件时返回 legacy-packclaw", async () => {
+  const { detectOwnership } = await import("./packclaw-config");
   fs.writeFileSync(path.join(tmpDir, "openclaw-setup-baseline.json"), "{}", "utf-8");
-  expect(detectOwnership()).toBe("legacy-oneclaw");
+  expect(detectOwnership()).toBe("legacy-packclaw");
 });
 
-test("detectOwnership 有 .device-id 但无 OneClaw 独有文件时返回 external-openclaw", async () => {
-  const { detectOwnership } = await import("./oneclaw-config");
+test("detectOwnership 有 .device-id 但无 PackClaw 独有文件时返回 external-openclaw", async () => {
+  const { detectOwnership } = await import("./packclaw-config");
   fs.writeFileSync(path.join(tmpDir, ".device-id"), "some-uuid", "utf-8");
   fs.writeFileSync(path.join(tmpDir, "openclaw.json"), "{}", "utf-8");
   expect(detectOwnership()).toBe("external-openclaw");
 });
 
-test("detectOwnership 有 openclaw.json 无 .device-id 无 oneclaw.config.json 时返回 external-openclaw", async () => {
-  const { detectOwnership } = await import("./oneclaw-config");
+test("detectOwnership 有 openclaw.json 无 .device-id 无 packclaw.config.json 时返回 external-openclaw", async () => {
+  const { detectOwnership } = await import("./packclaw-config");
   fs.writeFileSync(path.join(tmpDir, "openclaw.json"), "{}", "utf-8");
   expect(detectOwnership()).toBe("external-openclaw");
 });
 
 test("migrateFromLegacy 从 .device-id 和 wizard.lastRunAt 迁移", async () => {
-  const { migrateFromLegacy, readOneclawConfig } = await import("./oneclaw-config");
+  const { migrateFromLegacy, readPackclawConfig } = await import("./packclaw-config");
   fs.writeFileSync(path.join(tmpDir, ".device-id"), "legacy-uuid", "utf-8");
   fs.writeFileSync(
     path.join(tmpDir, "openclaw.json"),
@@ -86,14 +86,14 @@ test("migrateFromLegacy 从 .device-id 和 wizard.lastRunAt 迁移", async () =>
   expect(result.setupCompletedAt).toBe("2026-01-01T00:00:00.000Z");
   expect(result.skillStore?.registryUrl).toBe("https://custom.registry");
 
-  const saved = readOneclawConfig();
+  const saved = readPackclawConfig();
   expect(saved?.deviceId).toBe("legacy-uuid");
 });
 
 test("markSetupComplete 写入 setupCompletedAt", async () => {
-  const { markSetupComplete, readOneclawConfig } = await import("./oneclaw-config");
+  const { markSetupComplete, readPackclawConfig } = await import("./packclaw-config");
   markSetupComplete();
-  const config = readOneclawConfig();
+  const config = readPackclawConfig();
   expect(config?.setupCompletedAt).toBeTruthy();
   expect(typeof config?.setupCompletedAt).toBe("string");
 });

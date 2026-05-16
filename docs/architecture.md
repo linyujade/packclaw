@@ -1,4 +1,4 @@
-# OneClaw Architecture — Key Design Decisions
+# PackClaw Architecture — Key Design Decisions
 
 > 从 CLAUDE.md 拆分出的详细设计文档。每个子系统的设计决策、状态机、启动序列均记录在此。
 
@@ -15,7 +15,7 @@ Startup sequence:
 3. Resolve entry: try `openclaw.mjs` first, fall back to `gateway-entry.mjs` (legacy)
 4. Resolve port: env `OPENCLAW_GATEWAY_PORT` > config `gateway.port` > default `18789`
 5. Spawn: `<node> <entry.js> gateway run --port <resolved> --bind loopback`
-6. Disable gateway's own npm update check (`update.checkOnStart = false`) — OneClaw is packaged as a whole unit, users can't independently update the gateway
+6. Disable gateway's own npm update check (`update.checkOnStart = false`) — PackClaw is packaged as a whole unit, users can't independently update the gateway
 7. Poll `GET http://127.0.0.1:<port>/` every 500ms, 90s timeout
 8. Verify child PID is still alive (avoid port collision false positives)
 
@@ -121,9 +121,9 @@ Non-destructive config safety net:
 
 ## Share Copy (`share-copy.ts`)
 
-Remote marketing content distribution for the "Share OneClaw" feature in Settings:
+Remote marketing content distribution for the "Share PackClaw" feature in Settings:
 
-- Fetches from CDN (`oneclaw.cn/config/share-copy-content.json`) with 5-minute cache
+- Fetches from CDN (`packclaw.cn/config/share-copy-content.json`) with 5-minute cache
 - Falls back to bundled `settings/share-copy-content.json`, then hardcoded defaults
 - Bilingual (zh/en) with automatic field normalization
 
@@ -138,7 +138,7 @@ Kimi robot plugin and search configuration management:
 
 Skill marketplace integration via clawhub CLI:
 
-- Registry URL from `build-config.json` or `oneclaw.config.json`, fallback to `https://clawhub.ai`
+- Registry URL from `build-config.json` or `packclaw.config.json`, fallback to `https://clawhub.ai`
 - Install/uninstall via `clawhub install/uninstall` subprocess (not self-implemented ZIP extraction)
 - Skill directory: `~/.openclaw/workspace/skills/`
 - Store config in standalone `~/.openclaw/skill-store.json` (not in gateway config)
@@ -158,14 +158,14 @@ Setup Step 0 conflict detection:
 
 - Port occupation check (default 18789)
 - Global `openclaw`/`openclaw-cn` npm install detection
-- OneClaw's own CLI wrapper excluded via marker string detection
+- PackClaw's own CLI wrapper excluded via marker string detection
 - Provides `resolveConflict()` for uninstall or port reassignment
 
 ## Gateway ASAR Packaging (`package-resources.js` + `constants.ts`)
 
 Optional single-file archive for the gateway directory, dramatically reducing Windows install time (5000+ files → 1 file).
 
-**Build-time** (`ONECLAW_GATEWAY_ASAR=1`):
+**Build-time** (`PACKCLAW_GATEWAY_ASAR=1`):
 
 1. `package-resources.js` patches openclaw's `openBoundaryFileSync()` to skip `.asar` path validation
 2. Creates `gateway.asar` via `@electron/asar`, unpacking `*.node` files and `extensions/` directory
@@ -199,13 +199,13 @@ Chat UI includes a per-session model selector for switching models without chang
 
 Cross-platform `openclaw` command-line wrapper management:
 
-- **POSIX**: Wrapper script at `~/.openclaw/bin/openclaw` + PATH injection into `.zprofile`/`.bash_profile` via `# >>> oneclaw-cli >>>` markers
-- **Windows**: Wrapper `.cmd` at `%LOCALAPPDATA%\OneClaw\bin\` + PowerShell user PATH modification; legacy `~/.openclaw/bin/` path auto-migrated
+- **POSIX**: Wrapper script at `~/.openclaw/bin/openclaw` + PATH injection into `.zprofile`/`.bash_profile` via `# >>> packclaw-cli >>>` markers
+- **Windows**: Wrapper `.cmd` at `%LOCALAPPDATA%\PackClaw\bin\` + PowerShell user PATH modification; legacy `~/.openclaw/bin/` path auto-migrated
 - **ASAR mode**: Wrapper uses Electron binary + `ELECTRON_RUN_AS_NODE=1` + `OPENCLAW_INSTALL_ROOT` env var; skips shell-level entry file check (`.asar` paths invisible to OS)
 - **Non-ASAR mode**: Wrapper uses real bundled Node.js binary (SUBSYSTEM:CONSOLE for TTY support)
 - Idempotent install/uninstall with marker-based detection
 - Auto-install during Setup completion (optional, enabled by default); manual toggle in Settings > Advanced
-- CLI preference persisted in `oneclaw.config.json` (migrated from legacy `cli-preferences.json` sidecar)
+- CLI preference persisted in `packclaw.config.json` (migrated from legacy `cli-preferences.json` sidecar)
 
 ## Launch at Login (`launch-at-login.ts`)
 
@@ -258,20 +258,20 @@ openclaw is installed directly from npm (no local upstream directory needed). No
 
 electron-builder strips `node_modules` during packaging. The afterPack hook injects the pre-built gateway resources from `resources/targets/<target>/` into the final app bundle **after** stripping, bypassing the strip logic entirely.
 
-Target ID resolution: env `ONECLAW_TARGET` > `${electronPlatformName}-${arch}`.
+Target ID resolution: env `PACKCLAW_TARGET` > `${electronPlatformName}-${arch}`.
 
 ASAR mode: copies `gateway.asar` + `gateway.asar.unpacked/` instead of `gateway/` directory.
 Non-ASAR mode: copies `gateway/` directory as before.
 
-Windows Helper: creates a hard link `OneClaw Helper.exe` → `OneClaw.exe` for use as `ELECTRON_RUN_AS_NODE` process (avoids taskbar icon flash).
+Windows Helper: creates a hard link `PackClaw Helper.exe` → `PackClaw.exe` for use as `ELECTRON_RUN_AS_NODE` process (avoids taskbar icon flash).
 
 ## Windows Installer (`installer.nsh`)
 
 Custom NSIS assisted installer with:
 
-- **Desktop shortcut on update**: Detects `ONECLAW_IS_UPDATE` env to force desktop shortcut creation during silent updates
+- **Desktop shortcut on update**: Detects `PACKCLAW_IS_UPDATE` env to force desktop shortcut creation during silent updates
 - **Custom uninstall page**: Offers CLI cleanup (wrapper + PATH removal) and user data removal (`~/.openclaw/`) as opt-in checkboxes
-- **CLI cleanup**: Runs PowerShell to remove `%LOCALAPPDATA%\OneClaw\bin` from user PATH and delete wrapper files
+- **CLI cleanup**: Runs PowerShell to remove `%LOCALAPPDATA%\PackClaw\bin` from user PATH and delete wrapper files
 
 ## Architecture Diagram
 

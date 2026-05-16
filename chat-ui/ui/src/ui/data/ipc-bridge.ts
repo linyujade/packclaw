@@ -1,7 +1,7 @@
 /**
  * Unified typed IPC bridge for Setup and Settings views.
  *
- * Thin wrapper around `window.oneclaw.*` (exposed by Electron preload).
+ * Thin wrapper around `window.packclaw.*` (exposed by Electron preload).
  * No abstraction beyond typing and null-safety.
  */
 
@@ -204,7 +204,7 @@ export interface BackupData {
 }
 
 export interface AboutInfo {
-  oneClawVersion: string;
+  packClawVersion: string;
   openClawVersion: string;
 }
 
@@ -259,12 +259,12 @@ export interface WeixinLoginWaitResult {
 }
 
 // ---------------------------------------------------------------------------
-// Window augmentation — extend the global oneclaw type with Setup/Settings methods
+// Window augmentation — extend the global packclaw type with Setup/Settings methods
 // ---------------------------------------------------------------------------
 
 // Extended bridge methods added by Setup/Settings Lit views.
-// These augment the base `oneclaw` declaration in app-render.ts via interface merging.
-interface OneClawBridgeExtended {
+// These augment the base `packclaw` declaration in app-render.ts via interface merging.
+interface PackClawBridgeExtended {
       // Setup
       detectInstallation?: () => Promise<any>;
       resolveConflict?: (params: Record<string, unknown>) => Promise<any>;
@@ -361,8 +361,8 @@ interface OneClawBridgeExtended {
       reportSetupViewState?: (active: boolean) => void;
 }
 
-function oc(): Required<OneClawBridgeExtended> {
-  return window.oneclaw as unknown as Required<OneClawBridgeExtended>;
+function oc(): Required<PackClawBridgeExtended> {
+  return window.packclaw as unknown as Required<PackClawBridgeExtended>;
 }
 
 /**

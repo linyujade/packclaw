@@ -11,19 +11,19 @@ on:
   pull_request:       # PR 触发构建验证（不发布）
   workflow_dispatch:  # 允许在任意分支上手动触发构建（不发布）
 
-# openclaw 版本由 package.json oneclaw.openclaw 字段控制（git-tracked 单一事实来源）
+# openclaw 版本由 package.json packclaw.openclaw 字段控制（git-tracked 单一事实来源）
 # 如需 CI 临时覆盖，取消下行注释：
 # OPENCLAW_PACKAGE_SOURCE: "2026.3.13"
 env:
-  ONECLAW_CLAWHUB_REGISTRY: ${{ vars.ONECLAW_CLAWHUB_REGISTRY }}
-  ONECLAW_GATEWAY_ASAR: "1"
+  PACKCLAW_CLAWHUB_REGISTRY: ${{ vars.PACKCLAW_CLAWHUB_REGISTRY }}
+  PACKCLAW_GATEWAY_ASAR: "1"
   ARTIFACT_RETENTION_DAYS: 3
   # 反馈服务
-  ONECLAW_FEEDBACK_URL: ${{ secrets.ONECLAW_FEEDBACK_URL }}
+  PACKCLAW_FEEDBACK_URL: ${{ secrets.PACKCLAW_FEEDBACK_URL }}
   # 埋点配置（PostHog）
-  ONECLAW_ANALYTICS_API_KEY: ${{ secrets.ONECLAW_ANALYTICS_API_KEY }}
-  ONECLAW_ANALYTICS_CAPTURE_URL: ${{ secrets.ONECLAW_ANALYTICS_CAPTURE_URL }}
-  ONECLAW_ANALYTICS_CAPTURE_FALLBACK_URL: ${{ secrets.ONECLAW_ANALYTICS_CAPTURE_FALLBACK_URL }}
+  PACKCLAW_ANALYTICS_API_KEY: ${{ secrets.PACKCLAW_ANALYTICS_API_KEY }}
+  PACKCLAW_ANALYTICS_CAPTURE_URL: ${{ secrets.PACKCLAW_ANALYTICS_CAPTURE_URL }}
+  PACKCLAW_ANALYTICS_CAPTURE_FALLBACK_URL: ${{ secrets.PACKCLAW_ANALYTICS_CAPTURE_FALLBACK_URL }}
   # 埋点配置（火山 DataFinder）
   VOLCANO_APP_ID: ${{ secrets.VOLCANO_APP_ID }}
   VOLCANO_APP_KEY: ${{ secrets.VOLCANO_APP_KEY }}
@@ -33,7 +33,7 @@ env:
   VOLCANO_RETRY_DELAYS_MS: ${{ vars.VOLCANO_RETRY_DELAYS_MS }}          # 可选，默认 0,500,1500
   # 火山引擎 TOS（S3 协议 + 传输加速）+ CDN
   TOS_ENDPOINT: https://tos-s3-accelerate.volces.com
-  TOS_BUCKET: oneclaw-cn
+  TOS_BUCKET: packclaw-cn
   AWS_ACCESS_KEY_ID: ${{ secrets.VOLCENGINE_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.VOLCENGINE_SECRET_KEY }}
   AWS_DEFAULT_REGION: cn-beijing
@@ -88,7 +88,7 @@ jobs:
       # APPLE_API_KEY 必须是 .p8 文件路径（notarytool --key 要求），不是文件内容
       - name: 构建 macOS arm64
         env:
-          ONECLAW_MAC_SIGN_AND_NOTARIZE: "true"
+          PACKCLAW_MAC_SIGN_AND_NOTARIZE: "true"
           CSC_NAME: ${{ secrets.CSC_NAME }}
           CSC_KEYCHAIN: build.keychain
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -150,7 +150,7 @@ jobs:
 
       - name: 构建 macOS x64
         env:
-          ONECLAW_MAC_SIGN_AND_NOTARIZE: "true"
+          PACKCLAW_MAC_SIGN_AND_NOTARIZE: "true"
           CSC_NAME: ${{ secrets.CSC_NAME }}
           CSC_KEYCHAIN: build.keychain
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -199,8 +199,8 @@ jobs:
       - name: 构建 Windows x64
         env:
           # Windows 上 kimi-claw 0.20.x 的 flock/ftruncate 有兼容性问题，锁定 0.19.1
-          ONECLAW_KIMI_CLAW_TGZ_URL: https://cdn.kimi.com/kimi-claw/kimi-claw-0.19.1.tgz
-          ONECLAW_KIMI_CLAW_REFRESH: "true"
+          PACKCLAW_KIMI_CLAW_TGZ_URL: https://cdn.kimi.com/kimi-claw/kimi-claw-0.19.1.tgz
+          PACKCLAW_KIMI_CLAW_REFRESH: "true"
         run: npm run dist:win:x64
 
       - name: 清理 blockmap（Windows x64）
@@ -241,8 +241,8 @@ jobs:
 
       - name: 构建 Windows arm64
         env:
-          ONECLAW_KIMI_CLAW_TGZ_URL: https://cdn.kimi.com/kimi-claw/kimi-claw-0.19.1.tgz
-          ONECLAW_KIMI_CLAW_REFRESH: "true"
+          PACKCLAW_KIMI_CLAW_TGZ_URL: https://cdn.kimi.com/kimi-claw/kimi-claw-0.19.1.tgz
+          PACKCLAW_KIMI_CLAW_REFRESH: "true"
         run: npm run dist:win:arm64
 
       - name: 清理 blockmap（Windows arm64）
@@ -303,7 +303,7 @@ jobs:
 
       # 生成 dev 通道 yml（复用同一批二进制，仅文件名不同）
       # electron-updater channel="dev" 会拉取 dev-mac.yml / dev.yml
-      # 客户端切换: ~/.openclaw/oneclaw.config.json 设置 "updateChannel": "dev"
+      # 客户端切换: ~/.openclaw/packclaw.config.json 设置 "updateChannel": "dev"
       - name: 生成 dev 通道 yml
         run: |
           for src in out/release/latest-mac.yml out/release/latest.yml; do
@@ -329,8 +329,8 @@ jobs:
         continue-on-error: true
         run: |
           node scripts/volcengine-cdn-refresh.js \
-            "https://oneclaw.cn/releases/dev-mac.yml" \
-            "https://oneclaw.cn/releases/dev.yml"
+            "https://packclaw.cn/releases/dev-mac.yml" \
+            "https://packclaw.cn/releases/dev.yml"
           echo "dev 通道 CDN 缓存刷新已提交"
 
       # dev yml 已上传 TOS + 刷新 CDN，从 release 目录移除，不打入 GitHub Release asset

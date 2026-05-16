@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { resolveGatewayPort, resolveGatewayPackageDir, resolveUserStateDir } from "./constants";
-import { ensureDeviceId } from "./oneclaw-config";
+import { ensureDeviceId } from "./packclaw-config";
 
 export const KIMI_PLUGIN_ID = "kimi-claw";
 export const KIMI_SEARCH_PLUGIN_ID = "kimi-search";

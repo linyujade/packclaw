@@ -13,7 +13,7 @@ import * as path from "path";
 import * as https from "https";
 import * as http from "http";
 import * as log from "./logger";
-import { readOneclawConfig, writeOneclawConfig } from "./oneclaw-config";
+import { readPackclawConfig, writePackclawConfig } from "./packclaw-config";
 import { readBuildConfigClawhubRegistry } from "./build-config";
 
 // 构建时通过 build-config.json 注入的默认 registry，未配置则回退硬编码值
@@ -74,19 +74,19 @@ function writeLegacySkillStoreConfig(data: Record<string, any>): void {
 
 // ── Registry URL 公开接口（供 settings-ipc 使用） ──
 
-// 读取 registry URL（优先 oneclaw.config.json，兼容 legacy skill-store.json）
+// 读取 registry URL（优先 packclaw.config.json，兼容 legacy skill-store.json）
 export function readSkillStoreRegistry(): string {
-  const oneclawConfig = readOneclawConfig();
-  if (oneclawConfig?.skillStore?.registryUrl) {
-    return oneclawConfig.skillStore.registryUrl;
+  const packclawConfig = readPackclawConfig();
+  if (packclawConfig?.skillStore?.registryUrl) {
+    return packclawConfig.skillStore.registryUrl;
   }
   const legacy = readLegacySkillStoreConfig();
   return typeof legacy?.registryUrl === "string" ? legacy.registryUrl : "";
 }
 
-// 写入 registry URL（写到 oneclaw.config.json + legacy 文件双写）
+// 写入 registry URL（写到 packclaw.config.json + legacy 文件双写）
 export function writeSkillStoreRegistry(url: string): void {
-  const config = readOneclawConfig();
+  const config = readPackclawConfig();
   if (config) {
     if (url) {
       config.skillStore ??= {};
@@ -94,7 +94,7 @@ export function writeSkillStoreRegistry(url: string): void {
     } else {
       delete config.skillStore?.registryUrl;
     }
-    writeOneclawConfig(config);
+    writePackclawConfig(config);
   }
   // legacy 文件双写保持兼容
   const legacyConfig = readLegacySkillStoreConfig();

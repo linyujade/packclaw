@@ -15,10 +15,10 @@ export const SHARE_COPY_PAYLOAD: ShareCopyPayload = {
   version: 202602195,
   locales: {
     zh: {
-      title: "分享 OneClaw 给朋友",
+      title: "分享 PackClaw 给朋友",
       subtitle: "复制下面这段文案分享给你的朋友或群聊，作者会非常感谢你哟😘",
       body: [
-        "最近发现一个 OpenClaw 的一键安装包叫做 OneClaw",
+        "最近发现一个 OpenClaw 的一键安装包叫做 PackClaw",
         "几分钟就能装好并开始用",
         "",
         "他们说 OpenClaw 可以做这些事：",
@@ -28,15 +28,15 @@ export const SHARE_COPY_PAYLOAD: ShareCopyPayload = {
         "• 办公自动化：批量处理邮件、简历筛选、填写表单",
         "• 会议助手：会前整理文件制作 PPT、会后快速生成纪要",
         "",
-        "低成本把内容、运营、办公、招聘自动化，可以下载试试：oneclaw.cn",
+        "低成本把内容、运营、办公、招聘自动化，可以下载试试：packclaw.cn",
       ].join("\n"),
     },
     en: {
-      title: "Share OneClaw with friends",
+      title: "Share PackClaw with friends",
       subtitle:
         "Copy this text and share it with your friends or group chats. The creator will really appreciate it 😘",
       body: [
-        "I recently found a one-click installer for OpenClaw called OneClaw",
+        "I recently found a one-click installer for OpenClaw called PackClaw",
         "You can get it installed and start using it in just a few minutes",
         "",
         "People say OpenClaw can do these things:",
@@ -46,7 +46,7 @@ export const SHARE_COPY_PAYLOAD: ShareCopyPayload = {
         "• Office automation: batch email processing, resume screening, and form filling",
         "• Meeting assistant: pre-meeting file prep and PPT creation, plus fast post-meeting minutes",
         "",
-        "If you want low-cost automation for content, operations, office work, and recruiting, try: oneclaw.cn",
+        "If you want low-cost automation for content, operations, office work, and recruiting, try: packclaw.cn",
       ].join("\n"),
     },
   },

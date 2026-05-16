@@ -1,6 +1,6 @@
 # Client Ticker — 公共定时器
 
-OneClaw Chat UI 的统一轮询机制。
+PackClaw Chat UI 的统一轮询机制。
 
 ## 概述
 

@@ -31,7 +31,7 @@ function resolveArchName(arch) {
 
 // 计算当前 afterPack 对应的目标 ID
 function resolveTargetId(context) {
-  const fromEnv = process.env.ONECLAW_TARGET;
+  const fromEnv = process.env.PACKCLAW_TARGET;
   if (fromEnv) return fromEnv;
   const platform = context.electronPlatformName;
   const arch = resolveArchName(context.arch);
@@ -78,7 +78,7 @@ exports.default = async function afterPack(context) {
   copyDirSync(runtimeSrc, path.join(targetBase, "runtime"));
   console.log(`[afterPack] 已注入 runtime/ → ${path.relative(appOutDir, path.join(targetBase, "runtime"))}`);
 
-  // extensions-mirror/ 是 OneClaw 第三方 channel plugin 的镜像源目录。
+  // extensions-mirror/ 是 PackClaw 第三方 channel plugin 的镜像源目录。
   // 主进程启动时会把它 reconcile 到 ~/.openclaw/extensions/<id>/，由 openclaw
   // 的 external-plugin scan 路径正常加载，避免 bundled-channel-entry shim 引发
   // 的 jiti module-identity 分裂问题。

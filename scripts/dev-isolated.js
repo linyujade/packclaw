@@ -77,13 +77,13 @@ if (fs.existsSync(gitignorePath)) {
 
 const env = {
   ...process.env,
-  ONECLAW_MULTI_INSTANCE: "1",
+  PACKCLAW_MULTI_INSTANCE: "1",
   OPENCLAW_STATE_DIR: stateDir,
   OPENCLAW_GATEWAY_PORT: String(port),
   // dev 主进程走 !app.isPackaged 分支，强制读 gateway/ 散文件（无法读 asar 虚路径）。
-  // .env.build 里 ONECLAW_GATEWAY_ASAR=1 是给 dist:* 用的——在 dev 里覆盖为 0，
+  // .env.build 里 PACKCLAW_GATEWAY_ASAR=1 是给 dist:* 用的——在 dev 里覆盖为 0，
   // 避免 package:resources 打完 gateway.asar 后删掉散文件导致 gateway 起不来。
-  ONECLAW_GATEWAY_ASAR: "0",
+  PACKCLAW_GATEWAY_ASAR: "0",
 };
 
 console.log(`[dev-isolated] 状态目录: ${stateDir}`);
@@ -93,17 +93,17 @@ console.log(`[dev-isolated] PID: ${process.pid}`);
 // ── isolated 状态目录初始化：从 ~/.openclaw/ 复制配置，避免进入 Setup Wizard ──
 // --with-setup 跳过复制，强制走 Setup Wizard（用于调试 setup 流程）
 const withSetup = process.argv.includes("--with-setup");
-const isolatedConfig = path.join(stateDir, "oneclaw.config.json");
+const isolatedConfig = path.join(stateDir, "packclaw.config.json");
 if (!withSetup && !fs.existsSync(isolatedConfig)) {
   const home = process.platform === "win32" ? process.env.USERPROFILE : process.env.HOME;
   const mainStateDir = path.join(home || "", ".openclaw");
-  const mainConfig = path.join(mainStateDir, "oneclaw.config.json");
+  const mainConfig = path.join(mainStateDir, "packclaw.config.json");
   const mainOpenclaw = path.join(mainStateDir, "openclaw.json");
 
-  // oneclaw.config.json — 仅在源配置存在时复制，否则自然进入 Setup Wizard
+  // packclaw.config.json — 仅在源配置存在时复制，否则自然进入 Setup Wizard
   if (fs.existsSync(mainConfig)) {
     fs.copyFileSync(mainConfig, isolatedConfig);
-    console.log(`[dev-isolated] 已复制 ~/.openclaw/oneclaw.config.json`);
+    console.log(`[dev-isolated] 已复制 ~/.openclaw/packclaw.config.json`);
   }
 
   // openclaw.json（provider 配置）

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:;">
-  <title>OneClaw</title>
+  <title>PackClaw</title>
   <link rel="stylesheet" href="settings.css">
 </head>
 <body>
@@ -293,7 +293,7 @@
       <!-- Channels Tab -->
       <section class="tab-panel active" id="tabChannels">
         <h2 data-i18n="chat.title">Remote Control</h2>
-        <p class="desc" data-i18n="chat.desc">Connect WeChat, Feishu, WeCom, DingTalk, Kimi, or QQ to control OneClaw remotely from your messaging app.</p>
+        <p class="desc" data-i18n="chat.desc">Connect WeChat, Feishu, WeCom, DingTalk, Kimi, or QQ to control PackClaw remotely from your messaging app.</p>
 
         <div class="chat-integration-shell">
           <div class="chat-platform-nav" role="tablist" aria-label="Chat integration platforms">
@@ -464,7 +464,7 @@
               <div class="channel-desc-row">
                 <div class="chat-panel-copy">
                   <div class="chat-panel-title" data-i18n="chat.platformDingtalk">DingTalk</div>
-                  <p class="desc" data-i18n="dingtalk.desc">Connect DingTalk so users can talk to OneClaw directly in DingTalk.</p>
+                  <p class="desc" data-i18n="dingtalk.desc">Connect DingTalk so users can talk to PackClaw directly in DingTalk.</p>
                 </div>
                 <div class="channel-links">
                   <a href="#" class="platform-link" id="dingtalkDocsLink" data-i18n="dingtalk.docs">Setup Guide →</a>
@@ -508,7 +508,7 @@
                   <p class="field-hint" data-i18n="dingtalk.sessionTimeoutHint">Default is 1800000 ms (30 minutes).</p>
                 </div>
 
-                <p class="field-hint" data-i18n="dingtalk.gatewayHint">OneClaw will auto-use the current gateway token and enable the required chatCompletions HTTP endpoint.</p>
+                <p class="field-hint" data-i18n="dingtalk.gatewayHint">PackClaw will auto-use the current gateway token and enable the required chatCompletions HTTP endpoint.</p>
               </div>
 
               <div class="msg-box hidden" id="dingtalkMsgBox"></div>
@@ -519,7 +519,7 @@
               <div class="channel-desc-row">
                 <div class="chat-panel-copy">
                   <div class="chat-panel-title" data-i18n="chat.platformWeixin">微信</div>
-                  <p class="desc" data-i18n="weixin.desc">使用微信扫码连接 OneClaw，在微信中直接对话。</p>
+                  <p class="desc" data-i18n="weixin.desc">使用微信扫码连接 PackClaw，在微信中直接对话。</p>
                 </div>
               </div>
 
@@ -533,7 +533,7 @@
 
               <div id="weixinFields">
                 <div id="weixinNotBundledHint" class="msg-box msg-warn hidden" data-i18n="weixin.notBundled">
-                  微信插件组件缺失，请重新安装 OneClaw。
+                  微信插件组件缺失，请重新安装 PackClaw。
                 </div>
 
                 <div id="weixinQrContainer" class="weixin-qr-container hidden">
@@ -557,7 +557,7 @@
               <div class="channel-desc-row">
                 <div class="chat-panel-copy">
                   <div class="chat-panel-title" data-i18n="chat.platformWecom">企业微信</div>
-                  <p class="desc" data-i18n="wecom.desc">连接企业微信机器人，让用户直接在企业微信里和 OneClaw 对话。</p>
+                  <p class="desc" data-i18n="wecom.desc">连接企业微信机器人，让用户直接在企业微信里和 PackClaw 对话。</p>
                 </div>
                 <div class="channel-links">
                   <a href="#" class="platform-link" id="wecomDocsLink" data-i18n="wecom.docs">插件说明 →</a>
@@ -618,7 +618,7 @@
                   <p class="field-hint" data-i18n="wecom.groupAllowFromHint">每行一个群 ID。只有在群聊访问模式为“仅白名单群可访问”时才会生效。</p>
                 </div>
 
-                <p class="field-hint" data-i18n="wecom.dmHint">私聊默认建议使用“先配对再访问”；切到“所有人可直接访问”时，OneClaw 会自动写入 allowFrom=["*"]。</p>
+                <p class="field-hint" data-i18n="wecom.dmHint">私聊默认建议使用“先配对再访问”；切到“所有人可直接访问”时，PackClaw 会自动写入 allowFrom=["*"]。</p>
 
                 <div id="wecomPairingSection" class="hidden">
                   <div class="pairing-panel">
@@ -649,7 +649,7 @@
               <div class="channel-desc-row">
                 <div class="chat-panel-copy">
                   <div class="chat-panel-title" data-i18n="chat.platformKimi">KimiClaw</div>
-                  <p class="desc" data-i18n="kimi.desc">Control OneClaw remotely via Kimi</p>
+                  <p class="desc" data-i18n="kimi.desc">Control PackClaw remotely via Kimi</p>
                 </div>
                 <div class="channel-links">
                   <a href="#" class="platform-link" id="kimiBotPageLink" data-i18n="kimi.getGuide">Go to kimi.com/bot →</a>
@@ -710,7 +710,7 @@
               <div class="channel-desc-row">
                 <div class="chat-panel-copy">
                   <div class="chat-panel-title" data-i18n="chat.platformQq">QQ</div>
-                  <p class="desc" data-i18n="qq.desc">Connect QQ Bot so users can talk to OneClaw directly in QQ.</p>
+                  <p class="desc" data-i18n="qq.desc">Connect QQ Bot so users can talk to PackClaw directly in QQ.</p>
                 </div>
                 <div class="channel-links">
                   <a href="#" class="platform-link" id="qqConsoleLink" data-i18n="qq.getKey">Open QQ Open Platform →</a>
@@ -1047,8 +1047,8 @@
         <div class="backup-card">
           <div class="backup-card-title" data-i18n="about.versionInfo">Version Information</div>
           <div class="toggle-row">
-            <span class="toggle-label" data-i18n="about.oneClawVersion">OneClaw Version</span>
-            <span id="aboutOneClawVersion">—</span>
+            <span class="toggle-label" data-i18n="about.packClawVersion">PackClaw Version</span>
+            <span id="aboutPackClawVersion">—</span>
           </div>
           <div class="toggle-row">
             <span class="toggle-label" data-i18n="about.openClawVersion">OpenClaw Version</span>

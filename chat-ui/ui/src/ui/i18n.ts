@@ -1,5 +1,5 @@
 /**
- * Minimal i18n module for OneClaw Chat UI.
+ * Minimal i18n module for PackClaw Chat UI.
  * ~25 string keys, Chinese / English.
  * Language detection: navigator.language or ?lang= URL param.
  */
@@ -9,10 +9,10 @@ export type Locale = "zh" | "en";
 const dict: Record<Locale, Record<string, string>> = {
   zh: {
     // App
-    "app.windowTitle": "OneClaw 一键安装OpenClaw",
+    "app.windowTitle": "PackClaw 一键安装OpenClaw",
 
     // Sidebar
-    "sidebar.brand": "OneClaw",
+    "sidebar.brand": "PackClaw",
     "sidebar.newChat": "新建对话",
     "sidebar.settings": "设置",
     "sidebar.docs": "教程文档",
@@ -24,7 +24,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "sidebar.webbridgePillModalReadyDesc": "请打开 {browser}，并在弹窗中点击「启用扩展」以完成接入。",
     "sidebar.webbridgePillModalReadyDescRestart": "请重启 {browser}，并在弹窗中点击「启用扩展」以完成接入。",
     "sidebar.webbridgePillModalBrowserRunningTitle": "请先关闭 {browser}",
-    "sidebar.webbridgePillModalBrowserRunningDesc": "{browser} 正在运行。请完全退出 {browser}（包括菜单栏 / 任务栏中的后台进程），然后回到 OneClaw 再次点击修复。",
+    "sidebar.webbridgePillModalBrowserRunningDesc": "{browser} 正在运行。请完全退出 {browser}（包括菜单栏 / 任务栏中的后台进程），然后回到 PackClaw 再次点击修复。",
     "sidebar.webbridgePillModalUnsupportedTitle": "需要修改默认浏览器",
     "sidebar.webbridgePillModalUnsupportedDesc": "WebBridge 仅支持系统默认浏览器为 Chrome 或 Edge。请前往系统设置修改默认浏览器后重试。",
     "sidebar.webbridgePillModalFailedTitle": "修复失败",
@@ -200,7 +200,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "feedback.newMessagesBelow": "有新消息",
     "feedback.emailPlaceholder": "填写邮箱以接收回复通知（选填）",
 
-    // OneClaw settings page
+    // PackClaw settings page
     "settings.title": "设置",
     "settings.subtitle": "管理外观显示与聊天展示偏好",
     "settings.backToChat": "返回对话",
@@ -318,7 +318,7 @@ const dict: Record<Locale, Record<string, string>> = {
 
     // Settings: About
     "settings.about.version": "版本信息",
-    "settings.about.oneclaw": "OneClaw",
+    "settings.about.packclaw": "PackClaw",
     "settings.about.openclaw": "OpenClaw",
     "settings.about.update": "软件更新",
     "settings.about.checkUpdate": "检查更新",
@@ -329,7 +329,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "settings.about.upToDate": "当前已是最新版本",
 
     // Settings: Channels
-    "settings.channels.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 OneClaw",
+    "settings.channels.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 PackClaw",
     "settings.channels.enable": "启用",
     "settings.channels.weixin": "微信",
     "settings.channels.weixin.desc": "连接微信 在微信中直接与 AI 对话",
@@ -429,8 +429,8 @@ const dict: Record<Locale, Record<string, string>> = {
     "setup.provider.oauth.advanced": "高级选项",
 
     // Setup: Welcome
-    "setup.welcome.title": "欢迎使用 OneClaw",
-    "setup.welcome.subtitle": "OneClaw 是 OpenClaw 的一键安装包",
+    "setup.welcome.title": "欢迎使用 PackClaw",
+    "setup.welcome.subtitle": "PackClaw 是 OpenClaw 的一键安装包",
     "setup.welcome.feat2": "OpenClaw 可以访问电脑上的文件，自动执行各种办公任务",
     "setup.welcome.feat3": "连接微信、飞书、企业微信、钉钉、QQ 机器人",
     "setup.welcome.security": "API 密钥安全存储在本地 绝不会发送到任何第三方服务器",
@@ -439,7 +439,7 @@ const dict: Record<Locale, Record<string, string>> = {
 
     // Setup: Conflict
     "setup.conflict.title": "检测到已安装的 OpenClaw",
-    "setup.conflict.subtitle": "OneClaw 将自动接管此安装",
+    "setup.conflict.subtitle": "PackClaw 将自动接管此安装",
     "setup.conflict.reassure": "你的人设和聊天记录将会被保留",
     "setup.conflict.portInUse": "端口 {port} 被占用，进程: {process} (PID: {pid})",
     "setup.conflict.globalInstalled": "全局安装路径: {path}",
@@ -456,7 +456,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "setup.provider.label.custom": "其他",
     "setup.provider.title": "配置服务商",
     "setup.provider.subtitle": "选择 LLM 服务商并输入 API 密钥",
-    "setup.provider.keyNotice": "OneClaw 不提供 API 密钥 请点击链接前往服务商官网购买 API 密钥后使用",
+    "setup.provider.keyNotice": "PackClaw 不提供 API 密钥 请点击链接前往服务商官网购买 API 密钥后使用",
     "setup.provider.platform": "平台",
     "setup.provider.baseUrl": "接口地址",
     "setup.provider.getKey": "获取密钥 →",
@@ -491,16 +491,16 @@ const dict: Record<Locale, Record<string, string>> = {
 
     // Setup: Done
     "setup.done.title": "配置完成！",
-    "setup.done.subtitle": "OneClaw 已就绪 随时可在设置中切换服务商或模型",
+    "setup.done.subtitle": "PackClaw 已就绪 随时可在设置中切换服务商或模型",
     "setup.done.sessionMemory": "开新对话时自动保存会话记忆",
     "setup.done.launchAtLogin": "开机启动",
     "setup.done.installCli": "将 openclaw 命令添加到终端 PATH",
     "setup.done.enableWebbridge": "连接你的常用浏览器",
     "setup.done.enableWebbridgeTooltip": "让 AI 操作你的常用浏览器，将会自动安装 WebBridge 浏览器插件",
     "setup.done.enableWebbridgeDisabledTooltip": "WebBridge 仅支持系统默认浏览器为 Chrome 或 Edge。请前往系统设置修改默认浏览器后重试。",
-    "setup.done.start": "启动 OneClaw",
+    "setup.done.start": "启动 PackClaw",
     "setup.done.starting": "正在启动 Gateway…",
-    "setup.done.startFailed": "Gateway 启动失败 请点击\"启动 OneClaw\"重试",
+    "setup.done.startFailed": "Gateway 启动失败 请点击\"启动 PackClaw\"重试",
 
     // Setup: Errors
     "setup.error.noKey": "请输入 API 密钥",
@@ -540,7 +540,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "chat.thinkingOff": "思考已关闭",
 
     // Share prompt
-    "sharePrompt.title": "分享 OneClaw 给朋友",
+    "sharePrompt.title": "分享 PackClaw 给朋友",
     "sharePrompt.subtitle": "复制下面这段文案分享给你的朋友或群聊，作者会非常感谢你哟😘",
     "sharePrompt.copy": "复制文案",
     "sharePrompt.copied": "已复制",
@@ -572,10 +572,10 @@ const dict: Record<Locale, Record<string, string>> = {
   },
   en: {
     // App
-    "app.windowTitle": "OneClaw - One-click installer for OpenClaw",
+    "app.windowTitle": "PackClaw - One-click installer for OpenClaw",
 
     // Sidebar
-    "sidebar.brand": "OneClaw",
+    "sidebar.brand": "PackClaw",
     "sidebar.newChat": "New Chat",
     "sidebar.settings": "Settings",
     "sidebar.docs": "Docs",
@@ -587,7 +587,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "sidebar.webbridgePillModalReadyDesc": "Open {browser} and click \"Enable extension\" in the popup to finish connecting.",
     "sidebar.webbridgePillModalReadyDescRestart": "Restart {browser} and click \"Enable extension\" in the popup to finish connecting.",
     "sidebar.webbridgePillModalBrowserRunningTitle": "Please quit {browser} first",
-    "sidebar.webbridgePillModalBrowserRunningDesc": "{browser} is still running. Fully quit {browser} (including any background processes in the menu bar / system tray), then return to OneClaw and click again.",
+    "sidebar.webbridgePillModalBrowserRunningDesc": "{browser} is still running. Fully quit {browser} (including any background processes in the menu bar / system tray), then return to PackClaw and click again.",
     "sidebar.webbridgePillModalUnsupportedTitle": "Change default browser",
     "sidebar.webbridgePillModalUnsupportedDesc": "WebBridge only supports Chrome or Edge as your system default browser. Please change the default in system settings and try again.",
     "sidebar.webbridgePillModalFailedTitle": "Repair failed",
@@ -763,7 +763,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "feedback.newMessagesBelow": "New messages",
     "feedback.emailPlaceholder": "Email for reply notifications (optional)",
 
-    // OneClaw settings page
+    // PackClaw settings page
     "settings.title": "Settings",
     "settings.subtitle": "Manage appearance and chat display preferences",
     "settings.backToChat": "Back to chat",
@@ -881,7 +881,7 @@ const dict: Record<Locale, Record<string, string>> = {
 
     // Settings: About
     "settings.about.version": "Version",
-    "settings.about.oneclaw": "OneClaw",
+    "settings.about.packclaw": "PackClaw",
     "settings.about.openclaw": "OpenClaw",
     "settings.about.update": "Software Update",
     "settings.about.checkUpdate": "Check for Updates",
@@ -892,7 +892,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "settings.about.upToDate": "Up to date",
 
     // Settings: Channels
-    "settings.channels.desc": "Connect WeChat, Feishu, WeCom, DingTalk, Kimi, or QQ to remote-control OneClaw from chat apps",
+    "settings.channels.desc": "Connect WeChat, Feishu, WeCom, DingTalk, Kimi, or QQ to remote-control PackClaw from chat apps",
     "settings.channels.enable": "Enable",
     "settings.channels.weixin": "WeChat",
     "settings.channels.weixin.desc": "Connect WeChat to chat with AI directly",
@@ -992,8 +992,8 @@ const dict: Record<Locale, Record<string, string>> = {
     "setup.provider.oauth.advanced": "Advanced",
 
     // Setup: Welcome
-    "setup.welcome.title": "Welcome to OneClaw",
-    "setup.welcome.subtitle": "OneClaw is a one-click installer for OpenClaw",
+    "setup.welcome.title": "Welcome to PackClaw",
+    "setup.welcome.subtitle": "PackClaw is a one-click installer for OpenClaw",
     "setup.welcome.feat2": "OpenClaw can access files on your computer and automate tasks",
     "setup.welcome.feat3": "Connect to WeChat, Feishu, WeCom, DingTalk, QQ Bot",
     "setup.welcome.security": "API keys stored locally, never sent to third-party servers",
@@ -1002,7 +1002,7 @@ const dict: Record<Locale, Record<string, string>> = {
 
     // Setup: Conflict
     "setup.conflict.title": "Existing OpenClaw Detected",
-    "setup.conflict.subtitle": "OneClaw will take over this installation automatically",
+    "setup.conflict.subtitle": "PackClaw will take over this installation automatically",
     "setup.conflict.reassure": "Your personas and chat history will be preserved",
     "setup.conflict.portInUse": "Port {port} is in use by process: {process} (PID: {pid})",
     "setup.conflict.globalInstalled": "Global installation found: {path}",
@@ -1019,7 +1019,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "setup.provider.label.custom": "Other",
     "setup.provider.title": "Configure Provider",
     "setup.provider.subtitle": "Choose your LLM provider and enter your API key",
-    "setup.provider.keyNotice": "OneClaw does not provide API keys. Please click the link to purchase one from the provider's website",
+    "setup.provider.keyNotice": "PackClaw does not provide API keys. Please click the link to purchase one from the provider's website",
     "setup.provider.platform": "Platform",
     "setup.provider.baseUrl": "Base URL",
     "setup.provider.getKey": "Get API Key →",
@@ -1054,16 +1054,16 @@ const dict: Record<Locale, Record<string, string>> = {
 
     // Setup: Done
     "setup.done.title": "All Set!",
-    "setup.done.subtitle": "OneClaw is ready — switch providers or models anytime in Settings",
+    "setup.done.subtitle": "PackClaw is ready — switch providers or models anytime in Settings",
     "setup.done.sessionMemory": "Auto-save session memory on /new",
     "setup.done.launchAtLogin": "Launch at login",
     "setup.done.installCli": "Add openclaw command to terminal PATH",
     "setup.done.enableWebbridge": "Connect your usual browser",
     "setup.done.enableWebbridgeTooltip": "Let AI drive your usual browser. The WebBridge extension will be installed automatically.",
     "setup.done.enableWebbridgeDisabledTooltip": "WebBridge only supports Chrome or Edge as your system default browser. Please change the default in system settings and try again.",
-    "setup.done.start": "Start OneClaw",
+    "setup.done.start": "Start PackClaw",
     "setup.done.starting": "Starting Gateway…",
-    "setup.done.startFailed": "Gateway failed to start — please click Start OneClaw to retry",
+    "setup.done.startFailed": "Gateway failed to start — please click Start PackClaw to retry",
 
     // Setup: Errors
     "setup.error.noKey": "Please enter your API key",
@@ -1104,7 +1104,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "chat.thinkingOff": "Thinking disabled",
 
     // Share prompt
-    "sharePrompt.title": "Share OneClaw with friends",
+    "sharePrompt.title": "Share PackClaw with friends",
     "sharePrompt.subtitle":
       "Copy this text and share it with your friends or group chats. The creator will really appreciate it 😘",
     "sharePrompt.copy": "Copy text",

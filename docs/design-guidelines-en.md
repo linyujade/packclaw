@@ -1,6 +1,6 @@
-# OneClaw Design Guidelines
+# PackClaw Design Guidelines
 
-The OneClaw main interface (Chat UI) exhibits a **minimalist, modern, lightweight, and breathable** design language. Below are the core dimensions of the design guidelines:
+The PackClaw main interface (Chat UI) exhibits a **minimalist, modern, lightweight, and breathable** design language. Below are the core dimensions of the design guidelines:
 
 ## 1. Color Palette: Restraint and Focus
 
@@ -10,7 +10,7 @@ The OneClaw main interface (Chat UI) exhibits a **minimalist, modern, lightweigh
 
 ### Brand Color
 
-OneClaw's signature red theme color is: **`#c0392b`**
+PackClaw's signature red theme color is: **`#c0392b`**
 
 In the CSS variables of the code, it mainly corresponds to the following states (slightly adjusted according to dark/light modes to ensure contrast):
 

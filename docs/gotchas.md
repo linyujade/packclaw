@@ -1,6 +1,6 @@
 # Common Gotchas
 
-Things that are easy to get wrong or forget when working on OneClaw.
+Things that are easy to get wrong or forget when working on PackClaw.
 
 1. **`npm install file:` creates symlinks, not copies.** Always use `--install-links` for physical copy. This is critical for electron-builder packaging.
 
@@ -12,7 +12,7 @@ Things that are easy to get wrong or forget when working on OneClaw.
 
 5. **Tray app behavior.** Closing the window hides it; the app stays in the tray. `Cmd+Q` (or Quit from tray menu) actually quits. macOS Dock icon hides automatically when no windows are visible.
 
-6. **macOS signing.** By default uses ad-hoc identity (`-`). Set `ONECLAW_MAC_SIGN_AND_NOTARIZE=true` + `CSC_NAME`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` in `.env` for real signing.
+6. **macOS signing.** By default uses ad-hoc identity (`-`). Set `PACKCLAW_MAC_SIGN_AND_NOTARIZE=true` + `CSC_NAME`, `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` in `.env` for real signing.
 
 7. **Version is auto-derived from git tag.** Format: `YYYY.MMDD.N` (e.g. `v2026.318.0`). `package.json` stays `0.0.0-dev`; CI extracts version from tag via `npm version`. Never manually edit `package.json` version.
 
@@ -26,7 +26,7 @@ Things that are easy to get wrong or forget when working on OneClaw.
 
 12. **Gateway entry fallback.** `resolveGatewayEntry()` tries `openclaw.mjs` first (new packages), then falls back to `gateway-entry.mjs` (legacy). Both paths must be considered during packaging verification.
 
-13. **CLI wrapper uses RC block markers.** Install/uninstall is idempotent via `# >>> oneclaw-cli >>>` / `# <<< oneclaw-cli <<<` markers in shell profiles. Always check for marker presence before modifying.
+13. **CLI wrapper uses RC block markers.** Install/uninstall is idempotent via `# >>> packclaw-cli >>>` / `# <<< packclaw-cli <<<` markers in shell profiles. Always check for marker presence before modifying.
 
 14. **Kimi Search API key is a sidecar file**, not in `openclaw.json`. Stored at `~/.openclaw/credentials/kimi-search-api-key`. Auto-reuses kimi-code provider key if no dedicated key exists.
 
@@ -34,9 +34,9 @@ Things that are easy to get wrong or forget when working on OneClaw.
 
 16. **Gateway port is configurable.** Resolution order: env `OPENCLAW_GATEWAY_PORT` > config `gateway.port` in `openclaw.json` > default `18789`. Don't hardcode port numbers — use `resolveGatewayPort()` from `constants.ts`.
 
-17. **Gateway npm update check is disabled.** OneClaw writes `update.checkOnStart = false` to the gateway config at startup. The gateway cannot self-update inside a packaged Electron app.
+17. **Gateway npm update check is disabled.** PackClaw writes `update.checkOnStart = false` to the gateway config at startup. The gateway cannot self-update inside a packaged Electron app.
 
-18. **`oneclaw.config.json` is the ownership marker.** OneClaw uses this file to detect config ownership at startup. Detection flow: `oneclaw.config.json` exists → normal startup; `.device-id` exists → legacy migration; `openclaw.json` exists without marker → external OpenClaw takeover; nothing → fresh Setup. Do not delete this file manually.
+18. **`packclaw.config.json` is the ownership marker.** PackClaw uses this file to detect config ownership at startup. Detection flow: `packclaw.config.json` exists → normal startup; `.device-id` exists → legacy migration; `openclaw.json` exists without marker → external OpenClaw takeover; nothing → fresh Setup. Do not delete this file manually.
 
 19. **Skill store config is standalone.** Registry URL stored in `~/.openclaw/skill-store.json`, not in gateway config. Skills installed to `~/.openclaw/workspace/skills/`, not `~/.openclaw/skills/`.
 
@@ -52,7 +52,7 @@ Things that are easy to get wrong or forget when working on OneClaw.
 
 25. **Windows uses assisted installer.** NSIS `oneClick: false` mode enables installation directory selection and custom uninstall options. `installer.nsh` provides CLI cleanup and user data removal checkboxes. `createDesktopShortcut: "always"` ensures shortcut is recreated on update.
 
-26. **Windows CLI wrapper lives in `%LOCALAPPDATA%\OneClaw\bin\`.** Not in `~/.openclaw/bin/` like POSIX. Legacy path migration handles old users who had wrappers in `~/.openclaw/bin/`.
+26. **Windows CLI wrapper lives in `%LOCALAPPDATA%\PackClaw\bin\`.** Not in `~/.openclaw/bin/` like POSIX. Legacy path migration handles old users who had wrappers in `~/.openclaw/bin/`.
 
 27. **Client-side polling uses shared ticker.** All periodic polling in Chat UI must go through the 60s `client-ticker.ts` mechanism (`registerTickHandler`/`unregisterTickHandler`). Do not create standalone `setInterval` calls. See [client-ticker.md](client-ticker.md).
 
@@ -68,17 +68,17 @@ Things that are easy to get wrong or forget when working on OneClaw.
 
 33. **Built-in channel plugin entries can be shadowed by `plugins.allow`.** For bundled channels such as Feishu, a non-empty `plugins.allow` can disable a legacy `plugins.entries.<channel>.enabled=true` entry when the channel id is absent from the allowlist, even if `channels.<channel>.enabled=true` is present. Extension mirror writes `plugins.allow` for external mirrored plugins at startup, so avoid leaving redundant built-in channel entries that can mask the channel-enabled activation path.
 
-34. **Setup's `#view=setup` fragment must survive reloads until setup completes.** The renderer intentionally does not persist `oneclawView: "setup"` to localStorage, so the URL fragment is the only reload-safe signal while `WindowManager.setupPending` is true. Do not strip `view=setup` during initial URL cleanup; remove it only when the app leaves Setup.
+34. **Setup's `#view=setup` fragment must survive reloads until setup completes.** The renderer intentionally does not persist `packclawView: "setup"` to localStorage, so the URL fragment is the only reload-safe signal while `WindowManager.setupPending` is true. Do not strip `view=setup` during initial URL cleanup; remove it only when the app leaves Setup.
 
 35. **DingTalk saves must strip deprecated channel fields on both enable and disable.** `dingtalk-connector` rejects `gatewayToken` and `sessionTimeout` under the openclaw 2026.4.x schema. Disabling DingTalk is often the recovery path for a bad config, so the disabled save path must also remove those fields instead of preserving the old channel object verbatim.
 
-36. **POSIX CLI PATH injection must cover login and interactive shells.** macOS Terminal usually reads `~/.zprofile`, but VS Code Terminal and some iTerm/zsh setups only read `~/.zshrc`; bash has the same split between `~/.bash_profile` and `~/.bashrc`. Install the `oneclaw` PATH block into all four files (`.zprofile`, `.zshrc`, `.bash_profile`, `.bashrc`) so users can run `openclaw` after opening a new terminal.
+36. **POSIX CLI PATH injection must cover login and interactive shells.** macOS Terminal usually reads `~/.zprofile`, but VS Code Terminal and some iTerm/zsh setups only read `~/.zshrc`; bash has the same split between `~/.bash_profile` and `~/.bashrc`. Install the `packclaw` PATH block into all four files (`.zprofile`, `.zshrc`, `.bash_profile`, `.bashrc`) so users can run `openclaw` after opening a new terminal.
 
 37. **Chrome browser mode must not point at the old `chrome-relay` profile on openclaw 2026.4.x.** The Chrome extension relay driver/profile existed in older openclaw builds, but 2026.4.x uses the built-in `user` existing-session profile for host Chrome. If Settings writes `browser.defaultProfile: "chrome-relay"` without a valid profile, the browser control root returns `BrowserProfileNotFoundError`; if users copy the token into the old extension, they may also hit the wrong derived browser-control port. Migrate missing or legacy `driver: "extension"` profiles to `user`.
 
 38. **Session delete goes synchronous with per-row spinner — no tombstone queue.** Click → `sessions.reset` → `sessions.delete` → `loadSessions` refresh, all awaited inline. Each row tracks its own in-flight state via a module-level `deletingSessionKeys: Set<string>` so the delete button swaps to a spinning `icons.loader` and disables clicks while work is in flight; other rows stay interactive. With `session-memory` hook enabled the reset step triggers an LLM summary (400-600KB jsonl can take 10-90s on CN providers), so the spinner window is long and the same WebSocket serializes concurrent deletes — acceptable, but don't try to "optimize" with optimistic filter or persisted hidden/pending queues: both pathways were tried and re-introduce resurrection bugs when the UI hides a key the gateway still owns.
 
-39. **macOS dev Node child processes must use the Electron Helper binary.** Under `npm run dev`, `process.execPath` is `node_modules/electron/dist/Electron.app/Contents/MacOS/Electron`, whose app bundle has no `LSUIElement`. Spawning it with `ELECTRON_RUN_AS_NODE=1` works functionally, but LaunchServices still treats it as a Dock app, so the gateway / short CLI child processes can show extra bouncing "Electron" console-style icons. `resolveNodeBin()` must prefer `Electron Helper.app/Contents/MacOS/Electron Helper` in dev and `OneClaw Helper.app` when packaged; both Helper apps have `LSUIElement=true` and keep background Node-style children out of the Dock.
+39. **macOS dev Node child processes must use the Electron Helper binary.** Under `npm run dev`, `process.execPath` is `node_modules/electron/dist/Electron.app/Contents/MacOS/Electron`, whose app bundle has no `LSUIElement`. Spawning it with `ELECTRON_RUN_AS_NODE=1` works functionally, but LaunchServices still treats it as a Dock app, so the gateway / short CLI child processes can show extra bouncing "Electron" console-style icons. `resolveNodeBin()` must prefer `Electron Helper.app/Contents/MacOS/Electron Helper` in dev and `PackClaw Helper.app` when packaged; both Helper apps have `LSUIElement=true` and keep background Node-style children out of the Dock.
 
 40. **Volcano DataFinder requires the server-side endpoint `gator.volces.com/v2/event/json`.** The client-side SDK endpoint `mcs.ctobsnssdk.com` does not accept server-side payloads and rejects with `HTTP 400 -9 "app_id uint32 -1"` (the `-1` is a sentinel baked into the error template, not the value actually sent). `VOLCANO_ENDPOINT` must be set in `.env` together with `VOLCANO_APP_ID` and `VOLCANO_APP_KEY` — missing any one causes `package:resources` to leave the volcano section of `build-config.json` empty and the analytics sink to be disabled at runtime.
 

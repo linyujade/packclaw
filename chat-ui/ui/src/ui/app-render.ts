@@ -1,5 +1,5 @@
 /**
- * OneClaw custom app-render.ts
+ * PackClaw custom app-render.ts
  * Replaces the upstream 13-tab dashboard with a minimal sidebar + chat layout.
  * Chat view and all chat functionality are preserved from upstream.
  */
@@ -55,7 +55,7 @@ import {
 
 declare global {
   interface Window {
-    oneclaw?: {
+    packclaw?: {
       openSettings?: () => void;
       openWebUI?: () => void;
       openExternal?: (url: string) => unknown;
@@ -193,7 +193,7 @@ function handleSessionChange(state: AppViewState, nextSessionKey: string) {
   if (!nextSessionKey.trim()) {
     return;
   }
-  setOneClawView(state, "chat");
+  setPackClawView(state, "chat");
   applySessionKey(state, nextSessionKey, true);
 }
 
@@ -247,8 +247,8 @@ async function deleteSessionFromSidebar(state: AppViewState, key: string) {
   }
 }
 
-function setOneClawView(state: AppViewState, next: "chat" | "setup" | "settings" | "skills" | "workspace" | "cron" | "feedback") {
-  const prev = state.settings.oneclawView ?? "chat";
+function setPackClawView(state: AppViewState, next: "chat" | "setup" | "settings" | "skills" | "workspace" | "cron" | "feedback") {
+  const prev = state.settings.packclawView ?? "chat";
   if (prev === next) {
     return;
   }
@@ -268,7 +268,7 @@ function setOneClawView(state: AppViewState, next: "chat" | "setup" | "settings"
   }
   state.applySettings({
     ...state.settings,
-    oneclawView: next,
+    packclawView: next,
   });
 }
 
@@ -287,7 +287,7 @@ export function initFeedbackBackground(state: AppViewState) {
   if (feedbackBackgroundPollTimer) return; // 幂等，防热更新重复挂表
   feedbackBackgroundPollTimer = setInterval(() => {
     // 用户已经在反馈视图：SSE 在推实时事件，轮询纯属浪费一次 HTTP；跳过。
-    if ((state.settings.oneclawView ?? "chat") === "feedback") return;
+    if ((state.settings.packclawView ?? "chat") === "feedback") return;
     void loadFeedbackThreads(state);
   }, FEEDBACK_BACKGROUND_POLL_MS);
 }
@@ -295,7 +295,7 @@ export function initFeedbackBackground(state: AppViewState) {
 // 打开内嵌设置页时可携带目标 tab 提示，减少用户二次定位成本。
 function openSettingsView(state: AppViewState, tabHint: string | null = null) {
   state.settingsTabHint = tabHint;
-  setOneClawView(state, "settings");
+  setPackClawView(state, "settings");
 }
 
 // ── 反馈面板逻辑 ──
@@ -304,10 +304,10 @@ async function openFeedbackView(state: AppViewState) {
   // 先截图（视图切换前），再打开新建表单
   let capturedBase64: string | null = null;
   try {
-    capturedBase64 = (await window.oneclaw?.captureWindow?.()) ?? null;
+    capturedBase64 = (await window.packclaw?.captureWindow?.()) ?? null;
   } catch { /* 截图失败不阻塞 */ }
 
-  setOneClawView(state, "feedback");
+  setPackClawView(state, "feedback");
 
   const screenshots: string[] = [];
   const previews: string[] = [];
@@ -339,7 +339,7 @@ async function loadFeedbackThreads(state: AppViewState) {
   feedbackPanelState = { ...feedbackPanelState, threadsLoading: true, threadsError: null };
   state.requestUpdate();
   try {
-    const result = await window.oneclaw?.feedbackThreads?.();
+    const result = await window.packclaw?.feedbackThreads?.();
     if (result?.ok && result.data) {
       const threads = Array.isArray(result.data) ? result.data : (result.data.items ?? result.data.threads ?? []);
       // 合并"过去未读"：客户端不在线期间后端推送的回复，对照本地 seenMap 标红
@@ -379,7 +379,7 @@ async function loadFeedbackThreadDetail(state: AppViewState, id: number) {
   feedbackPanelState = { ...feedbackPanelState, view: "detail", detailLoading: true, detailThread: null, detailMessages: [], detailReplyContent: "", detailReplyFiles: [], detailReplyFilePreviews: [], detailReplyFileNames: [] };
   state.requestUpdate();
   try {
-    const result = await window.oneclaw?.feedbackThread?.(id);
+    const result = await window.packclaw?.feedbackThread?.(id);
     if (result?.ok && result.data) {
       const fresh: FeedbackMessage[] = result.data.messages ?? [];
       // 合并 pending 占位回去，按时间排序；id 去重避免占位与服务端真实消息重复
@@ -480,7 +480,7 @@ function translateFeedbackError(err: string | undefined): { title: string; messa
 /** 弹出原生错误对话框（通过 IPC 调用主进程的 dialog.showMessageBox） */
 function showFeedbackReplyErrorDialog(err: string | undefined): Promise<void> | void {
   const payload = translateFeedbackError(err);
-  return window.oneclaw?.feedbackShowErrorDialog?.(payload);
+  return window.packclaw?.feedbackShowErrorDialog?.(payload);
 }
 
 /** 详情页 scroll 事件回调：用户滚到底部时清除"有新消息"提示 */
@@ -744,11 +744,11 @@ function handleFeedbackEvent(state: AppViewState, evt: FeedbackSseEvent) {
 
 function subscribeFeedbackSse(state: AppViewState) {
   if (feedbackSseUnsub) return; // 幂等
-  void window.oneclaw?.feedbackSubscribe?.();
-  feedbackSseUnsub = window.oneclaw?.onFeedbackEvent?.((evt) => {
+  void window.packclaw?.feedbackSubscribe?.();
+  feedbackSseUnsub = window.packclaw?.onFeedbackEvent?.((evt) => {
     handleFeedbackEvent(state, evt as FeedbackSseEvent);
   }) ?? null;
-  feedbackReconnectedUnsub = window.oneclaw?.onFeedbackReconnected?.(() => {
+  feedbackReconnectedUnsub = window.packclaw?.onFeedbackReconnected?.(() => {
     // 重连成功（首字节到达）→ 兜底刷新列表 + 打开的详情
     loadFeedbackThreads(state);
     const openId = feedbackPanelState.detailThread?.id ?? null;
@@ -761,8 +761,8 @@ function unsubscribeFeedbackSse(_state: AppViewState) {
   feedbackReconnectedUnsub?.();
   feedbackSseUnsub = null;
   feedbackReconnectedUnsub = null;
-  void window.oneclaw?.feedbackUnsubscribe?.();
-  // 注意：不在这里清 thinkingThreadIds —— 由 setOneClawView 调用 pauseThinking 保留状态，
+  void window.packclaw?.feedbackUnsubscribe?.();
+  // 注意：不在这里清 thinkingThreadIds —— 由 setPackClawView 调用 pauseThinking 保留状态，
   // 用户重新进入时通过 resumeThinking 恢复。clearAllThinking 仅在应用退出等场景使用。
 }
 
@@ -787,7 +787,7 @@ function buildFeedbackPanelCallbacks(state: AppViewState) {
     },
     onOpenDetail: (id: number) => {
       // 清除该 thread 的未读标记 + 持久化"已读到现在"，
-      // 这样下次重启 OneClaw 时这个 thread 不会被算成"过去未读"
+      // 这样下次重启 PackClaw 时这个 thread 不会被算成"过去未读"
       feedbackPanelState = {
         ...feedbackPanelState,
         unreadThreadIds: feedbackPanelState.unreadThreadIds.filter((x) => x !== id),
@@ -845,7 +845,7 @@ function buildFeedbackPanelCallbacks(state: AppViewState) {
       });
     },
     onNewPickFiles: async () => {
-      const result = await window.oneclaw?.feedbackPickFiles?.();
+      const result = await window.packclaw?.feedbackPickFiles?.();
       if (!result?.files?.length) return;
       for (const f of result.files) {
         const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name);
@@ -898,7 +898,7 @@ function buildFeedbackPanelCallbacks(state: AppViewState) {
       feedbackPanelState = { ...feedbackPanelState, newSubmitting: true, newError: null };
       state.requestUpdate();
       try {
-        const result = await window.oneclaw?.submitFeedback?.({
+        const result = await window.packclaw?.submitFeedback?.({
           content: feedbackPanelState.newContent,
           screenshots: feedbackPanelState.newScreenshots,
           fileNames: feedbackPanelState.newFileNames,
@@ -948,7 +948,7 @@ function buildFeedbackPanelCallbacks(state: AppViewState) {
       });
     },
     onReplyPickFiles: async () => {
-      const result = await window.oneclaw?.feedbackPickFiles?.();
+      const result = await window.packclaw?.feedbackPickFiles?.();
       if (!result?.files?.length) return;
       for (const f of result.files) {
         const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name);
@@ -1014,7 +1014,7 @@ function buildFeedbackPanelCallbacks(state: AppViewState) {
       void (async () => {
         let result: any;
         try {
-          result = await window.oneclaw?.feedbackReply?.(threadId, content, files);
+          result = await window.packclaw?.feedbackReply?.(threadId, content, files);
         } catch (err) {
           feedbackPanelState = {
             ...feedbackPanelState,
@@ -1124,12 +1124,12 @@ let skillStoreDataLoaded = false;
 
 // 加载技能列表（初次或切换排序时调用）
 async function loadSkillStoreData(state: AppViewState, append = false) {
-  if (!window.oneclaw?.skillStoreList) return;
+  if (!window.packclaw?.skillStoreList) return;
   skillStoreState.loading = true;
   skillStoreState.error = null;
   state.requestUpdate();
   try {
-    const result = await window.oneclaw.skillStoreList({
+    const result = await window.packclaw.skillStoreList({
       sort: skillStoreState.sort,
       limit: 20,
       cursor: append ? skillStoreState.nextCursor : undefined,
@@ -1156,7 +1156,7 @@ async function loadSkillStoreData(state: AppViewState, append = false) {
 
 // 搜索技能
 async function searchSkillStore(state: AppViewState) {
-  if (!window.oneclaw?.skillStoreSearch) return;
+  if (!window.packclaw?.skillStoreSearch) return;
   const q = skillStoreState.searchQuery.trim();
   if (!q) {
     skillStoreDataLoaded = false;
@@ -1167,7 +1167,7 @@ async function searchSkillStore(state: AppViewState) {
   skillStoreState.error = null;
   state.requestUpdate();
   try {
-    const result = await window.oneclaw.skillStoreSearch({ q, limit: 20 });
+    const result = await window.packclaw.skillStoreSearch({ q, limit: 20 });
     if (result?.success && result.data) {
       skillStoreState.skills = Array.isArray(result.data.skills) ? result.data.skills : [];
       skillStoreState.nextCursor = null;
@@ -1184,9 +1184,9 @@ async function searchSkillStore(state: AppViewState) {
 
 // 刷新已安装列表
 async function refreshInstalledSlugs() {
-  if (!window.oneclaw?.skillStoreListInstalled) return;
+  if (!window.packclaw?.skillStoreListInstalled) return;
   try {
-    const result = await window.oneclaw.skillStoreListInstalled();
+    const result = await window.packclaw.skillStoreListInstalled();
     if (result?.success && Array.isArray(result.data)) {
       skillStoreState.installedSlugs = new Set(result.data);
     }
@@ -1195,11 +1195,11 @@ async function refreshInstalledSlugs() {
 
 // 安装技能
 async function installSkillFromStore(state: AppViewState, slug: string) {
-  if (!window.oneclaw?.skillStoreInstall) return;
+  if (!window.packclaw?.skillStoreInstall) return;
   skillStoreState.installingSlugs.add(slug);
   state.requestUpdate();
   try {
-    const result = await window.oneclaw.skillStoreInstall({ slug });
+    const result = await window.packclaw.skillStoreInstall({ slug });
     if (result?.success) {
       skillStoreState.installedSlugs.add(slug);
     } else {
@@ -1214,11 +1214,11 @@ async function installSkillFromStore(state: AppViewState, slug: string) {
 
 // 卸载技能
 async function uninstallSkillFromStore(state: AppViewState, slug: string) {
-  if (!window.oneclaw?.skillStoreUninstall) return;
+  if (!window.packclaw?.skillStoreUninstall) return;
   skillStoreState.installingSlugs.add(slug);
   state.requestUpdate();
   try {
-    const result = await window.oneclaw.skillStoreUninstall({ slug });
+    const result = await window.packclaw.skillStoreUninstall({ slug });
     if (result?.success) {
       skillStoreState.installedSlugs.delete(slug);
     } else {
@@ -1233,11 +1233,11 @@ async function uninstallSkillFromStore(state: AppViewState, slug: string) {
 
 // 从已安装页面卸载技能（调用 clawhub uninstall 后刷新技能列表）
 async function uninstallLocalSkill(state: AppViewState, slug: string) {
-  if (!window.oneclaw?.skillStoreUninstall) return;
+  if (!window.packclaw?.skillStoreUninstall) return;
   state.skillsBusyKey = slug;
   state.requestUpdate();
   try {
-    const result = await window.oneclaw.skillStoreUninstall({ slug });
+    const result = await window.packclaw.skillStoreUninstall({ slug });
     if (result?.success) {
       // 刷新已安装列表和商店已安装标记
       void loadSkills(state as unknown as SkillsState);
@@ -1421,7 +1421,7 @@ function renderInstalledSkillsView(state: AppViewState) {
 // 打开技能管理视图（默认显示已安装技能）
 function openSkillsView(state: AppViewState, subTab: "installed" | "store" = "installed") {
   skillsSubTab = subTab;
-  setOneClawView(state, "skills");
+  setPackClawView(state, "skills");
   if (subTab === "installed") {
     void loadSkills(state as unknown as SkillsState);
   } else if (!skillStoreDataLoaded) {
@@ -1431,7 +1431,7 @@ function openSkillsView(state: AppViewState, subTab: "installed" | "store" = "in
 
 // 打开工作区文件浏览视图
 function openWorkspaceView(state: AppViewState) {
-  setOneClawView(state, "workspace");
+  setPackClawView(state, "workspace");
   void initWorkspace(state);
 }
 
@@ -1440,7 +1440,7 @@ function createNewSession(state: AppViewState) {
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
   const newKey = `agent:main:${id}`;
   const label = t("chat.newSession");
-  setOneClawView(state, "chat");
+  setPackClawView(state, "chat");
   // 先把新会话插入本地列表，UI 立即可见正确的名称
   const sessions = state.sessionsResult?.sessions ?? [];
   state.sessionsResult = {
@@ -1459,7 +1459,7 @@ function confirmAndCreateNewSession(state: AppViewState) {
   if (!ok) {
     return;
   }
-  setOneClawView(state, "chat");
+  setPackClawView(state, "chat");
   return state.handleSendChat("/new", { restoreDraft: true });
 }
 
@@ -1494,18 +1494,18 @@ function handleReconnect(state: AppViewState) {
 }
 
 async function handleOpenWebUI(state: AppViewState) {
-  if (window.oneclaw?.openWebUI) {
-    window.oneclaw.openWebUI();
-  } else if (window.oneclaw?.openExternal) {
+  if (window.packclaw?.openWebUI) {
+    window.packclaw.openWebUI();
+  } else if (window.packclaw?.openExternal) {
     let port = 18789;
     try {
-      if (window.oneclaw.getGatewayPort) {
-        port = await window.oneclaw.getGatewayPort();
+      if (window.packclaw.getGatewayPort) {
+        port = await window.packclaw.getGatewayPort();
       }
     } catch { /* use default */ }
     const token = state.settings.token.trim();
     const query = token ? `?token=${encodeURIComponent(token)}` : "";
-    window.oneclaw.openExternal(`http://127.0.0.1:${port}/${query}`);
+    window.packclaw.openExternal(`http://127.0.0.1:${port}/${query}`);
   }
 }
 
@@ -1516,7 +1516,7 @@ async function handleApplyUpdate(state: AppViewState) {
     return;
   }
   try {
-    await window.oneclaw?.downloadAndInstallUpdate?.();
+    await window.packclaw?.downloadAndInstallUpdate?.();
   } catch {
     // ignore bridge failure; main process会记录日志并回退状态
   }
@@ -1531,8 +1531,8 @@ function ensureFileDropBridge(state: AppViewState) {
   fileDropBound = true;
   let latestState = state;
   // 更新引用以便事件回调能访问最新的 state
-  (window as any).__oneclawFileDropState = { update: (s: AppViewState) => { latestState = s; } };
-  window.addEventListener("oneclaw:file-drop", ((e: CustomEvent<{ paths: string[] }>) => {
+  (window as any).__packclawFileDropState = { update: (s: AppViewState) => { latestState = s; } };
+  window.addEventListener("packclaw:file-drop", ((e: CustomEvent<{ paths: string[] }>) => {
     const current = latestState.chatAttachments ?? [];
     const additions = e.detail.paths.map((p: string) => ({
       id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -1543,7 +1543,7 @@ function ensureFileDropBridge(state: AppViewState) {
   }) as EventListener);
 }
 function updateFileDropState(state: AppViewState) {
-  (window as any).__oneclawFileDropState?.update(state);
+  (window as any).__packclawFileDropState?.update(state);
 }
 
 export function renderApp(state: AppViewState) {
@@ -1557,18 +1557,18 @@ export function renderApp(state: AppViewState) {
   const sidebarCollapsed = !state.onboarding && state.settings.navCollapsed;
   const currentSessionKey = state.sessionKey;
   const sessionOptions = resolveSessionOptions(state);
-  const oneclawView = state.settings.oneclawView ?? "chat";
-  const setupActive = oneclawView === "setup";
-  const settingsActive = oneclawView === "settings";
-  const skillsActive = oneclawView === "skills";
-  const workspaceActive = oneclawView === "workspace";
-  const cronActive = oneclawView === "cron";
-  const feedbackActive = oneclawView === "feedback";
+  const packclawView = state.settings.packclawView ?? "chat";
+  const setupActive = packclawView === "setup";
+  const settingsActive = packclawView === "settings";
+  const skillsActive = packclawView === "skills";
+  const workspaceActive = packclawView === "workspace";
+  const cronActive = packclawView === "cron";
+  const feedbackActive = packclawView === "feedback";
   const updateBannerState = state.updateBannerState;
 
   return html`
     <div
-      class="oneclaw-shell ${navigator.platform?.includes("Mac") ? "is-mac" : ""} ${navigator.platform?.includes("Win") ? "is-win" : ""} ${chatFocus ? "oneclaw-shell--focus" : ""} ${sidebarCollapsed ? "oneclaw-shell--sidebar-collapsed" : ""} ${setupActive || settingsActive || skillsActive || workspaceActive || cronActive || feedbackActive ? "oneclaw-shell--fullpage" : ""}"
+      class="packclaw-shell ${navigator.platform?.includes("Mac") ? "is-mac" : ""} ${navigator.platform?.includes("Win") ? "is-win" : ""} ${chatFocus ? "packclaw-shell--focus" : ""} ${sidebarCollapsed ? "packclaw-shell--sidebar-collapsed" : ""} ${setupActive || settingsActive || skillsActive || workspaceActive || cronActive || feedbackActive ? "packclaw-shell--fullpage" : ""}"
     >
       ${chatFocus || sidebarCollapsed || setupActive || settingsActive || skillsActive || workspaceActive || cronActive || feedbackActive
         ? nothing
@@ -1582,7 +1582,7 @@ export function renderApp(state: AppViewState) {
             workspaceActive,
             cronActive,
             cronJobCount: state.cronJobs.filter((j) => !isExpiredOneShot(j)).length,
-            onOpenCron: () => setOneClawView(state, "cron"),
+            onOpenCron: () => setPackClawView(state, "cron"),
             feedbackActive,
             // 全局红点派生自当前会话内的未读 thread 集合；点开 thread 自动清除
             feedbackHasReply: feedbackPanelState.unreadThreadIds.length > 0,
@@ -1612,9 +1612,9 @@ export function renderApp(state: AppViewState) {
                 navCollapsed: !state.settings.navCollapsed,
               });
             },
-            settingsBadge: !localStorage.getItem("oneclaw:weixin-badge-seen"),
+            settingsBadge: !localStorage.getItem("packclaw:weixin-badge-seen"),
             onOpenSettings: () => {
-              localStorage.setItem("oneclaw:weixin-badge-seen", "1");
+              localStorage.setItem("packclaw:weixin-badge-seen", "1");
               openSettingsView(state, null);
             },
             onOpenSkillStore: () => openSkillsView(state),
@@ -1623,27 +1623,27 @@ export function renderApp(state: AppViewState) {
             errors: [chatDisabledReason, state.lastError].filter(Boolean) as string[],
             onReconnect: () => handleReconnect(state),
             onOpenDocs: () => {
-              if (window.oneclaw?.openExternal) {
-                window.oneclaw.openExternal("https://oneclaw.cn/docs");
+              if (window.packclaw?.openExternal) {
+                window.packclaw.openExternal("https://packclaw.cn/docs");
               } else {
-                window.open("https://oneclaw.cn/docs", "_blank");
+                window.open("https://packclaw.cn/docs", "_blank");
               }
             },
             onApplyUpdate: () => void handleApplyUpdate(state),
           })}
 
-      <div class="oneclaw-main">
-        <div class="oneclaw-titlebar">
+      <div class="packclaw-main">
+        <div class="packclaw-titlebar">
           ${
             setupActive
               ? nothing
               : settingsActive || skillsActive || workspaceActive || cronActive || feedbackActive
               ? html`
-                  <div class="oneclaw-floating-actions">
+                  <div class="packclaw-floating-actions">
                     <button
-                      class="oneclaw-floating-btn"
+                      class="packclaw-floating-btn"
                       type="button"
-                      @click=${() => setOneClawView(state, "chat")}
+                      @click=${() => setPackClawView(state, "chat")}
                       data-tooltip=${t("sidebar.backToChat")}
                       data-tooltip-pos="bottom"
                       aria-label=${t("sidebar.backToChat")}
@@ -1654,9 +1654,9 @@ export function renderApp(state: AppViewState) {
                 `
               : sidebarCollapsed && !chatFocus
                 ? html`
-                    <div class="oneclaw-floating-actions">
+                    <div class="packclaw-floating-actions">
                       <button
-                        class="oneclaw-floating-btn"
+                        class="packclaw-floating-btn"
                         type="button"
                         @click=${() => {
                           state.applySettings({
@@ -1671,7 +1671,7 @@ export function renderApp(state: AppViewState) {
                         ${icons.panelLeft}
                       </button>
                       <button
-                        class="oneclaw-floating-btn"
+                        class="packclaw-floating-btn"
                         type="button"
                         @click=${() => handleSessionChange(state, generateSessionKey())}
                         data-tooltip=${t("sidebar.newChat")}
@@ -1684,7 +1684,7 @@ export function renderApp(state: AppViewState) {
                   `
                 : nothing
           }
-          <div class="oneclaw-titlebar-right">
+          <div class="packclaw-titlebar-right">
             ${renderFeedbackButton(
               () => openFeedbackView(state),
               feedbackPanelState.unreadThreadIds.length > 0,
@@ -1692,7 +1692,7 @@ export function renderApp(state: AppViewState) {
           </div>
         </div>
 
-        <main class="oneclaw-content">
+        <main class="packclaw-content">
           ${setupActive
             ? renderSetupView(state)
             : settingsActive
@@ -1828,7 +1828,7 @@ export function renderApp(state: AppViewState) {
                   </div>
                 `
               : workspaceActive
-                ? renderWorkspaceView(state, () => setOneClawView(state, "chat"))
+                ? renderWorkspaceView(state, () => setPackClawView(state, "chat"))
               : cronActive
                 ? renderCronManage({
                     jobs: state.cronJobs,
@@ -1853,11 +1853,11 @@ export function renderApp(state: AppViewState) {
                       });
                     },
                     onNavigateToSession: (sessionKey: string) => {
-                      setOneClawView(state, "chat");
+                      setPackClawView(state, "chat");
                       state.applySettings({
                         ...state.settings,
                         sessionKey,
-                        oneclawView: "chat",
+                        packclawView: "chat",
                       });
                     },
                     onRemove: (jobId: string) => {
@@ -2023,7 +2023,7 @@ export function renderApp(state: AppViewState) {
           feedbackState = { ...feedbackState, submitting: true, error: null };
           state.requestUpdate();
           try {
-            const result = await window.oneclaw?.submitFeedback?.({
+            const result = await window.packclaw?.submitFeedback?.({
               content: feedbackState.content,
               screenshots: feedbackState.screenshots,
               includeLogs: feedbackState.includeLogs,

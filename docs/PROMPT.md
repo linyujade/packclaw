@@ -1,6 +1,6 @@
-# OneClaw UI React 重写任务
+# PackClaw UI React 重写任务
 
-当前项目是 OneClaw——一个基于 Electron 的桌面应用，它将 openclaw gateway 封装为独立的可安装程序。参考 CLAUDE.md 和 docs/architecture.md 了解项目基本信息。使用 `tokei -o json chat-ui/ setup/ settings/` 命令可以看到当前 UI 层的代码行数分布。
+当前项目是 PackClaw——一个基于 Electron 的桌面应用，它将 openclaw gateway 封装为独立的可安装程序。参考 CLAUDE.md 和 docs/architecture.md 了解项目基本信息。使用 `tokei -o json chat-ui/ setup/ settings/` 命令可以看到当前 UI 层的代码行数分布。
 
 现在需要把项目的**全部 UI 层**使用 React 现代架构重写，保持所有功能和对外行为完全不变。
 
@@ -43,7 +43,7 @@
 1. **三合一**：将 Chat UI、Setup、Settings 合并为一个统一的 React SPA（Setup 和 Settings 当前是独立的 BrowserWindow，重写后仍可以是独立窗口，但共享同一个 React 代码库和构建产物）
 2. **视觉完全一致**：所有页面、组件、交互效果必须与现有版本视觉上完全一致（颜色、间距、字体、动画、深浅色主题）。**主题色是红色（#c0392b），不是蓝色或绿色**
 3. **功能完全等价**：所有 99 个 IPC 方法的调用方式和时机必须与现有实现完全一致。Chat、Setup、Settings 的每一个交互流程都必须保持不变
-4. **IPC 契约不变**：`window.oneclaw.*` 的所有方法签名和调用约定不变。这是与 Main Process 的唯一接口
+4. **IPC 契约不变**：`window.packclaw.*` 的所有方法签名和调用约定不变。这是与 Main Process 的唯一接口
 5. **i18n 方式统一**：三个 UI 层当前各自有独立的 i18n 字典（内嵌 JS），重写后应合并为统一的 i18n 方案（推荐 `react-i18next` 或简单的 Context-based 方案），但所有翻译文本必须与现有版本完全一致
 6. **组件化**：消除现有的代码重复（Setup 和 Settings 有大量相同的 Provider 配置表单逻辑）。提取共享组件：ProviderForm、ChannelConfigDialog、ToggleSwitch、ModelSelector 等
 7. **状态管理清晰**：用 Zustand store 替代 Lit 组件上 150+ 个散乱的 `@state` 属性。按领域拆分 store：chatStore、settingsStore、channelStore、gatewayStore 等

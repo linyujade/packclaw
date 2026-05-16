@@ -264,7 +264,7 @@ export function handleGatewayEvent(host: GatewayHost, evt: GatewayEventFrame) {
 }
 
 function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
-  // 调试钩子：在 DevTools 里 `localStorage.setItem("oneclaw.debug","gateway")` + 刷新即可看到。
+  // 调试钩子：在 DevTools 里 `localStorage.setItem("packclaw.debug","gateway")` + 刷新即可看到。
   // 默认 cached === false，整段 if 是常量折叠后的死代码，对生产无开销。
   if (isDebugEnabled("gateway")) {
     debugLog("gateway", `evt:${evt.event}`, evt.payload);

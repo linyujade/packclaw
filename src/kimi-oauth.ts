@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
 import { shell } from "electron";
-import { appendChannelUtm } from "./oneclaw-config";
+import { appendChannelUtm } from "./packclaw-config";
 import { resolveUserStateDir } from "./constants";
 import * as log from "./logger";
 
@@ -75,7 +75,7 @@ export function deleteOAuthToken(): void {
 
 function commonHeaders(): Record<string, string> {
   return {
-    "X-Msh-Platform": "oneclaw",
+    "X-Msh-Platform": "packclaw",
     "X-Msh-Device-Name": os.hostname().replace(/[^\x20-\x7E]/g, ""),
     "X-Msh-Device-Model": `${os.type()} ${os.release()} ${os.arch()}`,
     "X-Msh-Os-Version": os.version?.() ?? os.release(),

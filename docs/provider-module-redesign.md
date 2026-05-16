@@ -189,7 +189,7 @@ async function handleOAuthSave(accessToken, modelID) {
     modelAlias: alias,  // 不再丢失
     setAsDefault: editorState.mode === "edit",
   };
-  await window.oneclaw.settingsSaveProvider(payload);
+  await window.packclaw.settingsSaveProvider(payload);
 }
 ```
 

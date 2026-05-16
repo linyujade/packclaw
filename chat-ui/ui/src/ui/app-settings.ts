@@ -56,8 +56,8 @@ type SettingsHost = {
   pendingGatewayUrl?: string | null;
 };
 
-// 只接受 OneClaw 自己注入的受控视图值，避免 URL 垃圾把状态机拖偏。
-function parseInjectedOneclawView(raw: string | null | undefined): UiSettings["oneclawView"] | null {
+// 只接受 PackClaw 自己注入的受控视图值，避免 URL 垃圾把状态机拖偏。
+function parseInjectedPackclawView(raw: string | null | undefined): UiSettings["packclawView"] | null {
   const view = raw?.trim();
   switch (view) {
     case "chat":
@@ -73,7 +73,7 @@ function parseInjectedOneclawView(raw: string | null | undefined): UiSettings["o
   }
 }
 
-function cleanInjectedOneclawViewFromUrl() {
+function cleanInjectedPackclawViewFromUrl() {
   if (typeof window === "undefined") {
     return;
   }
@@ -101,15 +101,15 @@ function cleanInjectedOneclawViewFromUrl() {
 }
 
 export function applySettings(host: SettingsHost, next: UiSettings) {
-  const previousView = host.settings.oneclawView;
+  const previousView = host.settings.packclawView;
   const normalized = {
     ...next,
     lastActiveSessionKey: next.lastActiveSessionKey?.trim() || next.sessionKey.trim() || "main",
   };
   host.settings = normalized;
   saveSettings(normalized);
-  if (previousView === "setup" && normalized.oneclawView !== "setup") {
-    cleanInjectedOneclawViewFromUrl();
+  if (previousView === "setup" && normalized.packclawView !== "setup") {
+    cleanInjectedPackclawViewFromUrl();
   }
   if (next.theme !== host.theme) {
     host.theme = next.theme;
@@ -142,13 +142,13 @@ export function applySettingsFromUrl(host: SettingsHost) {
   const sessionRaw = params.get("session") ?? hashParams.get("session");
   const gatewayUrlRaw = params.get("gatewayUrl") ?? hashParams.get("gatewayUrl");
   const view = window.location.protocol === "file:"
-    ? parseInjectedOneclawView(hashParams.get("view") ?? params.get("view"))
+    ? parseInjectedPackclawView(hashParams.get("view") ?? params.get("view"))
     : null;
   let shouldCleanUrl = false;
 
   if (view) {
-    if (view !== host.settings.oneclawView) {
-      applySettings(host, { ...host.settings, oneclawView: view });
+    if (view !== host.settings.packclawView) {
+      applySettings(host, { ...host.settings, packclawView: view });
     }
     if (view !== "setup") {
       params.delete("view");

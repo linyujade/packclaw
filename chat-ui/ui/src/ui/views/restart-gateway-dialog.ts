@@ -8,7 +8,7 @@ export function renderRestartGatewayDialog(state: AppViewState) {
 
   const handleRestart = () => {
     state.showRestartGatewayDialog = false;
-    window.oneclaw?.restartGateway?.();
+    window.packclaw?.restartGateway?.();
   };
 
   const handleDismiss = () => {

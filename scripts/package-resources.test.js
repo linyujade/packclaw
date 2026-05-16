@@ -54,7 +54,7 @@ test("Windows 全局 windowsHide 补丁应覆盖所有 spawn 调用", () => {
   const sandbox = loadPackageResourcesSandbox();
   assert.equal(typeof sandbox.patchWindowsOpenclawArtifacts, "function");
 
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-package-resources-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-package-resources-"));
   const distDir = path.join(tmpRoot, "node_modules", "openclaw", "dist");
   fs.mkdirSync(distDir, { recursive: true });
 
@@ -121,7 +121,7 @@ test("Windows 全局 windowsHide 补丁应覆盖所有 spawn 调用", () => {
 
 test("Windows 全局 windowsHide 补丁应幂等（已有补丁不重复注入）", () => {
   const sandbox = loadPackageResourcesSandbox();
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-package-resources-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-package-resources-"));
   const distDir = path.join(tmpRoot, "node_modules", "openclaw", "dist");
   fs.mkdirSync(distDir, { recursive: true });
 
@@ -148,7 +148,7 @@ test("Windows 全局 windowsHide 补丁应幂等（已有补丁不重复注入�
 
 test("Windows 全局 windowsHide 补丁应覆盖 kimi-claw 插件", () => {
   const sandbox = loadPackageResourcesSandbox();
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-package-resources-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-package-resources-"));
   const distDir = path.join(tmpRoot, "node_modules", "openclaw", "dist");
   fs.mkdirSync(distDir, { recursive: true });
   // 需要一个空 exec 文件让 patch 不报错
@@ -202,13 +202,13 @@ test("build-release workflow 应把 Volcano 必填环境变量映射到构建进
 });
 
 test("downloadOfficeCli 不应因 stamp 匹配而跳过缺失的输出文件", async () => {
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-officecli-missing-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-officecli-missing-"));
   const version = "1.2.3";
   const assetName = "officecli-mac-arm64";
   const cachedContent = "expected officecli\n";
   const hash = require("node:crypto").createHash("sha256").update(cachedContent).digest("hex");
 
-  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ oneclaw: { officecli: version } }));
+  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ packclaw: { officecli: version } }));
   writeFixture(path.join(tmpRoot, ".cache", "officecli", version, assetName), cachedContent);
   writeFixture(path.join(tmpRoot, ".cache", "officecli", version, "SHA256SUMS"), `${hash}  ${assetName}\n`);
 
@@ -223,13 +223,13 @@ test("downloadOfficeCli 不应因 stamp 匹配而跳过缺失的输出文件", a
 });
 
 test("downloadOfficeCli 不应因 stamp 匹配而保留 hash 不匹配的输出文件", async () => {
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-officecli-stale-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-officecli-stale-"));
   const version = "1.2.3";
   const assetName = "officecli-mac-arm64";
   const cachedContent = "expected officecli\n";
   const hash = require("node:crypto").createHash("sha256").update(cachedContent).digest("hex");
 
-  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ oneclaw: { officecli: version } }));
+  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ packclaw: { officecli: version } }));
   writeFixture(path.join(tmpRoot, ".cache", "officecli", version, assetName), cachedContent);
   writeFixture(path.join(tmpRoot, ".cache", "officecli", version, "SHA256SUMS"), `${hash}  ${assetName}\n`);
 
@@ -245,12 +245,12 @@ test("downloadOfficeCli 不应因 stamp 匹配而保留 hash 不匹配的输出�
 });
 
 test("downloadOfficeCli 命中新格式 stamp 时不应访问网络", async () => {
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-officecli-fastpath-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-officecli-fastpath-"));
   const version = "1.2.3";
   const cachedContent = "expected officecli\n";
   const hash = require("node:crypto").createHash("sha256").update(cachedContent).digest("hex");
 
-  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ oneclaw: { officecli: version } }));
+  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ packclaw: { officecli: version } }));
   // 故意不写入 cached SHA256SUMS，确认快路径不会触发联网下载。
 
   const targetBase = path.join(tmpRoot, "resources", "targets", "darwin-arm64");
@@ -276,7 +276,7 @@ test("downloadOfficeCli 命中新格式 stamp 时不应访问网络", async () =
 });
 
 test("downloadOfficeCli 不应因新格式 stamp 匹配而保留同尺寸错误输出文件", async () => {
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-officecli-same-size-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-officecli-same-size-"));
   const version = "1.2.3";
   const assetName = "officecli-mac-arm64";
   const cachedContent = "expected officecli\n";
@@ -284,7 +284,7 @@ test("downloadOfficeCli 不应因新格式 stamp 匹配而保留同尺寸错误�
   const hash = require("node:crypto").createHash("sha256").update(cachedContent).digest("hex");
   const size = Buffer.byteLength(cachedContent);
 
-  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ oneclaw: { officecli: version } }));
+  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ packclaw: { officecli: version } }));
   writeFixture(path.join(tmpRoot, ".cache", "officecli", version, assetName), cachedContent);
   writeFixture(path.join(tmpRoot, ".cache", "officecli", version, "SHA256SUMS"), `${hash}  ${assetName}\n`);
 
@@ -303,14 +303,14 @@ test("downloadOfficeCli 不应因新格式 stamp 匹配而保留同尺寸错误�
 });
 
 test("downloadOfficeCli 命中新格式 stamp 但文件大小变化时应重新写入", async () => {
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-officecli-resized-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-officecli-resized-"));
   const version = "1.2.3";
   const assetName = "officecli-mac-arm64";
   const cachedContent = "expected officecli\n";
   const hash = require("node:crypto").createHash("sha256").update(cachedContent).digest("hex");
   const correctSize = Buffer.byteLength(cachedContent);
 
-  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ oneclaw: { officecli: version } }));
+  writeFixture(path.join(tmpRoot, "package.json"), JSON.stringify({ packclaw: { officecli: version } }));
   writeFixture(path.join(tmpRoot, ".cache", "officecli", version, assetName), cachedContent);
   writeFixture(path.join(tmpRoot, ".cache", "officecli", version, "SHA256SUMS"), `${hash}  ${assetName}\n`);
 
@@ -334,7 +334,7 @@ test("downloadOfficeCli 命中新格式 stamp 但文件大小变化时应重新�
 // 白名单裁剪必须深入保留插件内部继续清垃圾，而不是把整个 extensions 目录豁免掉。
 test("pruneNodeModules 应按扩展白名单裁剪并清理保留插件内部垃圾", () => {
   const sandbox = loadPackageResourcesSandbox();
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-package-prune-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-package-prune-"));
   const nmDir = path.join(tmpRoot, "node_modules");
   const feishuDir = path.join(nmDir, "openclaw", "extensions", "feishu");
 
@@ -377,7 +377,7 @@ test("verifyOutput 应要求基础扩展插件存在", () => {
       },
     }),
   });
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-package-verify-"));
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-package-verify-"));
   const targetBase = path.join(tmpRoot, "win32-x64");
 
   writeFixture(path.join(targetBase, "runtime", "node.exe"), "node\n");

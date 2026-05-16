@@ -33,7 +33,7 @@ function clearLegacyFeishuPluginEntry(config: any): boolean {
   return true;
 }
 
-// 迁移前 OneClaw 以 plugins.entries.feishu.enabled 作为设置页开关来源。
+// 迁移前 PackClaw 以 plugins.entries.feishu.enabled 作为设置页开关来源。
 export function isFeishuEnabled(config: any): boolean {
   const legacyEnabled = getLegacyFeishuEnabled(config);
   if (typeof legacyEnabled === "boolean") {

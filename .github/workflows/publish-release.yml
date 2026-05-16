@@ -9,9 +9,9 @@ on:
     types: [published]
 
 env:
-  CDN_DOMAIN: oneclaw.cn
+  CDN_DOMAIN: packclaw.cn
   TOS_ENDPOINT: https://tos-s3-accelerate.volces.com
-  TOS_BUCKET: oneclaw-cn
+  TOS_BUCKET: packclaw-cn
   AWS_ACCESS_KEY_ID: ${{ secrets.VOLCENGINE_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.VOLCENGINE_SECRET_KEY }}
   AWS_DEFAULT_REGION: cn-beijing

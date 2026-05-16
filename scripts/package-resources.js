@@ -1,7 +1,7 @@
 /**
  * package-resources.js
  *
- * OneClaw Electron 应用资源打包脚本
+ * PackClaw Electron 应用资源打包脚本
  * 负责下载 Node.js 运行时、安装 openclaw 生产依赖、生成统一入口
  *
  * 用法: node scripts/package-resources.js [--platform darwin|win32] [--arch arm64|x64] [--locale en|cn]
@@ -66,7 +66,7 @@ function parseArgs() {
     platform: process.platform,
     arch: process.platform === "win32" ? "x64" : "arm64",
     locale: "en",
-    asar: process.env.ONECLAW_GATEWAY_ASAR === "1",
+    asar: process.env.PACKCLAW_GATEWAY_ASAR === "1",
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -486,11 +486,11 @@ function readEnvRetryDelays(name, fallback) {
 }
 
 function buildPostHogConfig() {
-  const captureURL = readEnvText("ONECLAW_ANALYTICS_CAPTURE_URL");
-  const captureFallbackURL = readEnvText("ONECLAW_ANALYTICS_CAPTURE_FALLBACK_URL") || captureURL;
-  const apiKey = readEnvText("ONECLAW_ANALYTICS_API_KEY");
-  const requestTimeoutMs = readEnvPositiveInt("ONECLAW_ANALYTICS_REQUEST_TIMEOUT_MS", 8000);
-  const retryDelaysMs = readEnvRetryDelays("ONECLAW_ANALYTICS_RETRY_DELAYS_MS", [0, 500, 1500]);
+  const captureURL = readEnvText("PACKCLAW_ANALYTICS_CAPTURE_URL");
+  const captureFallbackURL = readEnvText("PACKCLAW_ANALYTICS_CAPTURE_FALLBACK_URL") || captureURL;
+  const apiKey = readEnvText("PACKCLAW_ANALYTICS_API_KEY");
+  const requestTimeoutMs = readEnvPositiveInt("PACKCLAW_ANALYTICS_REQUEST_TIMEOUT_MS", 8000);
+  const retryDelaysMs = readEnvRetryDelays("PACKCLAW_ANALYTICS_RETRY_DELAYS_MS", [0, 500, 1500]);
   const enabled = captureURL.length > 0 && apiKey.length > 0;
 
   if (!enabled) {
@@ -537,7 +537,7 @@ function buildVolcanoConfig() {
 function writeBuildConfig(configPath) {
   const posthog = buildPostHogConfig();
   const volcano = buildVolcanoConfig();
-  const clawhubRegistry = readEnvText("ONECLAW_CLAWHUB_REGISTRY");
+  const clawhubRegistry = readEnvText("PACKCLAW_CLAWHUB_REGISTRY");
   const config = { posthog, volcano, clawhubRegistry };
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
   log(`已生成 build-config.json（posthog.enabled=${posthog.enabled ? "true" : "false"}, volcano.enabled=${volcano.enabled ? "true" : "false"}, clawhubRegistry=${clawhubRegistry || "(空)"}）`);
@@ -557,12 +557,12 @@ function getPackageSource() {
     };
   }
 
-  // 优先级 2: package.json oneclaw.openclaw 字段（git-tracked 单一事实来源）
+  // 优先级 2: package.json packclaw.openclaw 字段（git-tracked 单一事实来源）
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
-    const pinnedVersion = pkg.oneclaw?.openclaw;
+    const pinnedVersion = pkg.packclaw?.openclaw;
     if (pinnedVersion) {
-      log(`使用 openclaw@${pinnedVersion}（来源: package.json oneclaw.openclaw）`);
+      log(`使用 openclaw@${pinnedVersion}（来源: package.json packclaw.openclaw）`);
       return {
         source: pinnedVersion,
         stampSource: `pinned:openclaw@${pinnedVersion}`,
@@ -573,7 +573,7 @@ function getPackageSource() {
   }
 
   // 优先级 3: npm latest（带警告）
-  log("⚠️  未在 package.json oneclaw.openclaw 中锁定版本，将使用 npm latest");
+  log("⚠️  未在 package.json packclaw.openclaw 中锁定版本，将使用 npm latest");
   const latestVersion = readRemoteLatestVersion("openclaw", {
     cwd: ROOT,
     env: process.env,
@@ -583,7 +583,7 @@ function getPackageSource() {
   });
 
   if (!latestVersion) {
-    die("无法从 npm 获取 openclaw 最新版本（检查网络或在 package.json oneclaw.openclaw 中指定版本）");
+    die("无法从 npm 获取 openclaw 最新版本（检查网络或在 package.json packclaw.openclaw 中指定版本）");
   }
 
   log(`使用 openclaw@${latestVersion}（来源: npm latest）`);
@@ -593,7 +593,7 @@ function getPackageSource() {
   };
 }
 
-// 通用插件版本解析：env 覆盖 → package.json oneclaw.{key} pin → npm latest
+// 通用插件版本解析：env 覆盖 → package.json packclaw.{key} pin → npm latest
 function resolveBundledPluginSource({ packageName, envKey, pkgJsonKey }) {
   const explicitSource = readEnvText(envKey);
   if (explicitSource) {
@@ -604,9 +604,9 @@ function resolveBundledPluginSource({ packageName, envKey, pkgJsonKey }) {
   if (pkgJsonKey) {
     try {
       const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
-      const pinned = pkg.oneclaw?.[pkgJsonKey];
+      const pinned = pkg.packclaw?.[pkgJsonKey];
       if (pinned) {
-        log(`使用 ${packageName}@${pinned}（来源: package.json oneclaw.${pkgJsonKey}）`);
+        log(`使用 ${packageName}@${pinned}（来源: package.json packclaw.${pkgJsonKey}）`);
         return { source: pinned, stampSource: `pinned:${packageName}@${pinned}` };
       }
     } catch {}
@@ -623,13 +623,13 @@ function resolveBundledPluginSource({ packageName, envKey, pkgJsonKey }) {
 }
 
 function getDingtalkConnectorPackageSource() {
-  return resolveBundledPluginSource({ packageName: DINGTALK_CONNECTOR_PACKAGE_NAME, envKey: "ONECLAW_DINGTALK_CONNECTOR_PACKAGE_SOURCE", pkgJsonKey: "dingtalkConnector" });
+  return resolveBundledPluginSource({ packageName: DINGTALK_CONNECTOR_PACKAGE_NAME, envKey: "PACKCLAW_DINGTALK_CONNECTOR_PACKAGE_SOURCE", pkgJsonKey: "dingtalkConnector" });
 }
 function getWecomPluginPackageSource() {
-  return resolveBundledPluginSource({ packageName: WECOM_PLUGIN_PACKAGE_NAME, envKey: "ONECLAW_WECOM_PLUGIN_PACKAGE_SOURCE", pkgJsonKey: "wecom" });
+  return resolveBundledPluginSource({ packageName: WECOM_PLUGIN_PACKAGE_NAME, envKey: "PACKCLAW_WECOM_PLUGIN_PACKAGE_SOURCE", pkgJsonKey: "wecom" });
 }
 function getWeixinPluginPackageSource() {
-  return resolveBundledPluginSource({ packageName: WEIXIN_PLUGIN_PACKAGE_NAME, envKey: "ONECLAW_WEIXIN_PLUGIN_PACKAGE_SOURCE", pkgJsonKey: "weixin" });
+  return resolveBundledPluginSource({ packageName: WEIXIN_PLUGIN_PACKAGE_NAME, envKey: "PACKCLAW_WEIXIN_PLUGIN_PACKAGE_SOURCE", pkgJsonKey: "weixin" });
 }
 
 // 读取 gateway 依赖平台戳
@@ -704,16 +704,16 @@ function pruneDarwinUniversalNativePackages(nmDir, platform) {
   }
 }
 
-// 是否保留 node-llama-cpp（默认移除；设置 ONECLAW_KEEP_LLAMA=true/1 可保留）
+// 是否保留 node-llama-cpp（默认移除；设置 PACKCLAW_KEEP_LLAMA=true/1 可保留）
 function shouldKeepLlamaPackages() {
-  const raw = readEnvText("ONECLAW_KEEP_LLAMA").toLowerCase();
+  const raw = readEnvText("PACKCLAW_KEEP_LLAMA").toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes";
 }
 
 // 定点裁剪 llama 相关依赖，避免 --omit=optional 误伤其它可选功能
 function pruneLlamaPackages(nmDir) {
   if (shouldKeepLlamaPackages()) {
-    log("已保留 llama 依赖（ONECLAW_KEEP_LLAMA 已启用）");
+    log("已保留 llama 依赖（PACKCLAW_KEEP_LLAMA 已启用）");
     return;
   }
 
@@ -1161,7 +1161,7 @@ function injectBuiltinSkills(gatewayDir) {
     }
     fs.cpSync(path.join(builtinDir, entry.name), dest, { recursive: true });
   }
-  log(`已注入 ${skillDirs.length} 个 OneClaw 内置 skill`);
+  log(`已注入 ${skillDirs.length} 个 PackClaw 内置 skill`);
 }
 
 // ─── Step 2.5: 注入 bundled 插件（kimi-claw + kimi-search + qqbot + dingtalk） ───
@@ -1179,9 +1179,9 @@ function injectBuiltinSkills(gatewayDir) {
 const BUNDLED_PLUGINS = [
   {
     id: "kimi-claw",
-    localEnv: "ONECLAW_KIMI_CLAW_TGZ_PATH",
-    urlEnv: "ONECLAW_KIMI_CLAW_TGZ_URL",
-    refreshEnv: "ONECLAW_KIMI_CLAW_REFRESH",
+    localEnv: "PACKCLAW_KIMI_CLAW_TGZ_PATH",
+    urlEnv: "PACKCLAW_KIMI_CLAW_TGZ_URL",
+    refreshEnv: "PACKCLAW_KIMI_CLAW_REFRESH",
     defaultURL: KIMI_CLAW_DEFAULT_TGZ_URL,
     cacheFile: KIMI_CLAW_CACHE_FILE,
     // 校验解压产物必须包含的文件
@@ -1190,9 +1190,9 @@ const BUNDLED_PLUGINS = [
   },
   {
     id: "kimi-search",
-    localEnv: "ONECLAW_KIMI_SEARCH_TGZ_PATH",
-    urlEnv: "ONECLAW_KIMI_SEARCH_TGZ_URL",
-    refreshEnv: "ONECLAW_KIMI_SEARCH_REFRESH",
+    localEnv: "PACKCLAW_KIMI_SEARCH_TGZ_PATH",
+    urlEnv: "PACKCLAW_KIMI_SEARCH_TGZ_URL",
+    refreshEnv: "PACKCLAW_KIMI_SEARCH_REFRESH",
     defaultURL: KIMI_SEARCH_DEFAULT_TGZ_URL,
     cacheFile: KIMI_SEARCH_CACHE_FILE,
     requiredFiles: ["package.json", "openclaw.plugin.json"],
@@ -1228,7 +1228,7 @@ const CHANNEL_MIRROR_PLUGINS = [
 ];
 
 
-// openclaw/skills 只保留 OneClaw 产品需要的内置技能，上游新增 skill 不会自动打入。
+// openclaw/skills 只保留 PackClaw 产品需要的内置技能，上游新增 skill 不会自动打入。
 const OPENCLAW_SKILLS_ALLOWLIST = new Set([
   "canvas",
   "clawhub",
@@ -1254,14 +1254,14 @@ const OPENCLAW_SKILLS_DARWIN_ONLY = new Set([
   "peekaboo",
 ]);
 
-// openclaw/extensions 只保留 OneClaw 当前产品面和运行时基础插件。
+// openclaw/extensions 只保留 PackClaw 当前产品面和运行时基础插件。
 // 2 个第三方 channel plugin（wecom-openclaw-plugin / openclaw-weixin）已迁出
 // gateway.asar，改为 extensions-mirror/<id>/，运行时再 reconcile 到
 // ~/.openclaw/extensions/，因此不在此 allowlist 中。
 // dingtalk-connector 走 channel-entry shim 仍然在 bundled 路径下（见
 // BUNDLED_PLUGINS 上方注释）。
 // qqbot 自 openclaw 2026.4.5 起被官方作为 @openclaw/qqbot 内置 vendor，保留在
-// stock 列表里即可，OneClaw 不再自行 ship。
+// stock 列表里即可，PackClaw 不再自行 ship。
 const OPENCLAW_EXTENSION_ALLOWLIST = new Set([
   "shared",
   "memory-core",
@@ -1277,7 +1277,7 @@ const OPENCLAW_EXTENSION_ALLOWLIST = new Set([
 
 // openclaw 的 bundled extension 在 2026.3.x 位于顶层 extensions/，在 2026.4.x 迁到 dist/extensions/。
 // verifyOutput 对 bundled 列表 fallback 两处，任一存在即通过，避免跟随 openclaw 升级反复改路径。
-// OneClaw 另行注入的插件始终写入 dist/extensions/。
+// PackClaw 另行注入的插件始终写入 dist/extensions/。
 const REQUIRED_OPENCLAW_BUNDLED_EXTENSIONS = [
   path.join("memory-core", "openclaw.plugin.json"),
   path.join("device-pair", "openclaw.plugin.json"),
@@ -1383,7 +1383,7 @@ function assertPluginDir(plugin, dirPath, missingLabel) {
 // openclaw >= 2026.4.5 要求 bundled channel 插件的 default export 带上 `kind: "bundled-channel-entry"`
 // 标记，并提供 `loadChannelPlugin()` 方法（见 bootstrap-registry 的 resolveChannelPluginModuleEntry）。
 // 旧版 channel 插件导出 `{ id, name, register }` 或直接 `register` 函数，
-// 这里给每个插件旁边生成一个 wrapper 入口 `oneclaw-bundled-entry.mjs`，复用原 `register` 实现，
+// 这里给每个插件旁边生成一个 wrapper 入口 `packclaw-bundled-entry.mjs`，复用原 `register` 实现，
 // 并通过把原 register 跑一遍 stub api 来截获 channel plugin 对象给 `loadChannelPlugin()` 返回。
 // 同时把插件的 `package.json#openclaw.extensions` 改成指向 wrapper；原始入口路径保存在 shim meta 文件
 // 里，方便后续缓存命中时也能重新生成 shim 而不丢源入口引用。
@@ -1402,8 +1402,8 @@ function writeChannelEntryShim(plugin, pluginDir) {
     die(`${plugin.id}: 解析 package.json 失败: ${err.message || String(err)}`);
   }
   const originalExtensions = Array.isArray(pkg.openclaw?.extensions) ? pkg.openclaw.extensions.slice() : [];
-  const shimMetaPath = path.join(pluginDir, ".oneclaw-channel-shim.json");
-  let originalEntry = originalExtensions.find((entry) => typeof entry === "string" && !entry.includes("oneclaw-bundled-entry"));
+  const shimMetaPath = path.join(pluginDir, ".packclaw-channel-shim.json");
+  let originalEntry = originalExtensions.find((entry) => typeof entry === "string" && !entry.includes("packclaw-bundled-entry"));
   if (!originalEntry && fs.existsSync(shimMetaPath)) {
     // 缓存命中场景：shim 已存在，original entry 从 meta 文件恢复
     try { originalEntry = JSON.parse(fs.readFileSync(shimMetaPath, "utf-8")).originalEntry; } catch {}
@@ -1413,7 +1413,7 @@ function writeChannelEntryShim(plugin, pluginDir) {
   }
   fs.writeFileSync(shimMetaPath, JSON.stringify({ originalEntry }, null, 2), "utf-8");
 
-  const shimName = "oneclaw-bundled-entry.mjs";
+  const shimName = "packclaw-bundled-entry.mjs";
   const shimPath = path.join(pluginDir, shimName);
   const originalEntryExt = path.extname(originalEntry).toLowerCase();
   const useCreateRequire = [".mjs", ".js", ".cjs"].includes(originalEntryExt);
@@ -1427,15 +1427,15 @@ function writeChannelEntryShim(plugin, pluginDir) {
         "// setChannelRuntime(runtime), the other is read during dispatch and returns",
         "// null. createRequire routes through Node's process-wide module cache, so",
         "// both jiti instances resolve to the same legacy module instance.",
-        'import { createRequire as __oneclawCreateRequire } from "node:module";',
-        "const __oneclawRequire = __oneclawCreateRequire(import.meta.url);",
-        `const legacyModule = __oneclawRequire(${JSON.stringify(originalEntry)});`,
+        'import { createRequire as __packclawCreateRequire } from "node:module";',
+        "const __packclawRequire = __packclawCreateRequire(import.meta.url);",
+        `const legacyModule = __packclawRequire(${JSON.stringify(originalEntry)});`,
       ]
     : [
         `import * as legacyModule from ${JSON.stringify(originalEntry)};`,
       ];
   const shimSource = [
-    "// OneClaw auto-generated shim — adapts legacy channel plugins to openclaw >= 2026.4.5",
+    "// PackClaw auto-generated shim — adapts legacy channel plugins to openclaw >= 2026.4.5",
     '// "bundled-channel-entry" contract. Regenerated every `npm run package:resources`;',
     "// do not hand-edit.",
     ...loaderLines,
@@ -1565,7 +1565,7 @@ async function installNpmPackagePluginInto(plugin, pluginDir, hostNm, targetId, 
   const sourceInfo = plugin.getSource();
 
   // 增量检测：版本戳匹配则跳过
-  const stampPath = path.join(pluginDir, `.oneclaw-${plugin.id}-stamp.json`);
+  const stampPath = path.join(pluginDir, `.packclaw-${plugin.id}-stamp.json`);
   if (fs.existsSync(stampPath) && fs.existsSync(pluginDir)) {
     try {
       const stamp = JSON.parse(fs.readFileSync(stampPath, "utf-8"));
@@ -1684,7 +1684,7 @@ async function installNpmPackagePluginInto(plugin, pluginDir, hostNm, targetId, 
 
   // 写入版本戳
   fs.writeFileSync(
-    path.join(pluginDir, `.oneclaw-${plugin.id}-stamp.json`),
+    path.join(pluginDir, `.packclaw-${plugin.id}-stamp.json`),
     JSON.stringify({ source: sourceInfo.stampSource, bundledAt: new Date().toISOString() }, null, 2)
   );
   log(`已注入 ${plugin.id} 插件到 ${path.relative(ROOT, pluginDir)}`);
@@ -1869,7 +1869,7 @@ async function bundlePlugin(plugin, gatewayDir, targetId, opts) {
 
   const stamp = { source: source.sourceLabel, bundledAt: new Date().toISOString() };
   fs.writeFileSync(
-    path.join(pluginDir, `.oneclaw-${plugin.id}-stamp.json`),
+    path.join(pluginDir, `.packclaw-${plugin.id}-stamp.json`),
     JSON.stringify(stamp, null, 2)
   );
   log(`已注入 ${plugin.id} 插件到 ${path.relative(ROOT, pluginDir)}`);
@@ -1930,10 +1930,10 @@ async function bundleAllPlugins(targetPaths, opts) {
     }
   }
 
-  // (3) 入口标准化：把所有 OneClaw 打包的插件入口强制转成 native (.mjs/.js/.cjs)。
+  // (3) 入口标准化：把所有 PackClaw 打包的插件入口强制转成 native (.mjs/.js/.cjs)。
   //     .ts 入口会走 jiti transpile，openclaw 内部 10+ 份 jitiLoaders Map 会各
   //     instantiate 一次，模块级变量（如 setWeixinRuntime 的闭包）互相不可见。
-  //     esbuild bundle 到 dist/oneclaw-bundle.mjs 后，openclaw 走 Node 原生
+  //     esbuild bundle 到 dist/packclaw-bundle.mjs 后，openclaw 走 Node 原生
   //     createRequire 路径，module cache 单例天然成立。
   //     详见 vault: 学习笔记/openclaw插件打包/2026-04-23-问题清单与本质方案.md
   const bundledDir = path.join(gatewayDir, "node_modules", "openclaw", "dist", "extensions");
@@ -1941,7 +1941,7 @@ async function bundleAllPlugins(targetPaths, opts) {
     const pluginDir = path.join(bundledDir, plugin.id);
     if (!fs.existsSync(pluginDir)) continue; // 被 winArm64Cross 跳过的插件
     // channel-shim 插件（dingtalk-connector）已经把 extensions[0] 指向 shim
-    // `./oneclaw-bundled-entry.mjs`，shim 自身就是 native；不跑 normalize，
+    // `./packclaw-bundled-entry.mjs`，shim 自身就是 native；不跑 normalize，
     // 避免 ensurePluginNativeEntry 再 rewrite 指向某个 bundle 产物。
     if (plugin.channelShim) continue;
     // 内置 plugin 住在 gateway/node_modules/openclaw/dist/extensions/，openclaw
@@ -1958,6 +1958,18 @@ async function bundleAllPlugins(targetPaths, opts) {
     // 重 bundle 成 single-file（不传 allowNativeSkip），确保 `openclaw` 只出现
     // 在入口，由 jiti aliasMap 覆盖。
     await normalizePluginEntry(plugin.id, pluginDir);
+    if (plugin.id === "openclaw-weixin") {
+      const bundleFile = path.join(pluginDir, "dist", "packclaw-bundle.mjs");
+      if (fs.existsSync(bundleFile)) {
+        let src = fs.readFileSync(bundleFile, "utf-8");
+        src = src.replace(
+          /"Content-Length":\s*String\(Buffer\.byteLength\(opts\.body,\s*"utf-8"\)\),?/g,
+          "",
+        );
+        fs.writeFileSync(bundleFile, src);
+        log("已移除 openclaw-weixin bundle 中的手动 Content-Length header");
+      }
+    }
   }
 }
 
@@ -2112,7 +2124,7 @@ function pruneNodeModules(nmDir, platform) {
     walkDocs(openclawDocsDir);
   }
 
-  // openclaw/extensions 不再整目录豁免，只保留 OneClaw 需要的插件。
+  // openclaw/extensions 不再整目录豁免，只保留 PackClaw 需要的插件。
   function pruneOpenclawExtensions() {
     if (!fs.existsSync(openclawExtensionsDir)) return;
 
@@ -2292,7 +2304,7 @@ async function packGatewayAsar(gatewayDir, targetBase, platform, arch) {
   // extensions/ 不再需要 unpack——boundary-file-read 补丁已处理 asar 路径校验
   log("正在打包 gateway.asar ...");
   await asar.createPackageWithOptions(gatewayDir, asarPath, {
-    unpack: "{**/*.node,**/*.exe,**/*.dll,**/*.dylib,**/*.so,**/spawn-helper}",
+    unpack: "{**/*.node,**/*.exe,**/*.dll,**/*.dylib,**/*.so,**/spawn-helper,**/node_modules/@buape/carbon/**}",
   });
 
   const asarSize = (fs.statSync(asarPath).size / 1048576).toFixed(1);
@@ -2371,9 +2383,9 @@ function getOfficecliAssetName(platform, arch) {
  */
 async function downloadOfficeCli(platform, arch, targetBase) {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
-  const version = pkg.oneclaw?.officecli;
+  const version = pkg.packclaw?.officecli;
   if (!version) {
-    log("package.json oneclaw.officecli 未指定，跳过 OfficeCLI");
+    log("package.json packclaw.officecli 未指定，跳过 OfficeCLI");
     return;
   }
 
@@ -2551,7 +2563,7 @@ function verifyOutput(targetPaths, opts) {
   const winArm64Cross = isWindowsArm64CrossCompile(opts);
   const crossCompileOptionalExts = new Set(["kimi-claw", "kimi-search"]);
 
-  // OneClaw 另行注入的插件始终在 dist/extensions/（单一路径）
+  // PackClaw 另行注入的插件始终在 dist/extensions/（单一路径）
   required.push(
     ...REQUIRED_OPENCLAW_INJECTED_EXTENSIONS.map((relPath) =>
       path.join(targetRel, "gateway", "node_modules", "openclaw", "dist", "extensions", relPath)
@@ -2618,7 +2630,7 @@ function verifyOutput(targetPaths, opts) {
   log("所有关键文件验证通过");
 }
 
-// 入口标准化断言：所有 OneClaw 打包的插件入口必须是 .mjs/.js/.cjs。
+// 入口标准化断言：所有 PackClaw 打包的插件入口必须是 .mjs/.js/.cjs。
 // 这是 jiti 双实例分裂的硬护栏——任何 .ts 入口都会让护栏失效。
 // 必须在 ASAR 打包前跑（ASAR 会删 gateway 散文件，断言就没法查 injected 插件了）。
 function assertPluginsNativeEntry(targetPaths) {
@@ -2722,7 +2734,7 @@ async function main() {
 
   console.log();
 
-  // Step 6: Gateway ASAR 打包（--asar 或 ONECLAW_GATEWAY_ASAR=1 时启用）
+  // Step 6: Gateway ASAR 打包（--asar 或 PACKCLAW_GATEWAY_ASAR=1 时启用）
   if (opts.asar) {
     log("Step 6: Gateway ASAR 打包");
     await packGatewayAsar(targetPaths.gatewayDir, targetPaths.targetBase, opts.platform, opts.arch);

@@ -40,7 +40,7 @@ export function normalizeRequestedBrowserProfileForSave(config: Record<string, u
 }
 
 // OpenClaw 2026.4.x 移除了旧 Chrome extension relay driver/profile。
-// 启动时修复旧版 OneClaw 写入的配置，让 gateway 回落到内置 existing-session profile。
+// 启动时修复旧版 PackClaw 写入的配置，让 gateway 回落到内置 existing-session profile。
 export function migrateBrowserProfileForCurrentGateway(config: unknown): boolean {
   if (!isRecord(config)) return false;
   const browser = isRecord(config.browser) ? config.browser : null;

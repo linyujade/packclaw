@@ -224,9 +224,9 @@ function handlePaste(e: ClipboardEvent, props: ChatProps) {
   if (!hasFileItems) return;
   e.preventDefault();
   const w = window as Record<string, unknown>;
-  const oneclaw = w.oneclaw as Record<string, (...args: unknown[]) => Promise<string[]>> | undefined;
-  if (!oneclaw?.readClipboardFilePaths) return;
-  oneclaw.readClipboardFilePaths().then((paths: string[]) => {
+  const packclaw = w.packclaw as Record<string, (...args: unknown[]) => Promise<string[]>> | undefined;
+  if (!packclaw?.readClipboardFilePaths) return;
+  packclaw.readClipboardFilePaths().then((paths: string[]) => {
     if (!paths?.length) return;
     const current = props.attachments ?? [];
     const additions = paths.map((p: string) => ({
@@ -324,8 +324,8 @@ export function renderChat(props: ChatProps) {
         const path = (link as HTMLElement).dataset.path;
         if (path) {
           const w = window as Record<string, unknown>;
-          const oneclaw = w.oneclaw as Record<string, (p: string) => void> | undefined;
-          oneclaw?.openPath?.(path);
+          const packclaw = w.packclaw as Record<string, (p: string) => void> | undefined;
+          packclaw?.openPath?.(path);
         }
       }}
     >
@@ -526,11 +526,11 @@ export function renderChat(props: ChatProps) {
               type="button"
               @click=${async () => {
                 const w = window as Record<string, unknown>;
-                const oneclaw = w.oneclaw as Record<string, (...args: unknown[]) => Promise<string[]>> | undefined;
-                if (!oneclaw?.selectFiles) {
+                const packclaw = w.packclaw as Record<string, (...args: unknown[]) => Promise<string[]>> | undefined;
+                if (!packclaw?.selectFiles) {
                   return;
                 }
-                const paths = await oneclaw.selectFiles();
+                const paths = await packclaw.selectFiles();
                 if (!paths?.length) {
                   return;
                 }

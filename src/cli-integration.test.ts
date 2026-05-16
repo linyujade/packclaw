@@ -10,7 +10,7 @@ import {
 } from "./cli-integration";
 
 test("POSIX wrapper 应使用真实 Node.js（无 ELECTRON_RUN_AS_NODE）并注入 OPENCLAW_NO_RESPAWN", () => {
-  const script = buildPosixWrapperForPaths("/Applications/OneClaw/node", "/Applications/OneClaw/openclaw.mjs");
+  const script = buildPosixWrapperForPaths("/Applications/PackClaw/node", "/Applications/PackClaw/openclaw.mjs");
 
   assert.ok(!script.includes("ELECTRON_RUN_AS_NODE"), "不应包含 ELECTRON_RUN_AS_NODE（CLI 用真实 Node.js）");
   assert.ok(script.includes("OPENCLAW_NO_RESPAWN=1"));
@@ -18,7 +18,7 @@ test("POSIX wrapper 应使用真实 Node.js（无 ELECTRON_RUN_AS_NODE）并注�
 });
 
 test("Windows wrapper 应使用真实 Node.js（无 ELECTRON_RUN_AS_NODE）并注入 OPENCLAW_NO_RESPAWN", () => {
-  const script = buildWinWrapperForPaths("C:\\OneClaw\\node.exe", "C:\\OneClaw\\openclaw.mjs");
+  const script = buildWinWrapperForPaths("C:\\PackClaw\\node.exe", "C:\\PackClaw\\openclaw.mjs");
 
   assert.ok(!script.includes("ELECTRON_RUN_AS_NODE"), "不应包含 ELECTRON_RUN_AS_NODE（CLI 用真实 Node.js）");
   assert.ok(script.includes('set "OPENCLAW_NO_RESPAWN=1"'));
@@ -26,7 +26,7 @@ test("Windows wrapper 应使用真实 Node.js（无 ELECTRON_RUN_AS_NODE）并�
 });
 
 test("Windows PATH 脚本中的 try/catch 不能被分号打断", () => {
-  const script = buildWinPathEnvScript("add", "C:\\Users\\admin\\AppData\\Local\\OneClaw\\bin");
+  const script = buildWinPathEnvScript("add", "C:\\Users\\admin\\AppData\\Local\\PackClaw\\bin");
   assert.equal(/}\s*;\s*catch\s*{/.test(script), false);
   assert.ok(/try\s*{[\s\S]*catch\s*{/.test(script));
 });
@@ -37,7 +37,7 @@ test("Windows CLI 目录解析应同时返回当前路径与旧版迁移路径",
     "C:\\Users\\admin\\.openclaw",
   );
 
-  assert.equal(dirs.currentBinDir, "C:\\Users\\admin\\AppData\\Local\\OneClaw\\bin");
+  assert.equal(dirs.currentBinDir, "C:\\Users\\admin\\AppData\\Local\\PackClaw\\bin");
   assert.deepEqual(dirs.legacyBinDirs, ["C:\\Users\\admin\\.openclaw\\bin"]);
 });
 

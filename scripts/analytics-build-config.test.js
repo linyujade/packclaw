@@ -8,8 +8,8 @@ const ts = require("typescript");
 function loadAnalyticsModule(options = {}) {
   const {
     config = null,
-    resourcesPath = "/tmp/oneclaw-resources",
-    appPath = "/Applications/OneClaw.app/Contents/Resources/app.asar",
+    resourcesPath = "/tmp/packclaw-resources",
+    appPath = "/Applications/PackClaw.app/Contents/Resources/app.asar",
     fetchImpl = async () => {
       throw new Error("fetch should not be called in analytics build-config tests");
     },
@@ -63,7 +63,7 @@ function loadAnalyticsModule(options = {}) {
           };
         case "./constants":
           return { resolveResourcesPath: () => resourcesPath };
-        case "./oneclaw-config":
+        case "./packclaw-config":
           return {
             ensureDeviceId: () => "12345678-1234-5678-9abc-def012345678",
             getChannelId: () => "",
@@ -271,7 +271,7 @@ test("normalizeVolcanoConfig 非法 retryDelaysMs 回退到默认值", () => {
 
 test("createVolcanoSink.buildPayload 输出 DataFinder 期望的信封结构", () => {
   const { module: mod } = loadAnalyticsModule();
-  // init() 负责把 deviceId 从 oneclaw-config mock 拉进模块作用域
+  // init() 负责把 deviceId 从 packclaw-config mock 拉进模块作用域
   mod.init();
 
   try {
@@ -289,13 +289,13 @@ test("createVolcanoSink.buildPayload 输出 DataFinder 期望的信封结构", (
     assert.equal(sink.enabled, true);
     assert.equal(sink.headers["X-MCS-AppKey"], "volcano-key");
     assert.equal(sink.headers["Content-Type"], "application/json");
-    assert.match(sink.headers["User-Agent"], /^OneClaw\//);
+    assert.match(sink.headers["User-Agent"], /^PackClaw\//);
 
     const payload = plain(sink.buildPayload("setup_action_started", { action: "verify_key", foo: "bar" }));
 
     assert.deepEqual(payload.user, { user_unique_id: "" });
     assert.equal(payload.header.app_id, 1);
-    assert.equal(payload.header.app_name, "oneclaw");
+    assert.equal(payload.header.app_name, "packclaw");
     assert.equal(payload.header.app_version, "2026.420.0");
     // UUID 12345678-...-12345678 折叠出 0x8888888800000000，按 INT63_MASK 钳到 0x0888...0000。
     // 期望值不能是未 mask 的 9838263503687778304；analytics.ts 主动剥掉符号位避免服务端读成负数。

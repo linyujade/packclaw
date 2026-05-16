@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 // 安全桥接 — 向渲染进程暴露有限 API
-contextBridge.exposeInMainWorld("oneclaw", {
+contextBridge.exposeInMainWorld("packclaw", {
   // Gateway 控制
   restartGateway: () => ipcRenderer.send("gateway:restart"),
   startGateway: () => ipcRenderer.send("gateway:start"),
@@ -296,6 +296,6 @@ document.addEventListener("drop", (e) => {
     } catch { /* 忽略无法获取路径的文件 */ }
   }
   if (paths.length > 0) {
-    window.dispatchEvent(new CustomEvent("oneclaw:file-drop", { detail: { paths } }));
+    window.dispatchEvent(new CustomEvent("packclaw:file-drop", { detail: { paths } }));
   }
 });

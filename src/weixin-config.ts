@@ -38,7 +38,7 @@ export function isWeixinPluginBundled(): boolean {
 export async function ensureWeixinPluginReady(reconcileExtensions: () => Promise<void>): Promise<void> {
   await reconcileExtensions();
   if (!isWeixinPluginBundled()) {
-    throw new Error("微信插件未安装，请重新启动 OneClaw 或重新安装应用。");
+    throw new Error("微信插件未安装，请重新启动 PackClaw 或重新安装应用。");
   }
 }
 

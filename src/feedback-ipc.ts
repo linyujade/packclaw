@@ -10,7 +10,7 @@ import { FeedbackSSE } from "./feedback-sse";
 
 // 反馈服务地址（构建时通过环境变量注入，回退到默认值）
 const FEEDBACK_URL =
-  process.env.ONECLAW_FEEDBACK_URL || "https://feedback.oneclaw.cn/api/v1/feedback";
+  process.env.PACKCLAW_FEEDBACK_URL || "https://feedback.packclaw.cn/api/v1/feedback";
 
 // 反馈提交参数
 interface FeedbackParams {
@@ -194,8 +194,8 @@ function buildStateTree(): string {
 }
 
 // 从 feedbackUrl 推导 user API 基础路径
-// feedbackUrl = "https://feedback.oneclaw.cn/api/v1/feedback"
-// userApiBase = "https://feedback.oneclaw.cn/api/v1/user/threads"
+// feedbackUrl = "https://feedback.packclaw.cn/api/v1/feedback"
+// userApiBase = "https://feedback.packclaw.cn/api/v1/user/threads"
 function resolveUserApiBase(): string {
   const base = FEEDBACK_URL.replace(/\/feedback\/?$/, "");
   return `${base}/user/threads`;
@@ -417,7 +417,7 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
       gatewayState: deps.getGatewayState(),
       gatewayPort: deps.getGatewayPort(),
       gatewayUptime: gwStartedAt ? Math.floor((now - gwStartedAt) / 1000) : 0,
-      oneclawUptime: Math.floor((now - deps.getAppStartTime()) / 1000),
+      packclawUptime: Math.floor((now - deps.getAppStartTime()) / 1000),
     };
     if (email) metadataObj.email = email;
 

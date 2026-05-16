@@ -20,7 +20,7 @@ export interface SaveQqbotConfigParams {
 }
 
 // 统一解析 QQ Bot 插件目录。openclaw 自 2026.4.5 起将 @openclaw/qqbot 作为内置
-// extension vendor 在自身 dist/extensions/ 下，OneClaw 不再单独 ship 也不需要
+// extension vendor 在自身 dist/extensions/ 下，PackClaw 不再单独 ship 也不需要
 // reconcile 到 ~/.openclaw/extensions/。
 export function resolveQqbotPluginDir(): string {
   return path.join(resolveGatewayPackageDir(), "dist", "extensions", QQBOT_PLUGIN_ID);

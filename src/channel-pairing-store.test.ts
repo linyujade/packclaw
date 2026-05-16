@@ -9,7 +9,7 @@ import {
 } from "./channel-pairing-store";
 
 function createCredentialsDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-pairing-store-"));
+  return fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-pairing-store-"));
 }
 
 test("readChannelAllowFromStoreEntries 应读取 default 账号作用域的 allowFrom 文件", () => {

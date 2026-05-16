@@ -47,7 +47,7 @@ import {
   resolveWebbridgeExtensionSpec,
   runWebbridgeSetupTask,
 } from "./webbridge";
-import { resolveOneclawConfigPath } from "./oneclaw-config";
+import { resolvePackclawConfigPath } from "./packclaw-config";
 import {
   getConfigRecoveryData,
   restoreLastKnownGoodConfigSnapshot,
@@ -294,7 +294,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
       );
       const tempPath = path.join(
         os.tmpdir(),
-        "oneclaw-webbridge-enable-guide.html",
+        "packclaw-webbridge-enable-guide.html",
       );
       const content = fs.readFileSync(sourcePath, "utf-8");
       fs.writeFileSync(tempPath, content, "utf-8");
@@ -853,7 +853,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
     if (!app.isPackaged) {
       return `开发模式未检测到 QQ Bot 插件，请先运行 npm run package:resources（当前目标：${process.platform}-${process.arch}）。`;
     }
-    return "QQ Bot 组件缺失，请重新安装 OneClaw。";
+    return "QQ Bot 组件缺失，请重新安装 PackClaw。";
   }
 
   function resolveDingtalkMissingMessage(): string {
@@ -861,7 +861,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
     if (!app.isPackaged) {
       return `开发模式未检测到钉钉连接器插件，请先运行 npm run package:resources（当前目标：${process.platform}-${process.arch}）。`;
     }
-    return "钉钉连接器组件缺失，请重新安装 OneClaw。";
+    return "钉钉连接器组件缺失，请重新安装 PackClaw。";
   }
 
   function resolveWecomMissingMessage(): string {
@@ -1512,7 +1512,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
           return { success: false, message: "Kimi Bot Token 不能为空。" };
         }
         if (!isKimiPluginBundled()) {
-          return { success: false, message: "Kimi Channel 组件缺失，请重新安装 OneClaw。" };
+          return { success: false, message: "Kimi Channel 组件缺失，请重新安装 PackClaw。" };
         }
 
         const gatewayToken = ensureGatewayAuthTokenInConfig(config);
@@ -1554,7 +1554,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
     return runTrackedSettingsAction("save_kimi_search", { enabled }, async () => {
       try {
         if (enabled && !isKimiSearchPluginBundled()) {
-          return { success: false, message: "Kimi Search 组件缺失，请重新安装 OneClaw。" };
+          return { success: false, message: "Kimi Search 组件缺失，请重新安装 PackClaw。" };
         }
         // 专属 key 存到 sidecar 文件，不写入 openclaw.json
         if (typeof apiKey === "string") {
@@ -1860,7 +1860,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
   // 设计前提（来自用户测试用例树）：
   //   - 用户启用 webbridge 后 setup-task 已经把 binary/skill/JSON 装好、清过 blocklist
   //   - 唯一会让扩展不工作的常见情况就是用户没在浏览器弹窗里点"启用"
-  //   - 这种情况 OneClaw 修不了，只能催用户去操作；pill 是纯信息，无 click → repair
+  //   - 这种情况 PackClaw 修不了，只能催用户去操作；pill 是纯信息，无 click → repair
   //   - settings 高级页面也不应报"需要修复"（已通过 precheck 简化处理）
   // 退化场景（默认浏览器变成非 Chrome/Edge、binary/skill 被人删了）罕见，pill 隐藏即可——
   // settings 高级页面会通过另一条 precheck 路径暴露这些真坏的状态。
@@ -1869,7 +1869,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
       if (getCurrentBrowserMode() !== "webbridge") {
         return { success: true, data: { visible: false, defaultBrowser: null } };
       }
-      // pill 可见性 = OneClaw 组件是否健康 + 用户是否真的启用了扩展
+      // pill 可见性 = PackClaw 组件是否健康 + 用户是否真的启用了扩展
       //   1) 三组件（binary/skill/extension）任一缺 → pill 显示让用户修
       //   2) 三组件都健康但 presentInChrome=false（用户没在浏览器点"启用扩展"）→ pill 仍显示
       //      —— External JSON 写完只是"我们这边装好了"，必须等用户在浏览器里启用才算真正连接
@@ -2349,9 +2349,9 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
   });
 
   // ── 恢复配置：删除 openclaw.json 并重启应用，保留历史目录 ──
-  // 返回 OneClaw 和 OpenClaw 版本信息
+  // 返回 PackClaw 和 OpenClaw 版本信息
   ipcMain.handle("settings:get-about-info", async () => {
-    const oneClawVersion = app.getVersion();
+    const packClawVersion = app.getVersion();
     let openClawVersion = "unknown";
     try {
       const pkgPath = path.join(resolveGatewayPackageDir(), "package.json");
@@ -2359,7 +2359,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
       const pkg = JSON.parse(raw);
       if (pkg.version) openClawVersion = pkg.version;
     } catch {}
-    return { oneClawVersion, openClawVersion };
+    return { packClawVersion, openClawVersion };
   });
 
   ipcMain.handle("settings:reset-config-and-relaunch", async () => {
@@ -2372,8 +2372,8 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
       // 删除所有影响 detectOwnership() 判定的标记文件，确保重启后进入 Setup
       const stateDir = resolveUserStateDir();
       for (const marker of [
-        resolveOneclawConfigPath(),                                   // "oneclaw" 归属标记
-        path.join(stateDir, "openclaw-setup-baseline.json"),          // "legacy-oneclaw" 标记
+        resolvePackclawConfigPath(),                                   // "packclaw" 归属标记
+        path.join(stateDir, "openclaw-setup-baseline.json"),          // "legacy-packclaw" 标记
         path.join(stateDir, "openclaw.last-known-good.json"),         // last-known-good 快照
       ]) {
         if (fs.existsSync(marker)) {
@@ -2569,7 +2569,7 @@ function collectApprovedUserIds(channel: string, configAllowFrom: unknown): stri
   return dedupeEntries([...configEntries, ...storeEntries]);
 }
 
-// 统一运行 openclaw CLI 子命令，复用 OneClaw 内嵌 runtime 与网关入口。
+// 统一运行 openclaw CLI 子命令，复用 PackClaw 内嵌 runtime 与网关入口。
 async function runGatewayCli(args: string[]): Promise<CliRunResult> {
   const nodeBin = resolveNodeBin();
   const entry = resolveGatewayEntry();

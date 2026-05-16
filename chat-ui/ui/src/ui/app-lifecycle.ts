@@ -21,7 +21,7 @@ import {
 type LifecycleHost = {
   basePath: string;
   settings: {
-    oneclawView?: string;
+    packclawView?: string;
   };
   tab: Tab;
   chatHasAutoScrolled: boolean;
@@ -47,7 +47,7 @@ export function handleConnected(host: LifecycleHost) {
   window.addEventListener("popstate", host.popStateHandler);
 
   // Setup 首屏由启动 URL 直接决定；只要当前还是 setup，就绝不能抢先连 gateway。
-  if (host.settings.oneclawView !== "setup") {
+  if (host.settings.packclawView !== "setup") {
     connectGateway(host as unknown as Parameters<typeof connectGateway>[0]);
     startNodesPolling(host as unknown as Parameters<typeof startNodesPolling>[0]);
   }

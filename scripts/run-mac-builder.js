@@ -39,19 +39,19 @@ function readBooleanEnv(name, defaultValue) {
   return value === "1" || value === "true" || value === "yes" || value === "on";
 }
 
-// 解析签名模式：adhoc / sign / sign+notarize（兼容旧变量 ONECLAW_MAC_SIGN_AND_NOTARIZE）。
+// 解析签名模式：adhoc / sign / sign+notarize（兼容旧变量 PACKCLAW_MAC_SIGN_AND_NOTARIZE）。
 function resolveSignMode() {
-  const rawMode = (process.env.ONECLAW_MAC_SIGN_MODE || "").trim().toLowerCase();
+  const rawMode = (process.env.PACKCLAW_MAC_SIGN_MODE || "").trim().toLowerCase();
   if (rawMode) {
     if (rawMode === "adhoc" || rawMode === "sign" || rawMode === "sign+notarize") {
       return rawMode;
     }
     throw new Error(
-      `[run-mac-builder] ONECLAW_MAC_SIGN_MODE 仅支持 adhoc/sign/sign+notarize，当前: ${rawMode}`
+      `[run-mac-builder] PACKCLAW_MAC_SIGN_MODE 仅支持 adhoc/sign/sign+notarize，当前: ${rawMode}`
     );
   }
 
-  return readBooleanEnv("ONECLAW_MAC_SIGN_AND_NOTARIZE", false) ? "sign+notarize" : "adhoc";
+  return readBooleanEnv("PACKCLAW_MAC_SIGN_AND_NOTARIZE", false) ? "sign+notarize" : "adhoc";
 }
 
 // 校验必须环境变量。

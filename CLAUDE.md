@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# OneClaw — Electron Shell for openclaw
+# PackClaw — Electron Shell for openclaw
 
 ## What This Project Is
 
-OneClaw is a cross-platform desktop app that wraps the [openclaw](https://github.com/openclaw/openclaw) gateway into a standalone installable package. It ships a bundled Node.js 22 runtime and the openclaw npm package, so users need zero dev tooling — just install and run.
+PackClaw is a cross-platform desktop app that wraps the [openclaw](https://github.com/openclaw/openclaw) gateway into a standalone installable package. It ships a bundled Node.js 22 runtime and the openclaw npm package, so users need zero dev tooling — just install and run.
 
 **Three-process architecture:**
 
@@ -26,14 +26,14 @@ The main process spawns a gateway subprocess, waits for its health check, then o
 | Language | TypeScript → CommonJS (no ESM) |
 | Chat UI | Lit 3 + Vite (file:// loaded SPA) |
 | Packager | electron-builder 26.7.0 |
-| Updater | electron-updater (generic provider, CDN at `oneclaw.cn`) |
+| Updater | electron-updater (generic provider, CDN at `packclaw.cn`) |
 | Targets | macOS DMG + ZIP (arm64/x64), Windows NSIS (x64/arm64) |
 | Version scheme | Calendar-based: `YYYY.MMDD.N` (e.g. `2026.318.0`), auto-derived from git tag |
 
 ## Repository Layout
 
 ```
-oneclaw/
+packclaw/
 ├── src/                    # 40 TypeScript modules (13416 LOC) + 14 test files (node:test)
 │   ├── main.ts             # App entry, lifecycle, IPC, Dock toggle, config recovery
 │   ├── constants.ts        # Path resolution (dev vs packaged vs ASAR), health check params
@@ -49,7 +49,7 @@ oneclaw/
 │   ├── setup-ipc.ts        # Setup validation + config write + CLI install
 │   ├── setup-completion.ts # Setup wizard completion detection
 │   ├── install-detector.ts # Setup Step 0: installation conflict detection
-│   ├── oneclaw-config.ts   # OneClaw ownership config (deviceId, setupCompletedAt, migration)
+│   ├── packclaw-config.ts   # PackClaw ownership config (deviceId, setupCompletedAt, migration)
 │   ├── settings-ipc.ts     # Settings CRUD, backup/restore, Kimi, CLI, advanced
 │   ├── config-backup.ts    # Rolling backups + last-known-good snapshot + restore
 │   ├── share-copy.ts       # Remote share copy content (CDN fetch + local fallback)
@@ -82,7 +82,7 @@ oneclaw/
 │   ├── settings.js         # Provider CRUD, multi-channel, Kimi, CLI, backup/restore
 │   ├── lucide-sprite.generated.js  # Icon sprites
 │   └── share-copy-content.json     # Fallback share copy content
-├── builtin-skills/         # OneClaw-owned skills, bundled into app and copied to ~/.openclaw/workspace/skills/ on first launch
+├── builtin-skills/         # PackClaw-owned skills, bundled into app and copied to ~/.openclaw/workspace/skills/ on first launch
 │   ├── officecli-docx/     # DOCX read/write skill backed by bundled OfficeCLI binary
 │   ├── officecli-pptx/     # PPTX read/write skill backed by bundled OfficeCLI binary
 │   └── officecli-xlsx/     # XLSX read/write skill backed by bundled OfficeCLI binary
@@ -140,20 +140,20 @@ npm run clean                # Remove all generated files
 
 ```bash
 # First run, or refresh from production config:
-rm -f .dev-state/dev.pid .dev-state/oneclaw.config.json .dev-state/openclaw.json .dev-state/openclaw.json.bak .dev-state/logs/config-health.json
+rm -f .dev-state/dev.pid .dev-state/packclaw.config.json .dev-state/openclaw.json .dev-state/openclaw.json.bak .dev-state/logs/config-health.json
 npm run dev:isolated
 
 # Cleanup after the test run:
 rm -rf .dev-state && npm run clean && rm -rf chat-ui/dist tsconfig.tsbuildinfo
 ```
 
-- `dev:isolated` runs with `ONECLAW_MULTI_INSTANCE=1`, `OPENCLAW_STATE_DIR=.dev-state`, and a deterministic gateway port in `19000-19999`.
-- On a fresh `.dev-state`, it copies `~/.openclaw/oneclaw.config.json`, `~/.openclaw/openclaw.json`, and credentials, then rewrites `agents.defaults.workspace` to `.dev-state/workspace` so tests do not write into the production workspace.
-- Setup is skipped when `.dev-state/oneclaw.config.json` contains `setupCompletedAt`; use `npm run dev:isolated -- --with-setup` only when testing the Setup Wizard.
+- `dev:isolated` runs with `PACKCLAW_MULTI_INSTANCE=1`, `OPENCLAW_STATE_DIR=.dev-state`, and a deterministic gateway port in `19000-19999`.
+- On a fresh `.dev-state`, it copies `~/.openclaw/packclaw.config.json`, `~/.openclaw/openclaw.json`, and credentials, then rewrites `agents.defaults.workspace` to `.dev-state/workspace` so tests do not write into the production workspace.
+- Setup is skipped when `.dev-state/packclaw.config.json` contains `setupCompletedAt`; use `npm run dev:isolated -- --with-setup` only when testing the Setup Wizard.
 
 **Full build pipeline** (what `dist:mac:arm64` does):
 
-1. `package:resources` — download Node.js 22, `npm install openclaw@<pinned> --production --install-links` plus per-channel plugins, optionally create `gateway.asar` (set `ONECLAW_GATEWAY_ASAR=1`)
+1. `package:resources` — download Node.js 22, `npm install openclaw@<pinned> --production --install-links` plus per-channel plugins, optionally create `gateway.asar` (set `PACKCLAW_GATEWAY_ASAR=1`)
 2. `build:chat` — Vite builds Lit Chat UI into `chat-ui/dist/`
 3. `tsc` — compile TypeScript
 4. `electron-builder` → `afterPack.js` injects `resources/targets/<target>/` into app bundle → DMG/ZIP/NSIS
@@ -196,7 +196,7 @@ There is no linter configured; `tsc --noEmit` is the de facto type check.
 - **Skill store** — clawhub CLI integration, skills at `~/.openclaw/workspace/skills/`, registry config in `~/.openclaw/skill-store.json`.
 - **Config backup** — Rolling 10 backups + last-known-good snapshot + factory reset.
 - **Multi-model management** — IPC handlers for listing, deleting, setting default, and aliasing models across providers.
-- **Gateway ASAR packaging** — Optional `gateway.asar` archive (enabled by `ONECLAW_GATEWAY_ASAR=1`) reduces 5000+ files to a single archive for faster Windows installs. Patched openclaw boundary check for ASAR paths. Extensions unpacked to `gateway.asar.unpacked/`.
+- **Gateway ASAR packaging** — Optional `gateway.asar` archive (enabled by `PACKCLAW_GATEWAY_ASAR=1`) reduces 5000+ files to a single archive for faster Windows installs. Patched openclaw boundary check for ASAR paths. Extensions unpacked to `gateway.asar.unpacked/`.
 - **Preload security** — ~75 IPC methods + 5 event listeners via `contextBridge` (sandbox mode).
 
 ## Runtime Paths (on user's machine)
@@ -204,7 +204,7 @@ There is no linter configured; `tsc --noEmit` is the de facto type check.
 ```
 ~/.openclaw/
   ├── openclaw.json                    # User config (provider, model, auth token, channels)
-  ├── oneclaw.config.json              # OneClaw ownership marker (deviceId, setupCompletedAt)
+  ├── packclaw.config.json              # PackClaw ownership marker (deviceId, setupCompletedAt)
   ├── openclaw.last-known-good.json    # Last successful gateway startup config snapshot
   ├── .device-id                       # Analytics device ID (UUID)
   ├── app.log                          # Application log (5MB truncate)

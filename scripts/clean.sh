@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# 清理 OneClaw 的所有运行痕迹，用于"第一次启动"测试（含 Setup 向导）。
+# 清理 PackClaw 的所有运行痕迹，用于"第一次启动"测试（含 Setup 向导）。
 # 用法: scripts/clean.sh [--dry-run]
 
 DRY_RUN=0
@@ -18,12 +18,12 @@ run() {
   fi
 }
 
-BUNDLE_ID="com.oneclaw.app"
+BUNDLE_ID="com.packclaw.app"
 
-# 终止 OneClaw 进程（包括 Electron 主进程和 gateway 子进程）
-echo "终止 OneClaw 进程"
-run killall OneClaw 2>/dev/null || true
-run killall -9 OneClaw 2>/dev/null || true
+# 终止 PackClaw 进程（包括 Electron 主进程和 gateway 子进程）
+echo "终止 PackClaw 进程"
+run killall PackClaw 2>/dev/null || true
+run killall -9 PackClaw 2>/dev/null || true
 sleep 0.5
 
 # 清理 Electron UserDefaults / 应用缓存

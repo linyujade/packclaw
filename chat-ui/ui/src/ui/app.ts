@@ -115,7 +115,7 @@ type SharePromptStore = {
   shownVersions: number[];
 };
 
-type OneClawUpdateState = {
+type PackClawUpdateState = {
   status: "hidden" | "available" | "downloading";
   version: string | null;
   percent: number | null;
@@ -128,14 +128,14 @@ type ReleaseNotesData = {
   locale: string;
 };
 
-type OneClawNavigatePayload = IpcNavigatePayload;
+type PackClawNavigatePayload = IpcNavigatePayload;
 
-type OneClawBridge = {
-  onNavigate?: (cb: (payload: OneClawNavigatePayload) => void) => (() => void) | void;
+type PackClawBridge = {
+  onNavigate?: (cb: (payload: PackClawNavigatePayload) => void) => (() => void) | void;
   onGatewayReady?: (cb: () => void) => (() => void) | void;
   reportSetupViewState?: (active: boolean) => void;
-  onUpdateState?: (cb: (payload: OneClawUpdateState) => void) => (() => void) | void;
-  getUpdateState?: () => Promise<OneClawUpdateState>;
+  onUpdateState?: (cb: (payload: PackClawUpdateState) => void) => (() => void) | void;
+  getUpdateState?: () => Promise<PackClawUpdateState>;
   // sidebar 「连接你的常用浏览器」pill 用：纯查询当前是否需要修复
   settingsWebbridgeNeedsRepair?: () => Promise<{
     success: boolean;
@@ -656,7 +656,7 @@ export class OpenClawApp extends LitElement {
   sharePromptSubtitle = t("sharePrompt.subtitle");
   sharePromptText = "";
   sharePromptVersion: number | null = null;
-  updateBannerState: OneClawUpdateState = {
+  updateBannerState: PackClawUpdateState = {
     status: "hidden",
     version: null,
     percent: null,
@@ -723,7 +723,7 @@ export class OpenClawApp extends LitElement {
 
   // 首屏拉取更新日志，有未展示的条目时弹出 modal。
   private fetchReleaseNotes() {
-    const bridge = this.getOneClawBridge();
+    const bridge = this.getPackClawBridge();
     void bridge?.getReleaseNotes?.().then((data) => {
       if (data && Array.isArray(data.entries) && data.entries.length > 0) {
         this.releaseNotesData = data;
@@ -805,12 +805,12 @@ export class OpenClawApp extends LitElement {
   }
 
   // 统一读取 preload 暴露的 bridge，避免在多个方法里重复类型断言。
-  private getOneClawBridge(): OneClawBridge | undefined {
-    return (window as unknown as { oneclaw?: OneClawBridge }).oneclaw;
+  private getPackClawBridge(): PackClawBridge | undefined {
+    return (window as unknown as { packclaw?: PackClawBridge }).packclaw;
   }
 
   // 规范化更新状态 payload，保证渲染层只消费合法值。
-  private applyUpdateBannerState(payload: OneClawUpdateState | null | undefined) {
+  private applyUpdateBannerState(payload: PackClawUpdateState | null | undefined) {
     const nextStatus = payload?.status;
     if (nextStatus !== "hidden" && nextStatus !== "available" && nextStatus !== "downloading") {
       return;
@@ -832,7 +832,7 @@ export class OpenClawApp extends LitElement {
     if (this.updateStateCleanup) {
       return;
     }
-    const bridge = this.getOneClawBridge();
+    const bridge = this.getPackClawBridge();
     if (bridge?.onUpdateState) {
       const unsubscribe = bridge.onUpdateState((payload) => this.applyUpdateBannerState(payload));
       this.updateStateCleanup = typeof unsubscribe === "function" ? unsubscribe : null;
@@ -851,9 +851,9 @@ export class OpenClawApp extends LitElement {
   //   1) app 启动（bindWebbridgeRepairPoll 调一次）
   //   2) gateway:ready（gateway 重启时即时刷新；见 bindGatewayReady）
   //   3) webbridge:state-changed（setup-task 装完扩展、settings 修复完成时由主进程广播）
-  //   4) 用户点击 pill（onWebbridgeRepairClick；扩展启用是外部行为，OneClaw 拿不到事件，点一次查一次）
+  //   4) 用户点击 pill（onWebbridgeRepairClick；扩展启用是外部行为，PackClaw 拿不到事件，点一次查一次）
   private async runWebbridgeRepairTick() {
-    const bridge = this.getOneClawBridge();
+    const bridge = this.getPackClawBridge();
     if (!bridge?.settingsWebbridgeNeedsRepair) return;
     try {
       const r = await bridge.settingsWebbridgeNeedsRepair();
@@ -878,7 +878,7 @@ export class OpenClawApp extends LitElement {
     if (this.webbridgeRepairChecking) return;
     this.webbridgeRepairChecking = true;
     try {
-      const bridge = this.getOneClawBridge();
+      const bridge = this.getPackClawBridge();
       if (bridge?.settingsWebbridgePillRepair) {
         const r = await bridge.settingsWebbridgePillRepair();
         const browserName = r?.browserName ?? this.webbridgeRepairBrowserName ?? "Chrome";
@@ -921,7 +921,7 @@ export class OpenClawApp extends LitElement {
   // 不重启 gateway 的场景下专用——避免 pill 卡在 app 启动那次 tick 的旧结果
   private bindWebbridgeStateChanged() {
     if (this.webbridgeStateCleanup) return;
-    const bridge = this.getOneClawBridge();
+    const bridge = this.getPackClawBridge();
     if (bridge?.onWebbridgeStateChanged) {
       const unsubscribe = bridge.onWebbridgeStateChanged(() => {
         void this.runWebbridgeRepairTick();
@@ -934,7 +934,7 @@ export class OpenClawApp extends LitElement {
   // 同时触发 webbridge precheck 重查——修复并启用会重启 gateway，借此事件即时刷新 pill
   private bindGatewayReady() {
     if (this.gatewayReadyCleanup) return;
-    const bridge = this.getOneClawBridge();
+    const bridge = this.getPackClawBridge();
     if (bridge?.onGatewayReady) {
       const unsubscribe = bridge.onGatewayReady(() => {
         if (!this.connected && this.client) {
@@ -950,7 +950,7 @@ export class OpenClawApp extends LitElement {
     if (this.appNavigateCleanup) {
       return;
     }
-    const bridge = this.getOneClawBridge();
+    const bridge = this.getPackClawBridge();
     if (!bridge?.onNavigate) {
       return;
     }
@@ -964,14 +964,14 @@ export class OpenClawApp extends LitElement {
         bridge.reportSetupViewState?.(true);
         this.applySettings({
           ...this.settings,
-          oneclawView: "setup",
+          packclawView: "setup",
         });
         return;
       }
       if (payload?.view === "chat") {
-        const wasSetup = this.settings.oneclawView === "setup";
+        const wasSetup = this.settings.packclawView === "setup";
         // Setup→Chat 转换时，主进程注入最新 gateway token 避免使用旧 token
-        const updates: Record<string, unknown> = { oneclawView: "chat" };
+        const updates: Record<string, unknown> = { packclawView: "chat" };
         if (payload.token) {
           updates.token = payload.token;
         }
@@ -991,7 +991,7 @@ export class OpenClawApp extends LitElement {
         this.settingsNotice = payload.settingsNotice ?? null;
         this.applySettings({
           ...this.settings,
-          oneclawView: "settings",
+          packclawView: "settings",
           navCollapsed: false,
         });
       }
@@ -1029,12 +1029,12 @@ export class OpenClawApp extends LitElement {
   // 从 preload 加载已配置的模型列表
   async loadConfiguredModels() {
     const w = window as Record<string, unknown>;
-    const oneclaw = w.oneclaw as Record<string, (...args: unknown[]) => Promise<unknown>> | undefined;
-    if (!oneclaw?.settingsGetConfiguredModels) {
+    const packclaw = w.packclaw as Record<string, (...args: unknown[]) => Promise<unknown>> | undefined;
+    if (!packclaw?.settingsGetConfiguredModels) {
       return;
     }
     try {
-      const res = (await oneclaw.settingsGetConfiguredModels()) as { success?: boolean; data?: ConfiguredModel[] } | undefined;
+      const res = (await packclaw.settingsGetConfiguredModels()) as { success?: boolean; data?: ConfiguredModel[] } | undefined;
       const models = res?.data;
       this.configuredModels = Array.isArray(models) ? models : [];
       // 没有手动选择时，默认选中 isDefault 的模型
@@ -1248,8 +1248,8 @@ export class OpenClawApp extends LitElement {
   // 从主进程拉取最新分享文案（主进程负责远端拉取与本地兜底）。
   private async fetchShareCopyPayload(): Promise<ShareCopyPayload | null> {
     const bridge = (window as unknown as {
-      oneclaw?: { settingsGetShareCopy?: () => Promise<unknown> };
-    }).oneclaw;
+      packclaw?: { settingsGetShareCopy?: () => Promise<unknown> };
+    }).packclaw;
     if (!bridge?.settingsGetShareCopy) {
       return null;
     }
@@ -1346,7 +1346,7 @@ export class OpenClawApp extends LitElement {
     this.showReleaseNotesModal = false;
     const version = this.releaseNotesData?.currentVersion;
     if (version) {
-      const bridge = this.getOneClawBridge();
+      const bridge = this.getPackClawBridge();
       void bridge?.dismissReleaseNotes?.(version).catch(() => {});
     }
   }

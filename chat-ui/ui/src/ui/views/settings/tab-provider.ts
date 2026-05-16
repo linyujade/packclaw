@@ -956,7 +956,7 @@ export function renderTabProvider(state: AppViewState) {
           ${s.oauthNoMembership ? html`
             <div style="padding:10px 14px;background:rgba(231,76,60,0.08);border-radius:8px;font-size:13px;margin-bottom:12px">
               <span>${t("setup.provider.oauth.noMembership")}</span>
-              <a style="color:var(--accent);cursor:pointer;margin-left:6px" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=oneclaw"); }}>
+              <a style="color:var(--accent);cursor:pointer;margin-left:6px" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=packclaw"); }}>
                 ${t("setup.provider.oauth.subscribeLink")}
               </a>
             </div>

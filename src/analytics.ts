@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import { resolveResourcesPath } from "./constants";
-import { ensureDeviceId, getChannelId } from "./oneclaw-config";
+import { ensureDeviceId, getChannelId } from "./packclaw-config";
 import * as log from "./logger";
 import {
   AnalyticsErrorType,
@@ -78,7 +78,7 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let pendingSends = new Set<Promise<void>>();
 let resolvedConfigPath = "";
 
-// 读取或生成持久化 device ID（委托给 oneclaw-config 统一管理）
+// 读取或生成持久化 device ID（委托给 packclaw-config 统一管理）
 function getDeviceId(): string {
   return ensureDeviceId();
 }
@@ -96,7 +96,7 @@ function commonProps(): Record<string, string> {
   return props;
 }
 
-// DataFinder `header.custom` 用的公共属性：只放 header 标准字段之外、OneClaw 独有的字段
+// DataFinder `header.custom` 用的公共属性：只放 header 标准字段之外、PackClaw 独有的字段
 // （app_version/platform 已由 header.app_version/header.os_name 承载，不重复塞进来）
 function volcanoCustomProps(): Record<string, string> {
   const props: Record<string, string> = {
@@ -216,12 +216,12 @@ export function normalizeVolcanoConfig(raw: Partial<VolcanoConfig>): VolcanoConf
   return { enabled, appId, appKey, endpoint, fallbackEndpoint, requestTimeoutMs, retryDelaysMs };
 }
 
-// 把 OneClaw 的 UUID device-id 转成 DataFinder device_id 要求的十进制字符串。
+// 把 PackClaw 的 UUID device-id 转成 DataFinder device_id 要求的十进制字符串。
 // DataFinder header.device_id 名义上是 uint64，但服务端用 Java/Go Long（signed int64）存储：
 // 折叠结果 >= 2^63 时会被反序列化成负数，事件入库但在看板里检索不到（曾经实测复现：
 // UUID 3e4ca5f1-63ad-4b5d-857c-dad03a9dbdec 折叠出 13488420665181664945 > 2^63-1，消失）。
 // 做法：128 bit 折叠成 64 bit 后再 AND 上 (2^63-1)，把值域钳在 signed int63 正区间。
-// 熵从 64 bit 降到 63 bit，生日碰撞阈值仍在 30 亿设备级，对 OneClaw 规模完全够用。
+// 熵从 64 bit 降到 63 bit，生日碰撞阈值仍在 30 亿设备级，对 PackClaw 规模完全够用。
 function uuidToDataFinderDeviceId(uuid: string): string {
   const hex = uuid.replace(/-/g, "");
   if (hex.length < 32) return "0";
@@ -273,13 +273,13 @@ export function createVolcanoSink(config: VolcanoConfig): SinkConfig {
     enabled: config.enabled,
     endpoints,
     buildPayload: (event, eventProps) => ({
-      // OneClaw 没有账号体系，user_unique_id 留空；把本地 UUID 转成 uint64 填到 header.device_id，
+      // PackClaw 没有账号体系，user_unique_id 留空；把本地 UUID 转成 uint64 填到 header.device_id，
       // DataFinder 按纯设备维度识别。合法 uint64 是服务端接受空 user_unique_id 的唯一条件。
       user: { user_unique_id: "" },
       header: {
         app_id: config.appId,
-        // app_name 与 DataFinder 后台注册值（小写 oneclaw）保持一致，避免看板按 app_name group-by 时分裂成两路。
-        app_name: "oneclaw",
+        // app_name 与 DataFinder 后台注册值（小写 packclaw）保持一致，避免看板按 app_name group-by 时分裂成两路。
+        app_name: "packclaw",
         app_version: app.getVersion(),
         os_name: volcanoOsName(),
         os_version: typeof process.getSystemVersion === "function" ? process.getSystemVersion() : "",
@@ -296,7 +296,7 @@ export function createVolcanoSink(config: VolcanoConfig): SinkConfig {
     headers: {
       "Content-Type": "application/json",
       "X-MCS-AppKey": config.appKey,
-      "User-Agent": `OneClaw/${app.getVersion()}`,
+      "User-Agent": `PackClaw/${app.getVersion()}`,
     },
     requestTimeoutMs: config.requestTimeoutMs,
     retryDelaysMs: config.retryDelaysMs,

@@ -1,12 +1,12 @@
 // 通用 debug 日志门控：默认关，不打扰用户；想看时在 DevTools 里跑
-//   localStorage.setItem("oneclaw.debug", "1") 然后刷新窗口即可全开
-//   localStorage.setItem("oneclaw.debug", "stream,tool") 则只开指定类别
+//   localStorage.setItem("packclaw.debug", "1") 然后刷新窗口即可全开
+//   localStorage.setItem("packclaw.debug", "stream,tool") 则只开指定类别
 //
 // Why localStorage 而不是 build flag：dev:isolated 走的是 vite build（production），
 // import.meta.env.DEV 在 dev/prod 包都是 false，没法做"本地默认开"。localStorage 由用户/调试者按需开，
 // 用户环境完全 zero overhead（cached === false 时调用站点是空函数）。
 
-const DEBUG_KEY = "oneclaw.debug";
+const DEBUG_KEY = "packclaw.debug";
 
 type DebugCategory = "stream" | "tool" | "lifecycle" | "gateway" | "ui";
 

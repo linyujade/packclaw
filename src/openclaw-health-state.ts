@@ -7,12 +7,12 @@ import { resolveUserStateDir, resolveUserConfigPath } from "./constants";
 //      同目录下的 openclaw.json.bak（见 openclaw dist/io-*.js: `${configPath}.bak`）。
 //   2) 用 baseline 与当前 cfg 做 size-drop / hash-mismatch 等判定，若 suspicious
 //      则落一份 .clobbered.* 快照，并尝试从 .bak copy 回来。
-// 当 OneClaw 主进程绕过 openclaw 直写 openclaw.json 时：
+// 当 PackClaw 主进程绕过 openclaw 直写 openclaw.json 时：
 //   - config-health.json 的 lastKnownGood 仍停留在旧字节数；
 //   - openclaw.json.bak 也还是旧快照（可能差 ~8KB）。
 // 于是每次 gateway 读配置都会判定 size-drop → dump 一份 clobbered → I/O 雪崩。
 //
-// 修复：OneClaw 每次直写 openclaw.json 后，做两件事（顺序无关）：
+// 修复：PackClaw 每次直写 openclaw.json 后，做两件事（顺序无关）：
 //   1) 同步用同样字节覆盖 openclaw.json.bak —— 这样无论 openclaw 走哪条 baseline
 //      fallback，对比都不会 size-drop；
 //   2) 删除 config-health.json 里该路径的 entry，让 openclaw 下次 read 时重建
@@ -90,7 +90,7 @@ export function syncOpenClawBackupFile(configPath: string = resolveUserConfigPat
 }
 
 /**
- * OneClaw 直写 openclaw.json 后统一调用。合并 .bak 同步 + health-state 清理两步。
+ * PackClaw 直写 openclaw.json 后统一调用。合并 .bak 同步 + health-state 清理两步。
  */
 export function syncOpenClawStateAfterWrite(configPath: string = resolveUserConfigPath()): void {
   syncOpenClawBackupFile(configPath);

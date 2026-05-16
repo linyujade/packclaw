@@ -1,6 +1,6 @@
 ---
-name: openclaw-and-oneclaw-manual
-description: "Use BEFORE answering when the user's request concerns the OneClaw/OpenClaw product itself: (1) configuration / setup; (2) troubleshooting or 'why does it behave like this' questions about product runtime; (3) capability boundary — user asks for an action and you are NOT certain the product natively supports it; (4) multi-turn dead-end — after several turns of attempts and the user's problem is still unresolved, stop guessing and consult the manual. LLM common knowledge is not a product fact — answer from official docs, not generic LLM/OS knowledge. **EXCEPTION (you MAY SKIP)**: when another OneClaw skill clearly matches the request, that native skill takes priority. Trigger keywords: API Key, Kimi, provider, model settings, switch model, config file, 设置, 配置, 模型切换, 怎么设置, 在哪配, 故障, 报错, 限制, 为什么. Few-shot triggers: 'Kimi API Key 在哪配？', '怎么换模型？', 'OneClaw 能剪视频吗？'."
+name: openclaw-and-packclaw-manual
+description: "Use BEFORE answering when the user's request concerns the PackClaw/OpenClaw product itself: (1) configuration / setup; (2) troubleshooting or 'why does it behave like this' questions about product runtime; (3) capability boundary — user asks for an action and you are NOT certain the product natively supports it; (4) multi-turn dead-end — after several turns of attempts and the user's problem is still unresolved, stop guessing and consult the manual. LLM common knowledge is not a product fact — answer from official docs, not generic LLM/OS knowledge. **EXCEPTION (you MAY SKIP)**: when another PackClaw skill clearly matches the request, that native skill takes priority. Trigger keywords: API Key, Kimi, provider, model settings, switch model, config file, 设置, 配置, 模型切换, 怎么设置, 在哪配, 故障, 报错, 限制, 为什么. Few-shot triggers: 'Kimi API Key 在哪配？', '怎么换模型？', 'PackClaw 能剪视频吗？'."
 metadata:
   {
     "openclaw":
@@ -11,7 +11,7 @@ metadata:
   }
 ---
 
-# OpenClaw/OneClaw Manual
+# OpenClaw/PackClaw Manual
 
 没查手册 = 不能回答，也不能承诺。通用 LLM 常识 ≠ 当前产品事实。
 
@@ -25,31 +25,31 @@ metadata:
 
 ## 查询通道
 
-### 通道 A — OneClaw 手册 + FAQ（能力 / 边界 / 设置 / 故障排查 / 产品 meta）
+### 通道 A — PackClaw 手册 + FAQ（能力 / 边界 / 设置 / 故障排查 / 产品 meta）
 
 **工具：WebFetch**
 
-入口：`https://oneclaw.cn/manual/index.md`
+入口：`https://packclaw.cn/manual/index.md`
 
 ```
-1. WebFetch https://oneclaw.cn/manual/index.md   → 拿当前可用资源清单（手册 .md、FAQ 入口等）
+1. WebFetch https://packclaw.cn/manual/index.md   → 拿当前可用资源清单（手册 .md、FAQ 入口等）
 2. 按语义挑相关链接
 3. WebFetch <链接>                                → 读原文 / 继续顺链接深入
 ```
 
 **不要硬编码资源 URL**——内容会动态增删，始终先抓 index。具体怎么取 FAQ、参数格式等细节由 index 自带说明，不要在脑里假设。
 
-### 通道 B — OneClaw 教程（集成配置）
+### 通道 B — PackClaw 教程（集成配置）
 
 **工具：WebFetch**
 
-入口：`https://oneclaw.cn/docs/`
+入口：`https://packclaw.cn/docs/`
 
 覆盖飞书 / 钉钉 / 企业微信 / QQ / 微信机器人接入、Kimi API Key 注册、KimiClaw 配对、卸载等。
 
 ```
-1. WebFetch https://oneclaw.cn/docs/       → 看目录
-2. WebFetch https://oneclaw.cn/docs/<子页>  → 读详细步骤
+1. WebFetch https://packclaw.cn/docs/       → 看目录
+2. WebFetch https://packclaw.cn/docs/<子页>  → 读详细步骤
 ```
 
 ### 通道 C — OpenClaw 上游文档（能力深挖）
@@ -68,7 +68,7 @@ metadata:
 
 ### 通道路由
 
-#### (1) OneClaw 配置/设置类
+#### (1) PackClaw 配置/设置类
 
 Kimi/模型/API Key 怎么配、快捷键、插件/MCP、开机启动、代理、配置文件位置、怎么更新/卸载/重置、怎么换模型、备份恢复。
 
@@ -80,9 +80,9 @@ Kimi/模型/API Key 怎么配、快捷键、插件/MCP、开机启动、代理�
 | 怎么更新 / 卸载 / 重置 / 备份恢复 | A → B |
 | 飞书/钉钉/企微/QQ/微信机器人接入 | B |
 
-#### (2) OneClaw 产品 meta 问题
+#### (2) PackClaw 产品 meta 问题
 
-针对 OneClaw 客户端自身行为的"为什么……"——**禁止用通用 LLM 常识顶替**。
+针对 PackClaw 客户端自身行为的"为什么……"——**禁止用通用 LLM 常识顶替**。
 
 | 问题示例 | 通道 |
 |----------|------|
@@ -113,7 +113,7 @@ Kimi/模型/API Key 怎么配、快捷键、插件/MCP、开机启动、代理�
 
 - **支持** → 按原文执行，附 URL 来源
 - **不支持** → 明确拒绝 + 引用原文 + 给替代方案
-- **查不到** → 告诉用户不确定，指向 `https://oneclaw.cn/manual/index.md`，**不编造**
+- **查不到** → 告诉用户不确定，指向 `https://packclaw.cn/manual/index.md`，**不编造**
 
 ## 红线对照表
 
@@ -124,10 +124,10 @@ Kimi/模型/API Key 怎么配、快捷键、插件/MCP、开机启动、代理�
 | 「让我一步一步来，我先截图看看微信」 | 分步伪装谨慎。先查手册 |
 | 问"为什么你会忘记" → 答"LLM 上下文窗口有限……" | 产品行为 ≠ LLM 常识。先查通道 A，从 manual index 进 FAQ 引用官方口径 |
 | 问"Kimi API Key 怎么配" → 凭记忆答路径 | 配置路径每版可能变。查通道 A/B 原文 |
-| 问"怎么换模型 / 开机启动怎么关" → 脑补 UI 路径 | 所有 OneClaw 设置必须查手册 |
+| 问"怎么换模型 / 开机启动怎么关" → 脑补 UI 路径 | 所有 PackClaw 设置必须查手册 |
 | 问"为什么卡了" → 答"可能是网络 / 模型问题" | 故障排查走通道 A（manual index → FAQ） |
 
 ## 何时不用查
 
-- 与 OneClaw/OpenClaw 产品无关的 LLM 原生任务（闲聊、写作、翻译、总结、代码生成、通用技术问答）
+- 与 PackClaw/OpenClaw 产品无关的 LLM 原生任务（闲聊、写作、翻译、总结、代码生成、通用技术问答）
 - 明显在 OpenClaw 核心能力内的请求（Web 浏览 / 读写文件 / 调用已装 MCP）

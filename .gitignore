@@ -2,7 +2,7 @@
 upstream/
 
 # 内部文档（独立仓库）
-oneclaw-docs/
+packclaw-docs/
 
 # 依赖
 node_modules/

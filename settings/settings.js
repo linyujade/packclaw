@@ -1,17 +1,17 @@
 // ============================================
-// OneClaw Settings — 双栏设置交互逻辑
+// PackClaw Settings — 双栏设置交互逻辑
 // ============================================
 
 (function () {
   "use strict";
 
-  // iframe 嵌入主窗口时，优先复用父窗口暴露的 oneclaw bridge
+  // iframe 嵌入主窗口时，优先复用父窗口暴露的 packclaw bridge
   try {
-    if (!window.oneclaw && window.parent && window.parent !== window && window.parent.oneclaw) {
-      window.oneclaw = window.parent.oneclaw;
+    if (!window.packclaw && window.parent && window.parent !== window && window.parent.packclaw) {
+      window.packclaw = window.parent.packclaw;
     }
   } catch {
-    // 跨域场景忽略，继续走本窗口 oneclaw
+    // 跨域场景忽略，继续走本窗口 packclaw
   }
 
   // ── Provider 预设（与 setup.js 对齐） ──
@@ -19,7 +19,7 @@
   const PROVIDERS = {
     anthropic: {
       placeholder: "sk-ant-...",
-      platformUrl: "https://console.anthropic.com?utm_source=oneclaw",
+      platformUrl: "https://console.anthropic.com?utm_source=packclaw",
       models: [
         "claude-opus-4-7",
         "claude-sonnet-4-6",
@@ -36,12 +36,12 @@
     },
     openai: {
       placeholder: "sk-...",
-      platformUrl: "https://platform.openai.com?utm_source=oneclaw",
+      platformUrl: "https://platform.openai.com?utm_source=packclaw",
       models: ["gpt-5.4", "gpt-5.4-mini", "gpt-5.2", "gpt-5.2-codex"],
     },
     google: {
       placeholder: "AI...",
-      platformUrl: "https://aistudio.google.com?utm_source=oneclaw",
+      platformUrl: "https://aistudio.google.com?utm_source=packclaw",
       models: ["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-3-flash-preview"],
     },
     custom: {
@@ -51,9 +51,9 @@
   };
 
   const SUB_PLATFORM_URLS = {
-    "moonshot-cn": "https://platform.kimi.com?utm_source=oneclaw",
-    "moonshot-ai": "https://platform.moonshot.ai?utm_source=oneclaw",
-    "kimi-code": "https://kimi.com/code?utm_source=oneclaw",
+    "moonshot-cn": "https://platform.kimi.com?utm_source=packclaw",
+    "moonshot-ai": "https://platform.moonshot.ai?utm_source=packclaw",
+    "kimi-code": "https://kimi.com/code?utm_source=packclaw",
   };
 
   const KIMI_CODE_MODELS = ["kimi-for-coding"];
@@ -125,7 +125,7 @@
       "nav.chat": "Remote Control",
       "nav.feishu": "Feishu Integration",
       "chat.title": "Remote Control",
-      "chat.desc": "Connect WeChat, Feishu, WeCom, DingTalk, Kimi, or QQ to control OneClaw remotely from your messaging app",
+      "chat.desc": "Connect WeChat, Feishu, WeCom, DingTalk, Kimi, or QQ to control PackClaw remotely from your messaging app",
       "chat.platformFeishu": "Feishu",
       "chat.platformFeishuMeta": "Lark / Feishu bot",
       "chat.platformWecom": "WeCom",
@@ -225,7 +225,7 @@
       "feishu.approvedRemoved": "Authorization removed",
       "feishu.kindUser": "User",
       "feishu.kindGroup": "Group",
-      "wecom.desc": "Connect WeCom so users can talk to OneClaw directly in WeCom",
+      "wecom.desc": "Connect WeCom so users can talk to PackClaw directly in WeCom",
       "wecom.enabled": "Enable",
       "wecom.botId": "Bot ID",
       "wecom.secret": "Secret",
@@ -238,23 +238,23 @@
       "wecom.groupPolicyDisabled": "Ignore all group messages",
       "wecom.groupAllowFrom": "Group Allowlist",
       "wecom.groupAllowFromHint": "One group ID per line. This only applies when group access mode is allowlist",
-      "wecom.dmHint": "Pairing is recommended for direct messages. When set to open, OneClaw will automatically write allowFrom=[\"*\"]",
+      "wecom.dmHint": "Pairing is recommended for direct messages. When set to open, PackClaw will automatically write allowFrom=[\"*\"]",
       "wecom.docs": "Plugin README →",
       "wecom.getKey": "Open WeCom Admin →",
       "wecom.save": "Save",
       "wecom.saving": "Saving…",
-      "dingtalk.desc": "Connect DingTalk so users can talk to OneClaw directly in DingTalk",
+      "dingtalk.desc": "Connect DingTalk so users can talk to PackClaw directly in DingTalk",
       "dingtalk.enabled": "Enable",
       "dingtalk.clientId": "Client ID / AppKey",
       "dingtalk.clientSecret": "Client Secret / AppSecret",
       "dingtalk.sessionTimeout": "Session Timeout (ms)",
       "dingtalk.sessionTimeoutHint": "Default is 1800000 ms (30 minutes)",
-      "dingtalk.gatewayHint": "OneClaw will auto-use the current gateway token and enable the required chatCompletions HTTP endpoint",
+      "dingtalk.gatewayHint": "PackClaw will auto-use the current gateway token and enable the required chatCompletions HTTP endpoint",
       "dingtalk.docs": "Setup Guide →",
       "dingtalk.getKey": "Open DingTalk Open Platform →",
       "dingtalk.save": "Save",
       "dingtalk.saving": "Saving…",
-      "qq.desc": "Connect QQ Bot so users can talk to OneClaw directly in QQ",
+      "qq.desc": "Connect QQ Bot so users can talk to PackClaw directly in QQ",
       "qq.enabled": "Enable",
       "qq.appId": "QQ Bot App ID",
       "qq.clientSecret": "Client Secret",
@@ -265,7 +265,7 @@
       "qq.saving": "Saving…",
       "chat.platformWeixin": "WeChat",
       "chat.platformWeixinMeta": "WeChat QR login",
-      "weixin.desc": "Scan a QR code with WeChat to connect OneClaw and chat directly in WeChat",
+      "weixin.desc": "Scan a QR code with WeChat to connect PackClaw and chat directly in WeChat",
       "weixin.login": "Connect WeChat",
       "weixin.cancel": "Cancel",
       "weixin.waitingScan": "Scan with the latest WeChat to log in",
@@ -274,9 +274,9 @@
       "weixin.loginFailed": "Login failed",
       "weixin.disconnect": "Disconnect",
       "weixin.disconnected": "Disconnected",
-      "weixin.notBundled": "WeChat plugin not found. Please reinstall OneClaw.",
+      "weixin.notBundled": "WeChat plugin not found. Please reinstall PackClaw.",
       "weixin.gatewayNotRunning": "Gateway is not running. Please start it first.",
-      "error.weixinNotBundled": "WeChat plugin not found. Please reinstall OneClaw.",
+      "error.weixinNotBundled": "WeChat plugin not found. Please reinstall PackClaw.",
       "error.noPairingCode": "Invalid pairing code",
       "error.loadPairingFailed": "Failed to load pairing requests",
       "error.loadApprovedFailed": "Failed to load approved accounts",
@@ -286,14 +286,14 @@
       "error.noAppSecret": "Please enter the App Secret",
       "error.noWecomBotId": "Please enter the WeCom Bot ID",
       "error.noWecomSecret": "Please enter the WeCom Secret",
-      "error.wecomNotBundled": "WeCom plugin is missing. Please reinstall OneClaw",
+      "error.wecomNotBundled": "WeCom plugin is missing. Please reinstall PackClaw",
       "error.noDingtalkClientId": "Please enter the DingTalk Client ID / AppKey",
       "error.noDingtalkClientSecret": "Please enter the DingTalk Client Secret / AppSecret",
       "error.invalidDingtalkSessionTimeout": "Please enter a valid session timeout in milliseconds",
-      "error.dingtalkNotBundled": "DingTalk connector is missing. Please reinstall OneClaw",
+      "error.dingtalkNotBundled": "DingTalk connector is missing. Please reinstall PackClaw",
       "error.noQqAppId": "Please enter the QQ Bot App ID",
       "error.noQqClientSecret": "Please enter the QQ Bot Client Secret",
-      "error.qqNotBundled": "QQ Bot component is missing. Please reinstall OneClaw",
+      "error.qqNotBundled": "QQ Bot component is missing. Please reinstall PackClaw",
       "error.noKey": "Please enter your API key",
       "error.noBaseUrl": "Please enter the Base URL",
       "error.noModelId": "Please enter the Model ID",
@@ -305,7 +305,7 @@
       "nav.appearance": "Appearance",
       "nav.backup": "Backup & Restore",
       "kimi.title": "KimiClaw",
-      "kimi.desc": "Control OneClaw remotely via Kimi",
+      "kimi.desc": "Control PackClaw remotely via Kimi",
       "kimi.enabled": "Enable",
       "kimi.getGuide": "Go to kimi.com/bot →",
       "kimi.guideText": "Click 'Associate existing OpenClaw' → copy command → paste below",
@@ -357,7 +357,7 @@
       "advanced.cliUninstallDone": "CLI command uninstalled",
       "advanced.cliUnavailable": "CLI action is not available in this app version",
       "advanced.cliOpFailed": "CLI operation failed",
-      "advanced.cliUninstallConfirm": "Uninstall the OneClaw terminal command now?",
+      "advanced.cliUninstallConfirm": "Uninstall the PackClaw terminal command now?",
       "advanced.clawHubRegistry": "ClawHub Registry",
       "advanced.clawHubRegistryPlaceholder": "https://clawhub.ai",
       "advanced.save": "Save",
@@ -405,7 +405,7 @@
       "nav.about": "Software Update",
       "about.title": "Software Update",
       "about.versionInfo": "Version Information",
-      "about.oneClawVersion": "OneClaw Version",
+      "about.packClawVersion": "PackClaw Version",
       "about.openClawVersion": "OpenClaw Version",
       "about.updateTitle": "Software Update",
       "about.checkUpdate": "Check for Updates",
@@ -435,7 +435,7 @@
       "nav.chat": "远程控制",
       "nav.feishu": "飞书集成",
       "chat.title": "远程控制",
-      "chat.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 OneClaw",
+      "chat.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 PackClaw",
       "chat.platformFeishu": "飞书",
       "chat.platformFeishuMeta": "Lark / 飞书机器人",
       "chat.platformWecom": "企业微信",
@@ -535,7 +535,7 @@
       "feishu.approvedRemoved": "已移除授权",
       "feishu.kindUser": "用户",
       "feishu.kindGroup": "群聊",
-      "wecom.desc": "连接企业微信机器人 让用户直接在企业微信里和 OneClaw 对话",
+      "wecom.desc": "连接企业微信机器人 让用户直接在企业微信里和 PackClaw 对话",
       "wecom.enabled": "启用状态",
       "wecom.botId": "Bot ID",
       "wecom.secret": "Secret",
@@ -548,23 +548,23 @@
       "wecom.groupPolicyDisabled": "不接收群消息",
       "wecom.groupAllowFrom": "群聊白名单",
       "wecom.groupAllowFromHint": "每行一个群 ID。仅在“仅白名单群可访问”模式下生效",
-      "wecom.dmHint": "私聊建议优先使用“先配对再访问”；切到“所有人可直接访问”时 OneClaw 会自动写入 allowFrom=[\"*\"]",
+      "wecom.dmHint": "私聊建议优先使用“先配对再访问”；切到“所有人可直接访问”时 PackClaw 会自动写入 allowFrom=[\"*\"]",
       "wecom.docs": "插件说明 →",
       "wecom.getKey": "打开企业微信后台 →",
       "wecom.save": "保存",
       "wecom.saving": "保存中…",
-      "dingtalk.desc": "连接钉钉 让用户直接在钉钉里和 OneClaw 对话",
+      "dingtalk.desc": "连接钉钉 让用户直接在钉钉里和 PackClaw 对话",
       "dingtalk.enabled": "启用状态",
       "dingtalk.clientId": "Client ID / AppKey",
       "dingtalk.clientSecret": "Client Secret / AppSecret",
       "dingtalk.sessionTimeout": "会话超时（毫秒）",
       "dingtalk.sessionTimeoutHint": "默认 1800000 毫秒（30 分钟）",
-      "dingtalk.gatewayHint": "OneClaw会自动复用当前核心服务token并补齐所需的chatCompletions HTTP端点",
+      "dingtalk.gatewayHint": "PackClaw会自动复用当前核心服务token并补齐所需的chatCompletions HTTP端点",
       "dingtalk.docs": "配置指南 →",
       "dingtalk.getKey": "打开钉钉开放平台 →",
       "dingtalk.save": "保存",
       "dingtalk.saving": "保存中…",
-      "qq.desc": "连接 QQ Bot 让用户直接在 QQ 中和 OneClaw 对话",
+      "qq.desc": "连接 QQ Bot 让用户直接在 QQ 中和 PackClaw 对话",
       "qq.enabled": "启用状态",
       "qq.appId": "QQ Bot App ID",
       "qq.clientSecret": "Client Secret",
@@ -575,7 +575,7 @@
       "qq.saving": "保存中…",
       "chat.platformWeixin": "微信",
       "chat.platformWeixinMeta": "微信扫码连接",
-      "weixin.desc": "使用微信扫码连接 OneClaw，在微信中直接对话",
+      "weixin.desc": "使用微信扫码连接 PackClaw，在微信中直接对话",
       "weixin.login": "连接微信",
       "weixin.cancel": "取消",
       "weixin.waitingScan": "使用最新版微信扫码登录",
@@ -584,9 +584,9 @@
       "weixin.loginFailed": "登录失败",
       "weixin.disconnect": "断开连接",
       "weixin.disconnected": "已断开",
-      "weixin.notBundled": "微信插件组件缺失，请重新安装 OneClaw",
+      "weixin.notBundled": "微信插件组件缺失，请重新安装 PackClaw",
       "weixin.gatewayNotRunning": "Gateway 未运行，请先启动",
-      "error.weixinNotBundled": "微信插件组件缺失，请重新安装 OneClaw",
+      "error.weixinNotBundled": "微信插件组件缺失，请重新安装 PackClaw",
       "error.noPairingCode": "配对码无效",
       "error.loadPairingFailed": "读取待审批请求失败",
       "error.loadApprovedFailed": "读取已授权列表失败",
@@ -596,14 +596,14 @@
       "error.noAppSecret": "请输入应用密钥",
       "error.noWecomBotId": "请输入企业微信 Bot ID",
       "error.noWecomSecret": "请输入企业微信 Secret",
-      "error.wecomNotBundled": "企业微信插件组件缺失 请重新安装 OneClaw",
+      "error.wecomNotBundled": "企业微信插件组件缺失 请重新安装 PackClaw",
       "error.noDingtalkClientId": "请输入钉钉 Client ID / AppKey",
       "error.noDingtalkClientSecret": "请输入钉钉 Client Secret / AppSecret",
       "error.invalidDingtalkSessionTimeout": "请输入有效的会话超时毫秒值",
-      "error.dingtalkNotBundled": "钉钉连接器组件缺失 请重新安装 OneClaw",
+      "error.dingtalkNotBundled": "钉钉连接器组件缺失 请重新安装 PackClaw",
       "error.noQqAppId": "请输入 QQ Bot App ID",
       "error.noQqClientSecret": "请输入 QQ Bot Client Secret",
-      "error.qqNotBundled": "QQ Bot 组件缺失 请重新安装 OneClaw",
+      "error.qqNotBundled": "QQ Bot 组件缺失 请重新安装 PackClaw",
       "error.noKey": "请输入 API 密钥",
       "error.noBaseUrl": "请输入接口地址",
       "error.noModelId": "请输入模型 ID",
@@ -615,7 +615,7 @@
       "nav.appearance": "外观",
       "nav.backup": "备份恢复",
       "kimi.title": "KimiClaw",
-      "kimi.desc": "通过 Kimi 远程遥控 OneClaw",
+      "kimi.desc": "通过 Kimi 远程遥控 PackClaw",
       "kimi.enabled": "启用状态",
       "kimi.getGuide": "前往 kimi.com/bot →",
       "kimi.guideText": '点击"关联已有 OpenClaw" → 复制命令 → 粘贴到下方输入框',
@@ -667,7 +667,7 @@
       "advanced.cliUninstallDone": "CLI 命令已卸载",
       "advanced.cliUnavailable": "当前应用版本不支持该 CLI 操作",
       "advanced.cliOpFailed": "CLI 操作失败",
-      "advanced.cliUninstallConfirm": "确认要卸载 OneClaw 终端命令吗？",
+      "advanced.cliUninstallConfirm": "确认要卸载 PackClaw 终端命令吗？",
       "advanced.clawHubRegistry": "ClawHub Registry",
       "advanced.clawHubRegistryPlaceholder": "https://clawhub.ai",
       "advanced.save": "保存",
@@ -715,7 +715,7 @@
       "nav.about": "软件更新",
       "about.title": "软件更新",
       "about.versionInfo": "版本信息",
-      "about.oneClawVersion": "OneClaw 版本",
+      "about.packClawVersion": "PackClaw 版本",
       "about.openClawVersion": "OpenClaw 版本",
       "about.updateTitle": "软件更新",
       "about.checkUpdate": "检查更新",
@@ -1389,9 +1389,9 @@
 
   // 仅检查登录状态，切换按钮显隐（不加载用量，用于新增模式）
   async function checkOAuthStatusOnly() {
-    if (!window.oneclaw?.kimiOAuthStatus) return;
+    if (!window.packclaw?.kimiOAuthStatus) return;
     try {
-      var status = await window.oneclaw.kimiOAuthStatus();
+      var status = await window.packclaw.kimiOAuthStatus();
       if (status && status.loggedIn) {
         toggleEl(els.btnOAuth, false);
         toggleEl(els.btnOAuthLogout, true);
@@ -1404,9 +1404,9 @@
 
   // 检查当前 OAuth 登录状态，切换登录/退出按钮
   async function checkOAuthStatus() {
-    if (!window.oneclaw?.kimiOAuthStatus) return;
+    if (!window.packclaw?.kimiOAuthStatus) return;
     try {
-      var status = await window.oneclaw.kimiOAuthStatus();
+      var status = await window.packclaw.kimiOAuthStatus();
       if (status && status.loggedIn) {
         toggleEl(els.btnOAuth, false);
         toggleEl(els.btnOAuthLogout, true);
@@ -1476,7 +1476,7 @@
     hideMsg();
 
     try {
-      var result = await window.oneclaw.kimiOAuthLogin();
+      var result = await window.packclaw.kimiOAuthLogin();
       if (!result.success) {
         showMsg(result.message || t("error.verifyFailed"), "error");
         setOAuthLoading(false);
@@ -1495,8 +1495,8 @@
 
   // 取消 OAuth 轮询
   function handleOAuthCancel() {
-    if (window.oneclaw?.kimiOAuthCancel) {
-      window.oneclaw.kimiOAuthCancel();
+    if (window.packclaw?.kimiOAuthCancel) {
+      window.packclaw.kimiOAuthCancel();
     }
     setOAuthLoading(false);
     els.oauthStatus.classList.add("hidden");
@@ -1504,8 +1504,8 @@
 
   // 退出 OAuth 登录
   async function handleOAuthLogout() {
-    if (window.oneclaw?.kimiOAuthLogout) {
-      await window.oneclaw.kimiOAuthLogout();
+    if (window.packclaw?.kimiOAuthLogout) {
+      await window.packclaw.kimiOAuthLogout();
     }
     pendingOAuthToken = null;
     // 隐藏退出按钮，恢复登录按钮
@@ -1600,12 +1600,12 @@
 
   // 加载用量数据（仅编辑模式 + kimi-code 子平台展示）
   async function loadUsage() {
-    if (!window.oneclaw?.kimiGetUsage) return;
+    if (!window.packclaw?.kimiGetUsage) return;
     if (editorState.mode === "add") return;
     if (!(currentProvider === "moonshot" && getSubPlatform() === "kimi-code")) return;
     els.btnUsageRefresh.classList.add("spinning");
     try {
-      var result = await window.oneclaw.kimiGetUsage();
+      var result = await window.packclaw.kimiGetUsage();
       // 异步返回后再次校验：用户可能已切走或进入新增模式
       if (editorState.mode === "add") return;
       if (!(currentProvider === "moonshot" && getSubPlatform() === "kimi-code")) return;
@@ -1716,14 +1716,14 @@
       var verifyParams = kimiOAuth
         ? Object.assign({}, params, { verifyViaProxy: true })
         : params;
-      var verifyResult = await window.oneclaw.settingsVerifyKey(verifyParams);
+      var verifyResult = await window.packclaw.settingsVerifyKey(verifyParams);
       if (!verifyResult.success) {
         // kimi-code OAuth 首次保存：区分 401（无会员）和其他错误
         if (kimiOAuth && pendingOAuthToken) {
           var is401 = verifyResult.message && /\b401\b/.test(verifyResult.message);
           if (is401) {
             pendingOAuthToken = null;
-            if (window.oneclaw.kimiOAuthLogout) window.oneclaw.kimiOAuthLogout();
+            if (window.packclaw.kimiOAuthLogout) window.packclaw.kimiOAuthLogout();
             showOAuthNoMembership();
             setSaving(false);
             return;
@@ -1747,7 +1747,7 @@
       if (kimiOAuth && !pendingOAuthToken) payload.keepProxyAuth = true;
 
       // 再保存
-      var saveResult = await window.oneclaw.settingsSaveProvider(payload);
+      var saveResult = await window.packclaw.settingsSaveProvider(payload);
       if (!saveResult.success) {
         showMsg(saveResult.message || "Save failed", "error");
         setSaving(false);
@@ -1760,7 +1760,7 @@
 
       // 保存成功后刷新 savedProviders 缓存
       try {
-        var refreshResult = await window.oneclaw.settingsGetConfig();
+        var refreshResult = await window.packclaw.settingsGetConfig();
         if (refreshResult.success && refreshResult.data && refreshResult.data.savedProviders) {
           savedProviders = refreshResult.data.savedProviders;
         }
@@ -2097,8 +2097,8 @@
     if (!silent) hideCurrentAccessMsg();
     try {
       var result = getCurrentAccessPlatform() === "wecom"
-        ? await window.oneclaw.settingsListWecomPairing()
-        : await window.oneclaw.settingsListFeishuPairing();
+        ? await window.packclaw.settingsListWecomPairing()
+        : await window.packclaw.settingsListFeishuPairing();
       if (!result.success) {
         if (!silent) showCurrentAccessMsg(result.message || t("error.loadPairingFailed"), "error");
         chPairingRequests = [];
@@ -2128,8 +2128,8 @@
     if (!silent) hideCurrentAccessMsg();
     try {
       var result = getCurrentAccessPlatform() === "wecom"
-        ? await window.oneclaw.settingsListWecomApproved()
-        : await window.oneclaw.settingsListFeishuApproved();
+        ? await window.packclaw.settingsListWecomApproved()
+        : await window.packclaw.settingsListFeishuApproved();
       if (!result.success) {
         if (!silent) showCurrentAccessMsg(result.message || t("error.loadApprovedFailed"), "error");
         chApprovedEntries = [];
@@ -2195,12 +2195,12 @@
 
     try {
       var result = getCurrentAccessPlatform() === "wecom"
-        ? await window.oneclaw.settingsApproveWecomPairing({
+        ? await window.packclaw.settingsApproveWecomPairing({
             code: trimmed,
             id: String(id || "").trim(),
             name: String(name || "").trim(),
           })
-        : await window.oneclaw.settingsApproveFeishuPairing({
+        : await window.packclaw.settingsApproveFeishuPairing({
         code: trimmed,
         id: String(id || "").trim(),
         name: String(name || "").trim(),
@@ -2236,12 +2236,12 @@
 
     try {
       var result = getCurrentAccessPlatform() === "wecom"
-        ? await window.oneclaw.settingsRejectWecomPairing({
+        ? await window.packclaw.settingsRejectWecomPairing({
             code: trimmed,
             id: String(id || "").trim(),
             name: String(name || "").trim(),
           })
-        : await window.oneclaw.settingsRejectFeishuPairing({
+        : await window.packclaw.settingsRejectFeishuPairing({
         code: trimmed,
         id: String(id || "").trim(),
         name: String(name || "").trim(),
@@ -2278,11 +2278,11 @@
 
     try {
       var result = getCurrentAccessPlatform() === "wecom"
-        ? await window.oneclaw.settingsRemoveWecomApproved({
+        ? await window.packclaw.settingsRemoveWecomApproved({
             kind: entryKind,
             id: entryId,
           })
-        : await window.oneclaw.settingsRemoveFeishuApproved({
+        : await window.packclaw.settingsRemoveFeishuApproved({
         kind: entryKind,
         id: entryId,
       });
@@ -2421,7 +2421,7 @@
     els.chGroupDialogInput.disabled = true;
     hideChMsg();
     try {
-      var result = await window.oneclaw.settingsAddFeishuGroupAllowFrom({ id: groupId });
+      var result = await window.packclaw.settingsAddFeishuGroupAllowFrom({ id: groupId });
       if (!result.success) {
         showChMsg(result.message || t("error.invalidGroupId"), "error");
       } else {
@@ -2451,7 +2451,7 @@
       setChSaving(true);
       hideChMsg();
       try {
-        var result = await window.oneclaw.settingsSaveChannel({ enabled: false });
+        var result = await window.packclaw.settingsSaveChannel({ enabled: false });
         setChSaving(false);
         if (result.success) {
           showToast(t("common.saved"));
@@ -2478,7 +2478,7 @@
     hideChMsg();
 
     try {
-      var verifyResult = await window.oneclaw.settingsVerifyKey({
+      var verifyResult = await window.packclaw.settingsVerifyKey({
         provider: "feishu",
         appId: appId,
         appSecret: appSecret,
@@ -2490,7 +2490,7 @@
         return;
       }
 
-      var saveResult = await window.oneclaw.settingsSaveChannel({
+      var saveResult = await window.packclaw.settingsSaveChannel({
         appId: appId,
         appSecret: appSecret,
         enabled: true,
@@ -2519,7 +2519,7 @@
   // 加载已有频道配置
   async function loadChannelConfig() {
     try {
-      var result = await window.oneclaw.settingsGetChannelConfig();
+      var result = await window.packclaw.settingsGetChannelConfig();
       if (!result.success || !result.data) return;
 
       var data = result.data;
@@ -2604,7 +2604,7 @@
       setWecomSaving(true);
       hideWecomMsg();
       try {
-        var disableResult = await window.oneclaw.settingsSaveWecomConfig({ enabled: false });
+        var disableResult = await window.packclaw.settingsSaveWecomConfig({ enabled: false });
         setWecomSaving(false);
         if (disableResult.success) {
           showToast(t("common.saved"));
@@ -2628,7 +2628,7 @@
     hideWecomMsg();
 
     try {
-      var saveResult = await window.oneclaw.settingsSaveWecomConfig({
+      var saveResult = await window.packclaw.settingsSaveWecomConfig({
         enabled: true,
         botId: botId,
         secret: secret,
@@ -2656,7 +2656,7 @@
   // 回填企业微信配置，并在未打包插件时给出前置提示。
   async function loadWecomConfig() {
     try {
-      var result = await window.oneclaw.settingsGetWecomConfig();
+      var result = await window.packclaw.settingsGetWecomConfig();
       if (!result.success || !result.data) return;
 
       var data = result.data;
@@ -2730,7 +2730,7 @@
       setDingtalkSaving(true);
       hideDingtalkMsg();
       try {
-        var disableResult = await window.oneclaw.settingsSaveDingtalkConfig({ enabled: false });
+        var disableResult = await window.packclaw.settingsSaveDingtalkConfig({ enabled: false });
         setDingtalkSaving(false);
         if (disableResult.success) {
           showToast(t("common.saved"));
@@ -2759,7 +2759,7 @@
     hideDingtalkMsg();
 
     try {
-      var verifyResult = await window.oneclaw.settingsVerifyKey({
+      var verifyResult = await window.packclaw.settingsVerifyKey({
         provider: "dingtalk",
         clientId: clientId,
         clientSecret: clientSecret,
@@ -2771,7 +2771,7 @@
         return;
       }
 
-      var saveResult = await window.oneclaw.settingsSaveDingtalkConfig({
+      var saveResult = await window.packclaw.settingsSaveDingtalkConfig({
         enabled: true,
         clientId: clientId,
         clientSecret: clientSecret,
@@ -2796,7 +2796,7 @@
   // 回填钉钉配置，并在未打包插件时给出前置提示。
   async function loadDingtalkConfig() {
     try {
-      var result = await window.oneclaw.settingsGetDingtalkConfig();
+      var result = await window.packclaw.settingsGetDingtalkConfig();
       if (!result.success || !result.data) return;
 
       var data = result.data;
@@ -2852,7 +2852,7 @@
       setQqSaving(true);
       hideQqMsg();
       try {
-        var disableResult = await window.oneclaw.settingsSaveQqbotConfig({ enabled: false });
+        var disableResult = await window.packclaw.settingsSaveQqbotConfig({ enabled: false });
         setQqSaving(false);
         if (disableResult.success) {
           showToast(t("common.saved"));
@@ -2875,7 +2875,7 @@
     hideQqMsg();
 
     try {
-      var verifyResult = await window.oneclaw.settingsVerifyKey({
+      var verifyResult = await window.packclaw.settingsVerifyKey({
         provider: "qqbot",
         appId: appId,
         clientSecret: clientSecret,
@@ -2887,7 +2887,7 @@
         return;
       }
 
-      var saveResult = await window.oneclaw.settingsSaveQqbotConfig({
+      var saveResult = await window.packclaw.settingsSaveQqbotConfig({
         enabled: true,
         appId: appId,
         clientSecret: clientSecret,
@@ -2912,7 +2912,7 @@
   // 回填 QQ Bot 配置，并在未打包插件时给出前置提示。
   async function loadQqbotConfig() {
     try {
-      var result = await window.oneclaw.settingsGetQqbotConfig();
+      var result = await window.packclaw.settingsGetQqbotConfig();
       if (!result.success || !result.data) return;
 
       var data = result.data;
@@ -2961,7 +2961,7 @@
     hideWeixinMsg();
     var enabled = isWeixinEnabled();
     try {
-      var result = await window.oneclaw.settingsSaveWeixinConfig({
+      var result = await window.packclaw.settingsSaveWeixinConfig({
         enabled: enabled,
       });
       if (result.success) {
@@ -2969,7 +2969,7 @@
         toggleEl(els.weixinFields, enabled);
         if (enabled) {
           // 启用时：已连接则显示状态，否则自动发起扫码
-          var cfg = await window.oneclaw.settingsGetWeixinConfig();
+          var cfg = await window.packclaw.settingsGetWeixinConfig();
           var accounts = (cfg.success && cfg.data && cfg.data.accounts) || [];
           if (accounts.length > 0) {
             showWeixinConnected(accounts[0]);
@@ -2999,7 +2999,7 @@
     if (els.weixinQrStatus) els.weixinQrStatus.textContent = t("weixin.waitingScan");
 
     try {
-      var startResult = await window.oneclaw.settingsWeixinLoginStart();
+      var startResult = await window.packclaw.settingsWeixinLoginStart();
       if (!startResult.success || !startResult.data || !startResult.data.qrDataUrl) {
         showWeixinMsg((startResult.data && startResult.data.message) || startResult.message || t("weixin.loginFailed"), "error");
         resetWeixinLoginUI();
@@ -3023,7 +3023,7 @@
   async function pollWeixinLogin() {
     if (!weixinLoginPolling || !weixinQrcode) return;
     try {
-      var waitResult = await window.oneclaw.settingsWeixinLoginWait({
+      var waitResult = await window.packclaw.settingsWeixinLoginWait({
         qrcode: weixinQrcode,
       });
       if (!weixinLoginPolling) return;
@@ -3082,7 +3082,7 @@
   async function removeWeixinAccount() {
     hideWeixinMsg();
     try {
-      var result = await window.oneclaw.settingsWeixinClearAccounts();
+      var result = await window.packclaw.settingsWeixinClearAccounts();
       if (result.success) {
         if (els.weixinConnectedInfo) els.weixinConnectedInfo.classList.add("hidden");
         if (els.weixinStatusDot) els.weixinStatusDot.classList.remove("active");
@@ -3098,7 +3098,7 @@
   // 回填微信配置，恢复已连接状态
   async function loadWeixinConfig() {
     try {
-      var result = await window.oneclaw.settingsGetWeixinConfig();
+      var result = await window.packclaw.settingsGetWeixinConfig();
       if (result.success && result.data) {
         if (els.weixinEnabled) els.weixinEnabled.checked = result.data.enabled;
         toggleEl(els.weixinFields, result.data.enabled);
@@ -3125,7 +3125,7 @@
   // 加载高级配置
   async function loadAdvancedConfig() {
     try {
-      var result = await window.oneclaw.settingsGetAdvanced();
+      var result = await window.packclaw.settingsGetAdvanced();
       if (!result.success || !result.data) {
         return;
       }
@@ -3162,17 +3162,17 @@
   // 读取主进程 CLI 状态；新版本优先使用 enabled，旧版本回退 installed。
   async function loadCliStatus() {
     if (
-      !window.oneclaw ||
-      typeof window.oneclaw.settingsGetCliStatus !== "function" ||
-      typeof window.oneclaw.settingsInstallCli !== "function" ||
-      typeof window.oneclaw.settingsUninstallCli !== "function"
+      !window.packclaw ||
+      typeof window.packclaw.settingsGetCliStatus !== "function" ||
+      typeof window.packclaw.settingsInstallCli !== "function" ||
+      typeof window.packclaw.settingsUninstallCli !== "function"
     ) {
       if (els.cliEnabled) els.cliEnabled.disabled = true;
       return;
     }
 
     try {
-      var result = await window.oneclaw.settingsGetCliStatus();
+      var result = await window.packclaw.settingsGetCliStatus();
       if (!result || !result.success || !result.data) return;
       cliEnabled = result.data.enabled === true;
       if (result.data.enabled !== true && result.data.enabled !== false) {
@@ -3190,9 +3190,9 @@
     hideAdvMsg();
 
     if (
-      !window.oneclaw ||
-      typeof window.oneclaw.settingsInstallCli !== "function" ||
-      typeof window.oneclaw.settingsUninstallCli !== "function"
+      !window.packclaw ||
+      typeof window.packclaw.settingsInstallCli !== "function" ||
+      typeof window.packclaw.settingsUninstallCli !== "function"
     ) {
       showAdvMsg(t("advanced.cliUnavailable"), "error");
       renderCliControls();
@@ -3205,8 +3205,8 @@
     renderCliControls();
     try {
       var result = wantInstall
-        ? await window.oneclaw.settingsInstallCli()
-        : await window.oneclaw.settingsUninstallCli();
+        ? await window.packclaw.settingsInstallCli()
+        : await window.packclaw.settingsUninstallCli();
 
       if (!result || !result.success) {
         showAdvMsg(result?.message || t("advanced.cliOpFailed"), "error");
@@ -3243,7 +3243,7 @@
     var clawHubRegistry = els.clawHubRegistry ? els.clawHubRegistry.value.trim() : "";
 
     try {
-      var result = await window.oneclaw.settingsSaveAdvanced({
+      var result = await window.packclaw.settingsSaveAdvanced({
         browserProfile: browserProfile,
         imessageEnabled: imessageEnabled,
         launchAtLogin: launchAtLogin,
@@ -3330,7 +3330,7 @@
     }
     window.parent.postMessage(
       {
-        source: "oneclaw-settings-embed",
+        source: "packclaw-settings-embed",
         type: "appearance-request-init",
       },
       "*",
@@ -3339,7 +3339,7 @@
 
   function handleAppearanceInitMessage(event) {
     var data = event && event.data;
-    if (!data || data.source !== "oneclaw-chat-ui" || data.type !== "appearance-init") {
+    if (!data || data.source !== "packclaw-chat-ui" || data.type !== "appearance-init") {
       return;
     }
     var payload = data.payload || {};
@@ -3390,7 +3390,7 @@
       if (isEmbeddedSettings() && window.parent && window.parent !== window) {
         window.parent.postMessage(
           {
-            source: "oneclaw-settings-embed",
+            source: "packclaw-settings-embed",
             type: "appearance-save",
             payload: { theme: theme, showThinking: showThinking },
           },
@@ -3468,7 +3468,7 @@
   // 加载已有 Kimi 配置
   async function loadKimiConfig() {
     try {
-      var result = await window.oneclaw.settingsGetKimiConfig();
+      var result = await window.packclaw.settingsGetKimiConfig();
       if (!result.success || !result.data) return;
 
       var data = result.data;
@@ -3505,7 +3505,7 @@
       setKimiSaving(true);
       hideKimiMsg();
       try {
-        var result = await window.oneclaw.settingsSaveKimiConfig({ enabled: false });
+        var result = await window.packclaw.settingsSaveKimiConfig({ enabled: false });
         setKimiSaving(false);
         if (result.success) {
           showToast(t("common.saved"));
@@ -3534,7 +3534,7 @@
     hideKimiMsg();
 
     try {
-      var result = await window.oneclaw.settingsSaveKimiConfig({
+      var result = await window.packclaw.settingsSaveKimiConfig({
         botToken: botToken,
         enabled: true,
         wsURL: wsURLOverride || "",
@@ -3584,7 +3584,7 @@
   // 加载 Search 配置
   async function loadSearchConfig() {
     try {
-      var result = await window.oneclaw.settingsGetKimiSearchConfig();
+      var result = await window.packclaw.settingsGetKimiSearchConfig();
       if (!result.success || !result.data) return;
 
       var data = result.data;
@@ -3637,7 +3637,7 @@
       }
       // 自定义服务地址（空字符串表示恢复默认）
       params.serviceBaseUrl = els.searchServiceBaseUrl.value.trim();
-      var result = await window.oneclaw.settingsSaveKimiSearchConfig(params);
+      var result = await window.packclaw.settingsSaveKimiSearchConfig(params);
       setSearchSaving(false);
       if (result.success) {
         showToast(t("common.saved"));
@@ -3668,7 +3668,7 @@
   // 加载记忆配置
   async function loadMemoryConfig() {
     try {
-      var result = await window.oneclaw.settingsGetMemoryConfig();
+      var result = await window.packclaw.settingsGetMemoryConfig();
       if (!result.success || !result.data) return;
       var data = result.data;
       els.memorySessionEnabled.checked = data.sessionMemoryEnabled !== false;
@@ -3690,7 +3690,7 @@
     setMemorySaving(true);
     hideMemoryMsg();
     try {
-      var result = await window.oneclaw.settingsSaveMemoryConfig({
+      var result = await window.packclaw.settingsSaveMemoryConfig({
         sessionMemoryEnabled: !!els.memorySessionEnabled.checked,
         embeddingEnabled: !!els.memoryEmbeddingEnabled.checked,
       });
@@ -3713,9 +3713,9 @@
 
   // 从后端拉取已配置模型列表并渲染左侧面板
   async function renderModelList() {
-    if (!window.oneclaw || !window.oneclaw.settingsGetConfiguredModels) return;
+    if (!window.packclaw || !window.packclaw.settingsGetConfiguredModels) return;
     try {
-      var result = await window.oneclaw.settingsGetConfiguredModels();
+      var result = await window.packclaw.settingsGetConfiguredModels();
       if (!result.success || !result.data) return;
       modelListData = result.data;
     } catch { return; }
@@ -3968,7 +3968,7 @@
     }
     if (!confirm(t("settings.confirmDelete"))) return;
     try {
-      var result = await window.oneclaw.settingsDeleteModel({ modelKey: editorState.modelKey });
+      var result = await window.packclaw.settingsDeleteModel({ modelKey: editorState.modelKey });
       if (!result.success) {
         showMsg(result.message || "Delete failed", "error");
         return;
@@ -3985,7 +3985,7 @@
   async function handleSetDefault() {
     if (!editorState.modelKey) return;
     try {
-      var result = await window.oneclaw.settingsSetDefaultModel({ modelKey: editorState.modelKey });
+      var result = await window.packclaw.settingsSetDefaultModel({ modelKey: editorState.modelKey });
       if (!result.success) {
         showMsg(result.message || "Set default failed", "error");
         return;
@@ -4031,7 +4031,7 @@
 
   async function loadCurrentConfig() {
     try {
-      var result = await window.oneclaw.settingsGetConfig();
+      var result = await window.packclaw.settingsGetConfig();
       if (!result.success || !result.data) return;
 
       var data = result.data;
@@ -4129,10 +4129,10 @@
 
   // 加载备份与恢复数据并渲染列表。
   async function loadBackupData() {
-    if (!window.oneclaw || !window.oneclaw.settingsListConfigBackups) return;
+    if (!window.packclaw || !window.packclaw.settingsListConfigBackups) return;
 
     try {
-      var result = await window.oneclaw.settingsListConfigBackups();
+      var result = await window.packclaw.settingsListConfigBackups();
       if (!result.success || !result.data) {
         showBackupMsg(result.message || "Load backup data failed", "error");
         return;
@@ -4219,15 +4219,15 @@
     hideBackupMsg();
 
     try {
-      var result = await window.oneclaw.settingsRestoreConfigBackup({ fileName: fileName });
+      var result = await window.packclaw.settingsRestoreConfigBackup({ fileName: fileName });
       if (!result.success) {
         showBackupMsg(result.message || "Restore failed", "error");
         setBackupRestoring(false);
         return;
       }
 
-      if (window.oneclaw && window.oneclaw.restartGateway) {
-        window.oneclaw.restartGateway();
+      if (window.packclaw && window.packclaw.restartGateway) {
+        window.packclaw.restartGateway();
         scheduleGatewayStateRefresh();
       }
       showToast(t("backup.restored"));
@@ -4248,15 +4248,15 @@
     hideBackupMsg();
 
     try {
-      var result = await window.oneclaw.settingsRestoreLastKnownGood();
+      var result = await window.packclaw.settingsRestoreLastKnownGood();
       if (!result.success) {
         showBackupMsg(result.message || "Restore failed", "error");
         setBackupRestoring(false);
         return;
       }
 
-      if (window.oneclaw && window.oneclaw.restartGateway) {
-        window.oneclaw.restartGateway();
+      if (window.packclaw && window.packclaw.restartGateway) {
+        window.packclaw.restartGateway();
         scheduleGatewayStateRefresh();
       }
       showToast(t("backup.restored"));
@@ -4308,12 +4308,12 @@
 
   // 查询 Gateway 当前状态并刷新按钮可用性。
   async function refreshGatewayState() {
-    if (!window.oneclaw || !window.oneclaw.getGatewayState) {
+    if (!window.packclaw || !window.packclaw.getGatewayState) {
       setGatewayStateUI("unknown");
       return;
     }
     try {
-      var state = await window.oneclaw.getGatewayState();
+      var state = await window.packclaw.getGatewayState();
       setGatewayStateUI(state);
     } catch {
       setGatewayStateUI("unknown");
@@ -4329,19 +4329,19 @@
   // 按钮操作统一入口：重启/启动/停止 Gateway。
   async function handleGatewayAction(kind) {
     if (gatewayOperating || backupRestoring || backupResetting) return;
-    if (!window.oneclaw) return;
+    if (!window.packclaw) return;
 
     gatewayOperating = true;
     setGatewayStateUI(gatewayState);
     hideBackupMsg();
 
     try {
-      if (kind === "restart" && window.oneclaw.restartGateway) {
-        window.oneclaw.restartGateway();
-      } else if (kind === "start" && window.oneclaw.startGateway) {
-        window.oneclaw.startGateway();
-      } else if (kind === "stop" && window.oneclaw.stopGateway) {
-        window.oneclaw.stopGateway();
+      if (kind === "restart" && window.packclaw.restartGateway) {
+        window.packclaw.restartGateway();
+      } else if (kind === "start" && window.packclaw.startGateway) {
+        window.packclaw.startGateway();
+      } else if (kind === "stop" && window.packclaw.stopGateway) {
+        window.packclaw.stopGateway();
       } else {
         throw new Error("Gateway control API unavailable");
       }
@@ -4399,13 +4399,13 @@
   async function handleResetConfig() {
     if (backupRestoring || backupResetting) return;
     if (!window.confirm(t("backup.confirmReset"))) return;
-    if (!window.oneclaw || !window.oneclaw.settingsResetConfigAndRelaunch) return;
+    if (!window.packclaw || !window.packclaw.settingsResetConfigAndRelaunch) return;
 
     setBackupResetting(true);
     hideBackupMsg();
 
     try {
-      var result = await window.oneclaw.settingsResetConfigAndRelaunch();
+      var result = await window.packclaw.settingsResetConfigAndRelaunch();
       if (!result.success) {
         showBackupMsg(result.message || "Reset failed", "error");
         setBackupResetting(false);
@@ -4487,7 +4487,7 @@
 
   // 非会员提示（带订阅超链接）
   function showOAuthNoMembership() {
-    var url = "https://kimi.com/membership/pricing?utm_source=oneclaw";
+    var url = "https://kimi.com/membership/pricing?utm_source=packclaw";
     els.msgBox.textContent = "";
     els.msgBox.className = "msg-box error";
     els.msgBox.appendChild(document.createTextNode(t("provider.oauthNoMembership") + " "));
@@ -4497,7 +4497,7 @@
     link.className = "oauth-membership-link";
     link.addEventListener("click", function (e) {
       e.preventDefault();
-      if (window.oneclaw?.openExternal) window.oneclaw.openExternal(url);
+      if (window.packclaw?.openExternal) window.packclaw.openExternal(url);
     });
     els.msgBox.appendChild(link);
   }
@@ -4556,8 +4556,8 @@
     els.platformLink.addEventListener("click", function (e) {
       e.preventDefault();
       var url = els.platformLink.dataset.url;
-      if (url && window.oneclaw && window.oneclaw.openExternal) {
-        window.oneclaw.openExternal(url);
+      if (url && window.packclaw && window.packclaw.openExternal) {
+        window.packclaw.openExternal(url);
       }
     });
 
@@ -4625,14 +4625,14 @@
     els.btnToggleChSecret.addEventListener("click", togglePasswordVisibility);
     els.chDocsLink.addEventListener("click", function (e) {
       e.preventDefault();
-      if (window.oneclaw && window.oneclaw.openExternal) {
-        window.oneclaw.openExternal("https://oneclaw.cn/docs/tutorials/feishu-bot.html");
+      if (window.packclaw && window.packclaw.openExternal) {
+        window.packclaw.openExternal("https://packclaw.cn/docs/tutorials/feishu-bot.html");
       }
     });
     els.chConsoleLink.addEventListener("click", function (e) {
       e.preventDefault();
-      if (window.oneclaw && window.oneclaw.openExternal) {
-        window.oneclaw.openExternal("https://open.feishu.cn/app");
+      if (window.packclaw && window.packclaw.openExternal) {
+        window.packclaw.openExternal("https://open.feishu.cn/app");
       }
     });
     if (els.btnChAccessAddGroup) {
@@ -4735,16 +4735,16 @@
     if (els.wecomDocsLink) {
       els.wecomDocsLink.addEventListener("click", function (e) {
         e.preventDefault();
-        if (window.oneclaw && window.oneclaw.openExternal) {
-          window.oneclaw.openExternal("https://github.com/WecomTeam/wecom-openclaw-plugin");
+        if (window.packclaw && window.packclaw.openExternal) {
+          window.packclaw.openExternal("https://github.com/WecomTeam/wecom-openclaw-plugin");
         }
       });
     }
     if (els.wecomConsoleLink) {
       els.wecomConsoleLink.addEventListener("click", function (e) {
         e.preventDefault();
-        if (window.oneclaw && window.oneclaw.openExternal) {
-          window.oneclaw.openExternal("https://work.weixin.qq.com/");
+        if (window.packclaw && window.packclaw.openExternal) {
+          window.packclaw.openExternal("https://work.weixin.qq.com/");
         }
       });
     }
@@ -4799,16 +4799,16 @@
     if (els.dingtalkDocsLink) {
       els.dingtalkDocsLink.addEventListener("click", function (e) {
         e.preventDefault();
-        if (window.oneclaw && window.oneclaw.openExternal) {
-          window.oneclaw.openExternal("https://github.com/DingTalk-Real-AI/dingtalk-openclaw-connector");
+        if (window.packclaw && window.packclaw.openExternal) {
+          window.packclaw.openExternal("https://github.com/DingTalk-Real-AI/dingtalk-openclaw-connector");
         }
       });
     }
     if (els.dingtalkConsoleLink) {
       els.dingtalkConsoleLink.addEventListener("click", function (e) {
         e.preventDefault();
-        if (window.oneclaw && window.oneclaw.openExternal) {
-          window.oneclaw.openExternal("https://open.dingtalk.com/");
+        if (window.packclaw && window.packclaw.openExternal) {
+          window.packclaw.openExternal("https://open.dingtalk.com/");
         }
       });
     }
@@ -4835,8 +4835,8 @@
     if (els.qqConsoleLink) {
       els.qqConsoleLink.addEventListener("click", function (e) {
         e.preventDefault();
-        if (window.oneclaw && window.oneclaw.openExternal) {
-          window.oneclaw.openExternal("https://q.qq.com/qqbot/openclaw/");
+        if (window.packclaw && window.packclaw.openExternal) {
+          window.packclaw.openExternal("https://q.qq.com/qqbot/openclaw/");
         }
       });
     }
@@ -4877,8 +4877,8 @@
     });
     els.kimiBotPageLink.addEventListener("click", function (e) {
       e.preventDefault();
-      if (window.oneclaw && window.oneclaw.openExternal) {
-        window.oneclaw.openExternal("https://www.kimi.com/bot?utm_source=oneclaw");
+      if (window.packclaw && window.packclaw.openExternal) {
+        window.packclaw.openExternal("https://www.kimi.com/bot?utm_source=packclaw");
       }
     });
 
@@ -4893,8 +4893,8 @@
     if (els.searchPlatformLink) {
       els.searchPlatformLink.addEventListener("click", function (e) {
         e.preventDefault();
-        if (window.oneclaw && window.oneclaw.openExternal) {
-          window.oneclaw.openExternal("https://kimi.com/code?utm_source=oneclaw");
+        if (window.packclaw && window.packclaw.openExternal) {
+          window.packclaw.openExternal("https://kimi.com/code?utm_source=packclaw");
         }
       });
     }
@@ -4938,15 +4938,15 @@
       els.btnResetConfig.addEventListener("click", handleResetConfig);
     }
 
-    if (window.oneclaw && window.oneclaw.onSettingsNavigate) {
-      window.oneclaw.onSettingsNavigate(function (payload) {
+    if (window.packclaw && window.packclaw.onSettingsNavigate) {
+      window.packclaw.onSettingsNavigate(function (payload) {
         if (!payload || !payload.tab) return;
         switchTab(payload.tab);
         applyRecoveryNotice(payload.notice || "");
       });
     }
-    if (window.oneclaw && window.oneclaw.onPairingState) {
-      window.oneclaw.onPairingState(function (payload) {
+    if (window.packclaw && window.packclaw.onPairingState) {
+      window.packclaw.onPairingState(function (payload) {
         if (!isCurrentAccessEnabled() || !isCurrentAccessPairingMode()) {
           return;
         }
@@ -4959,10 +4959,10 @@
     if (aboutCheckBtn) {
       aboutCheckBtn.addEventListener("click", function () {
         if (_updateMode === "download") {
-          window.oneclaw.downloadAndInstallUpdate();
+          window.packclaw.downloadAndInstallUpdate();
           startUpdatePoll();
         } else {
-          window.oneclaw.checkForUpdates();
+          window.packclaw.checkForUpdates();
           aboutCheckBtn.textContent = t("about.checking");
           aboutCheckBtn.disabled = true;
           startUpdatePoll();
@@ -4971,8 +4971,8 @@
     }
 
     // 订阅更新状态推送
-    if (window.oneclaw && window.oneclaw.onUpdateState) {
-      window.oneclaw.onUpdateState(function (state) {
+    if (window.packclaw && window.packclaw.onUpdateState) {
+      window.packclaw.onUpdateState(function (state) {
         renderUpdateStatus(state);
       });
     }
@@ -4988,8 +4988,8 @@
   function startUpdatePoll() {
     stopUpdatePoll();
     _updatePollTimer = setInterval(function () {
-      if (!window.oneclaw || !window.oneclaw.getUpdateState) return;
-      window.oneclaw.getUpdateState().then(function (state) {
+      if (!window.packclaw || !window.packclaw.getUpdateState) return;
+      window.packclaw.getUpdateState().then(function (state) {
         renderUpdateStatus(state);
         // 终态停止轮询（hidden = 无更新/已完成，但 downloading 继续轮询）
         if (state.status === "hidden") {
@@ -5009,14 +5009,14 @@
   // 加载版本信息和更新状态
   async function loadAboutInfo() {
     try {
-      var info = await window.oneclaw.settingsGetAboutInfo();
-      document.getElementById("aboutOneClawVersion").textContent = info.oneClawVersion;
+      var info = await window.packclaw.settingsGetAboutInfo();
+      document.getElementById("aboutPackClawVersion").textContent = info.packClawVersion;
       document.getElementById("aboutOpenClawVersion").textContent = info.openClawVersion;
     } catch (e) {
       console.error("Failed to load about info:", e);
     }
     try {
-      var state = await window.oneclaw.getUpdateState();
+      var state = await window.packclaw.getUpdateState();
       renderUpdateStatus(state);
     } catch (e) {}
   }

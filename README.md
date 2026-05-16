@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon.png" width="120" alt="OneClaw Logo" />
+  <img src="assets/icon.png" width="120" alt="PackClaw Logo" />
 </p>
 
-<h1 align="center">🦀 OneClaw</h1>
+<h1 align="center">🦀 PackClaw</h1>
 
 <p align="center">
   <strong>One Minute Install, One OpenClaw.</strong><br/>
@@ -10,21 +10,21 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/oneclaw/oneclaw/releases/latest"><img src="https://img.shields.io/github/v/release/oneclaw/oneclaw?style=flat-square&color=c0392b" alt="Latest Release" /></a>
-  <a href="https://github.com/oneclaw/oneclaw/releases"><img src="https://img.shields.io/github/downloads/oneclaw/oneclaw/total?style=flat-square&color=c0392b" alt="Downloads" /></a>
-  <a href="https://github.com/oneclaw/oneclaw/blob/main/LICENSE"><img src="https://img.shields.io/github/license/oneclaw/oneclaw?style=flat-square" alt="License" /></a>
+  <a href="https://github.com/packclaw/packclaw/releases/latest"><img src="https://img.shields.io/github/v/release/packclaw/packclaw?style=flat-square&color=c0392b" alt="Latest Release" /></a>
+  <a href="https://github.com/packclaw/packclaw/releases"><img src="https://img.shields.io/github/downloads/packclaw/packclaw/total?style=flat-square&color=c0392b" alt="Downloads" /></a>
+  <a href="https://github.com/packclaw/packclaw/blob/main/LICENSE"><img src="https://img.shields.io/github/license/packclaw/packclaw?style=flat-square" alt="License" /></a>
 </p>
 
 ---
 
 ## 🇨🇳 中文
 
-### ✨ 为什么选 OneClaw？
+### ✨ 为什么选 PackClaw？
 
 > **不装 Node.js，不跑 `npm install`，不配环境变量。**
 > 双击安装包 → 输入 API Key → 开始对话。就这么简单。
 
-OneClaw 把 [OpenClaw](https://github.com/openclaw/openclaw) 打包成一个**开箱即用**的桌面应用。内置 Node.js 运行时和完整的 OpenClaw Gateway，你不需要任何开发工具链。
+PackClaw 把 [OpenClaw](https://github.com/openclaw/openclaw) 打包成一个**开箱即用**的桌面应用。内置 Node.js 运行时和完整的 OpenClaw Gateway，你不需要任何开发工具链。
 
 它的目标很简单：**让 AI 真正替你动手做事，而不是只会聊天。** 🎯
 
@@ -46,14 +46,14 @@ OneClaw 把 [OpenClaw](https://github.com/openclaw/openclaw) 打包成一个**�
 
 ### 📦 下载安装
 
-前往 [Releases 页面](https://github.com/oneclaw/oneclaw/releases/latest) 下载对应平台的安装包：
+前往 [Releases 页面](https://github.com/packclaw/packclaw/releases/latest) 下载对应平台的安装包：
 
 | 平台 | 架构 | 下载 |
 |---|---|---|
-| 🍎 macOS | Apple Silicon (M1/M2/M3/M4) | `OneClaw-x.x.x-arm64.dmg` |
-| 🍎 macOS | Intel | `OneClaw-x.x.x-x64.dmg` |
-| 🪟 Windows | x64 | `OneClaw-Setup-x.x.x-x64.exe` |
-| 🪟 Windows | ARM64 | `OneClaw-Setup-x.x.x-arm64.exe` |
+| 🍎 macOS | Apple Silicon (M1/M2/M3/M4) | `PackClaw-x.x.x-arm64.dmg` |
+| 🍎 macOS | Intel | `PackClaw-x.x.x-x64.dmg` |
+| 🪟 Windows | x64 | `PackClaw-Setup-x.x.x-x64.exe` |
+| 🪟 Windows | ARM64 | `PackClaw-Setup-x.x.x-arm64.exe` |
 
 > 💡 **快速判断**：苹果 M 系列选 arm64，Intel Mac 选 x64，绝大多数 Windows 电脑选 x64。
 
@@ -81,12 +81,12 @@ OneClaw 把 [OpenClaw](https://github.com/openclaw/openclaw) 打包成一个**�
 - 📊 "整理这批网页信息，输出一份摘要报告"
 - 📝 "按我给的规则批量处理表格和文本"
 
-你负责提需求，OneClaw 负责执行。
+你负责提需求，PackClaw 负责执行。
 
 ### 🏗️ 架构
 
 ```
-OneClaw (Electron)
+PackClaw (Electron)
   ├── 🔧 Gateway 子进程  (内置 Node.js 22 + OpenClaw)
   └── 💬 聊天窗口        (Lit 3 SPA，本地 file:// 加载)
 ```
@@ -94,7 +94,7 @@ OneClaw (Electron)
 ### ❓ 常见问题
 
 **Q: 我完全不会编程，可以用吗？**
-A: 当然可以！OneClaw 就是为非技术用户设计的 😊
+A: 当然可以！PackClaw 就是为非技术用户设计的 😊
 
 **Q: 需要自己安装 Node.js 或 Git 吗？**
 A: 不需要。应用已内置所有运行环境。
@@ -109,9 +109,9 @@ A: 飞书、企业微信、钉钉、QQ Bot、微信。在设置 → 渠道 中�
 
 ### ⭐ 觉得有用？给个 Star 吧
 
-如果 OneClaw 帮到了你，请给个 ⭐ Star 支持一下！你的每一颗 Star 都是我们持续改进的动力 💪❤️
+如果 PackClaw 帮到了你，请给个 ⭐ Star 支持一下！你的每一颗 Star 都是我们持续改进的动力 💪❤️
 
-[![Star History Chart](https://api.star-history.com/svg?repos=oneclaw/oneclaw&type=Date)](https://star-history.com/#oneclaw/oneclaw&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=packclaw/packclaw&type=Date)](https://star-history.com/#packclaw/packclaw&Date)
 
 ### 🤝 参与贡献
 
@@ -121,12 +121,12 @@ A: 飞书、企业微信、钉钉、QQ Bot、微信。在设置 → 渠道 中�
 
 ## 🇬🇧 English
 
-### ✨ Why OneClaw?
+### ✨ Why PackClaw?
 
 > **No Node.js. No `npm install`. No environment variables.**
 > Download → double-click → enter API Key → start chatting. That's it.
 
-OneClaw wraps [OpenClaw](https://github.com/openclaw/openclaw) into a **ready-to-use** desktop app. It bundles a Node.js runtime and the full OpenClaw Gateway — zero dev tooling required.
+PackClaw wraps [OpenClaw](https://github.com/openclaw/openclaw) into a **ready-to-use** desktop app. It bundles a Node.js runtime and the full OpenClaw Gateway — zero dev tooling required.
 
 Its goal is simple: **AI that gets things done, not just chats.** 🎯
 
@@ -148,14 +148,14 @@ Its goal is simple: **AI that gets things done, not just chats.** 🎯
 
 ### 📦 Download
 
-Head to the [Releases page](https://github.com/oneclaw/oneclaw/releases/latest) and grab the installer for your platform:
+Head to the [Releases page](https://github.com/packclaw/packclaw/releases/latest) and grab the installer for your platform:
 
 | Platform | Architecture | File |
 |---|---|---|
-| 🍎 macOS | Apple Silicon (M1/M2/M3/M4) | `OneClaw-x.x.x-arm64.dmg` |
-| 🍎 macOS | Intel | `OneClaw-x.x.x-x64.dmg` |
-| 🪟 Windows | x64 | `OneClaw-Setup-x.x.x-x64.exe` |
-| 🪟 Windows | ARM64 | `OneClaw-Setup-x.x.x-arm64.exe` |
+| 🍎 macOS | Apple Silicon (M1/M2/M3/M4) | `PackClaw-x.x.x-arm64.dmg` |
+| 🍎 macOS | Intel | `PackClaw-x.x.x-x64.dmg` |
+| 🪟 Windows | x64 | `PackClaw-Setup-x.x.x-x64.exe` |
+| 🪟 Windows | ARM64 | `PackClaw-Setup-x.x.x-arm64.exe` |
 
 > 💡 **Quick tip**: Apple M-series → arm64, Intel Mac → x64, most Windows PCs → x64.
 
@@ -183,12 +183,12 @@ No Node.js, no `npm`, no environment setup. Just works.
 - 📊 "Summarize a batch of webpages into a report"
 - 📝 "Process text and spreadsheets in bulk with my rules"
 
-You define the goal, OneClaw executes.
+You define the goal, PackClaw executes.
 
 ### 🏗️ Architecture
 
 ```
-OneClaw (Electron)
+PackClaw (Electron)
   ├── 🔧 Gateway subprocess  (bundled Node.js 22 + OpenClaw)
   └── 💬 Chat window         (Lit 3 SPA, loaded via file://)
 ```
@@ -196,7 +196,7 @@ OneClaw (Electron)
 ### ❓ FAQ
 
 **Q: Can I use this if I don't code at all?**
-A: Absolutely! OneClaw is designed for non-technical users 😊
+A: Absolutely! PackClaw is designed for non-technical users 😊
 
 **Q: Do I need to install Node.js or Git myself?**
 A: No. The app includes everything it needs.
@@ -211,7 +211,7 @@ A: Feishu (Lark), WeCom, DingTalk, QQ Bot, and WeChat. Go to Settings → Channe
 
 ### ⭐ Like it? Give us a Star
 
-If OneClaw saves you time, drop a ⭐ Star — it means a lot and keeps us going! 💪❤️
+If PackClaw saves you time, drop a ⭐ Star — it means a lot and keeps us going! 💪❤️
 
 ---
 

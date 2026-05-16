@@ -44,10 +44,10 @@ test("file 协议下应从 URL fragment 读取首屏视图，确保 Setup 直接
     hash: "#view=setup",
   });
 
-  assert.equal(settings.oneclawView, "setup");
+  assert.equal(settings.packclawView, "setup");
 });
 
-test("网页场景不应信任 URL 注入的 oneclawView", () => {
+test("网页场景不应信任 URL 注入的 packclawView", () => {
   const settings = parseUiSettings(null, {
     protocol: "https:",
     host: "control.example",
@@ -55,5 +55,5 @@ test("网页场景不应信任 URL 注入的 oneclawView", () => {
     hash: "#view=setup",
   });
 
-  assert.equal(settings.oneclawView, "chat");
+  assert.equal(settings.packclawView, "chat");
 });

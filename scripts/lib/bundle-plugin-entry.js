@@ -9,9 +9,9 @@
 // 变量（比如 `let weixinRuntime`）互相不可见。.mjs/.js/.cjs 入口走 Node 原生
 // `createRequire`，一份 Node module cache 全局共享，单例天然成立。
 //
-// 本模块负责构建期强制把每个 OneClaw 打包的插件入口标准化成 `.mjs`——
+// 本模块负责构建期强制把每个 PackClaw 打包的插件入口标准化成 `.mjs`——
 // 已是 native 形态的直接 skip；.ts 入口就用 esbuild bundle 到
-// `dist/oneclaw-bundle.mjs` 并重写所有 "指向入口" 的字段（manifest.main /
+// `dist/packclaw-bundle.mjs` 并重写所有 "指向入口" 的字段（manifest.main /
 // package.json main / package.json openclaw.extensions[0]），让 openclaw
 // 的 entry resolver 无论走哪条路径都拿到 .mjs。
 
@@ -20,7 +20,7 @@ const path = require("node:path");
 
 const MANIFEST_FILE = "openclaw.plugin.json";
 const PACKAGE_FILE = "package.json";
-const BUNDLE_REL = path.join("dist", "oneclaw-bundle.mjs");
+const BUNDLE_REL = path.join("dist", "packclaw-bundle.mjs");
 const NATIVE_EXT = new Set([".mjs", ".cjs", ".js"]);
 // openclaw gateway 2026.4.5 dist/manifest-BLZdOZfM.js:238 的 DEFAULT_PLUGIN_ENTRY_CANDIDATES，
 // 顺序至关重要——`index.ts` 排第一，所以 plugin 目录下只要有 index.ts 就会被优先选中。
@@ -123,7 +123,7 @@ function isBundleFresh(bundlePath, entryPath) {
 // 入口又总是由 jiti loader 加载，aliasMap 100% 生效。
 //
 //   - 入口不存在        → action = 'missing'（调用方决定是否 fatal）
-//   - 所有其他情况      → esbuild bundle → dist/oneclaw-bundle.mjs，重写
+//   - 所有其他情况      → esbuild bundle → dist/packclaw-bundle.mjs，重写
 //                         package.json#openclaw.extensions[0] 指向它
 //
 // opts.allowNativeSkip = true 时保留旧行为（入口已是 .mjs/.js/.cjs 就跳过）——

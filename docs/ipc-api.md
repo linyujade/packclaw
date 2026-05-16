@@ -1,6 +1,6 @@
-# OneClaw IPC API Reference
+# PackClaw IPC API Reference
 
-> Preload (`src/preload.ts`) 通过 `contextBridge.exposeInMainWorld("oneclaw", {...})` 暴露的完整 IPC 接口清单。
+> Preload (`src/preload.ts`) 通过 `contextBridge.exposeInMainWorld("packclaw", {...})` 暴露的完整 IPC 接口清单。
 > Electron 40 默认 sandbox 模式，所有渲染进程与主进程的交互必须经过此桥接层。
 
 ## Gateway 控制

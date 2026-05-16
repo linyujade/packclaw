@@ -79,15 +79,15 @@ export function resolveUserDataDir(target: BrowserTarget): string {
 
 // 真"装了"判定。
 // macOS：先看 /Applications/<App>.app 或 ~/Applications/<App>.app（覆盖系统装/用户装）；
-// 退而求其次：<userDataDir>/Local State 存在（Chromium 启动时创建，OneClaw 不会写）。
+// 退而求其次：<userDataDir>/Local State 存在（Chromium 启动时创建，PackClaw 不会写）。
 // Windows：只用 <userDataDir>/Local State（Chromium 至少启动过一次）。
-// 注意：不能用「user data dir 是否存在」判定——OneClaw 写 External Extensions JSON 时
+// 注意：不能用「user data dir 是否存在」判定——PackClaw 写 External Extensions JSON 时
 // 会自己创建 user data dir 子目录，造成"幽灵安装"假象。
 //
-// 测试钩子：env ONECLAW_BROWSER_APPS_DIRS=":分隔" 可覆盖 macOS app 搜索路径
+// 测试钩子：env PACKCLAW_BROWSER_APPS_DIRS=":分隔" 可覆盖 macOS app 搜索路径
 // （绕开宿主机 /Applications 里真实装的浏览器对单元测试的污染）。
 function macAppSearchDirs(): string[] {
-  const override = process.env.ONECLAW_BROWSER_APPS_DIRS;
+  const override = process.env.PACKCLAW_BROWSER_APPS_DIRS;
   if (override) return override.split(":").filter(Boolean);
   return ["/Applications", path.join(resolveHome(), "Applications")];
 }
@@ -351,7 +351,7 @@ export interface CommonOptions {
 }
 
 /**
- * OneClaw 用 Chrome External Extensions 协议宣告本地 CRX 安装包：
+ * PackClaw 用 Chrome External Extensions 协议宣告本地 CRX 安装包：
  *   - 替代 external_update_url（指向被墙的 clients2.google.com）
  *   - external_crx 给绝对路径、external_version 必须等于 CRX 内 manifest.json 的 version
  *   - extId 必须等于 CRX 内嵌公钥的 fingerprint，否则 Chrome 会拒绝
@@ -552,9 +552,9 @@ export async function installExtension(
 
 // 写临时文件 → rename 替换。崩溃 / 断电 / 磁盘满时只会留下 .tmp 残骸，
 // 不会让目标文件出现半写状态——尤其重要的是 Chrome `Preferences`，那是
-// 用户配置不是 OneClaw 私有数据，损坏代价大。
+// 用户配置不是 PackClaw 私有数据，损坏代价大。
 function atomicWriteFile(targetPath: string, data: string): void {
-  const tmpPath = `${targetPath}.oneclaw.tmp-${process.pid}`;
+  const tmpPath = `${targetPath}.packclaw.tmp-${process.pid}`;
   fs.writeFileSync(tmpPath, data, "utf-8");
   fs.renameSync(tmpPath, targetPath);
 }
@@ -635,7 +635,7 @@ export async function installForAllDetectedBrowsers(
   return out;
 }
 
-// 单一默认浏览器策略：OneClaw 只在系统默认浏览器（Chrome/Edge）上装扩展。
+// 单一默认浏览器策略：PackClaw 只在系统默认浏览器（Chrome/Edge）上装扩展。
 // 默认非 Chrome/Edge → 返回空数组，runWebbridgeSetupTask 严格语义会自动降级 openclaw 模式。
 export async function installForDefaultBrowser(
   spec: ExtensionSpec,
@@ -786,7 +786,7 @@ function readSecurePreferencesIfValid(target: BrowserTarget): any | null {
 }
 
 // Chrome 自己维护的"真实已装扩展"列表。比 External Extensions JSON 更权威——
-// 后者只是 OneClaw 写给 Chrome 的"建议"，前者反映 Chrome 是否真的把扩展加载进来了。
+// 后者只是 PackClaw 写给 Chrome 的"建议"，前者反映 Chrome 是否真的把扩展加载进来了。
 // 用户从 chrome://extensions UI 卸载后会被移出 settings；如果没同时进 external_uninstalls
 // 黑名单（不同 Chrome 版本/卸载入口行为不一致），blocklist 检查会漏报。
 //
@@ -896,7 +896,7 @@ export function coerceBrowserMode(value: unknown): BrowserMode | null {
 }
 
 // openclaw.json 的最小形状——只列本模块会碰的字段；其他字段用 Record 兜底
-interface OneclawConfigShape {
+interface PackclawConfigShape {
   browser?: {
     defaultProfile?: string;
     [key: string]: unknown;
@@ -919,7 +919,7 @@ interface OneclawConfigShape {
 }
 
 export function applyBrowserModeConfig(
-  config: OneclawConfigShape,
+  config: PackclawConfigShape,
   mode: BrowserMode,
 ): any {
   switch (mode) {
@@ -931,7 +931,7 @@ export function applyBrowserModeConfig(
   }
 }
 
-function applyWebbridgeMode(config: OneclawConfigShape): any {
+function applyWebbridgeMode(config: PackclawConfigShape): any {
   return {
     ...config,
     plugins: {
@@ -957,7 +957,7 @@ function applyWebbridgeMode(config: OneclawConfigShape): any {
   };
 }
 
-export function detectBrowserMode(config: OneclawConfigShape): BrowserMode {
+export function detectBrowserMode(config: PackclawConfigShape): BrowserMode {
   // webbridge 优先：插件被显式关掉 → 用户在 webbridge 模式
   if (config?.plugins?.entries?.browser?.enabled === false) {
     return "webbridge";
@@ -977,7 +977,7 @@ export function detectBrowserMode(config: OneclawConfigShape): BrowserMode {
 }
 
 function applyOpenclawOrUserMode(
-  config: OneclawConfigShape,
+  config: PackclawConfigShape,
   mode: "openclaw" | "user",
 ): any {
   // 复用 main 分支的 normalize 逻辑：

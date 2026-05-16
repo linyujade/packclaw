@@ -6,7 +6,7 @@ import * as os from "os";
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-kimi-test-"));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-kimi-test-"));
   vi.stubEnv("OPENCLAW_STATE_DIR", tmpDir);
   vi.resetModules();
 });

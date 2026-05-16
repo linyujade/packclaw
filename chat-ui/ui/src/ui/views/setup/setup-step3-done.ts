@@ -1,5 +1,5 @@
 /**
- * Setup Step 3: Completion — launch OneClaw.
+ * Setup Step 3: Completion — launch PackClaw.
  *
  * WebBridge toggle 行为：
  *   - 系统默认浏览器是 Chrome/Edge → 默认开启，可手动关闭

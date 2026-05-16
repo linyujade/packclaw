@@ -7,7 +7,7 @@ export type UiSettings = {
   token: string;
   sessionKey: string;
   lastActiveSessionKey: string;
-  oneclawView: "chat" | "setup" | "settings" | "skills" | "workspace" | "cron" | "feedback";
+  packclawView: "chat" | "setup" | "settings" | "skills" | "workspace" | "cron" | "feedback";
   theme: ThemeMode;
   chatFocusMode: boolean;
   chatShowThinking: boolean;
@@ -19,7 +19,7 @@ export type UiSettings = {
 type LocationLike = Pick<Location, "host" | "protocol" | "search" | "hash">;
 
 // URL 注入只接受主进程可控的 file:// 启动参数，避免网页场景篡改本地视图状态。
-function resolveInjectedOneclawView(locationLike: LocationLike): UiSettings["oneclawView"] | null {
+function resolveInjectedPackclawView(locationLike: LocationLike): UiSettings["packclawView"] | null {
   if (locationLike.protocol !== "file:") {
     return null;
   }
@@ -70,7 +70,7 @@ function resolveDefaultGatewayUrl(locationLike: LocationLike): string {
 // 启动配置解析应是纯函数，避免 localStorage 和 URL 注入逻辑彼此打架。
 export function parseUiSettings(raw: string | null, locationLike: LocationLike): UiSettings {
   const injectedGatewayUrl = resolveInjectedGatewayUrl(locationLike);
-  const injectedView = resolveInjectedOneclawView(locationLike);
+  const injectedView = resolveInjectedPackclawView(locationLike);
   const defaultUrl = injectedGatewayUrl ?? resolveDefaultGatewayUrl(locationLike);
 
   const defaults: UiSettings = {
@@ -78,7 +78,7 @@ export function parseUiSettings(raw: string | null, locationLike: LocationLike):
     token: "",
     sessionKey: "main",
     lastActiveSessionKey: "main",
-    oneclawView: injectedView ?? "chat",
+    packclawView: injectedView ?? "chat",
     theme: "system",
     chatFocusMode: false,
     chatShowThinking: true,
@@ -108,7 +108,7 @@ export function parseUiSettings(raw: string | null, locationLike: LocationLike):
           ? parsed.lastActiveSessionKey.trim()
           : (typeof parsed.sessionKey === "string" && parsed.sessionKey.trim()) ||
             defaults.lastActiveSessionKey,
-      oneclawView: defaults.oneclawView,
+      packclawView: defaults.packclawView,
       theme:
         parsed.theme === "light" || parsed.theme === "dark" || parsed.theme === "system"
           ? parsed.theme
@@ -145,8 +145,8 @@ export function loadSettings(): UiSettings {
 export function saveSettings(next: UiSettings) {
   // Setup 视图不持久化到 localStorage，防止重启后 localStorage 重放进入 Setup
   // 初始视图始终由主进程 URL fragment 或 app:navigate IPC 决定
-  const toSave = next.oneclawView === "setup"
-    ? { ...next, oneclawView: "chat" as const }
+  const toSave = next.packclawView === "setup"
+    ? { ...next, packclawView: "chat" as const }
     : next;
   localStorage.setItem(KEY, JSON.stringify(toSave));
 }

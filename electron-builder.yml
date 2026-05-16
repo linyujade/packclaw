@@ -1,6 +1,6 @@
-appId: com.oneclaw.app
-productName: OneClaw
-copyright: Copyright © 2025 OneClaw
+appId: com.packclaw.app
+productName: PackClaw
+copyright: Copyright © 2025 PackClaw
 
 directories:
   output: out
@@ -26,7 +26,7 @@ mac:
   category: public.app-category.productivity
   # zip artifactName 含 arch + -mac 后缀，供 electron-updater findFile 按架构匹配
   # dmg.artifactName 会覆盖 DMG 的命名
-  artifactName: "OneClaw-${version}-${arch}-mac.${ext}"
+  artifactName: "PackClaw-${version}-${arch}-mac.${ext}"
   # 签名身份由 CSC_NAME 环境变量指定（见 .env），避免把证书名写入仓库
   hardenedRuntime: true
   gatekeeperAssess: false
@@ -38,18 +38,19 @@ mac:
 # 自动更新：指向阿里云 CDN
 publish:
   provider: generic
-  url: https://oneclaw.cn/releases/
+  url: https://packclaw.cn/releases/
 
 dmg:
   sign: false
   # 关闭 DMG 差分更新元数据，避免生成 .dmg.blockmap
   writeUpdateInfo: false
-  artifactName: "OneClaw-${version}-${arch}.${ext}"
+  artifactName: "PackClaw-${version}-${arch}.${ext}"
 
 # --- Windows ---
 win:
   target: nsis
   icon: assets/icon.ico
+  signAndEditExecutable: false
   extraResources:
     - from: "resources/targets/win32-${arch}/officecli"
       to: "resources/officecli"
@@ -67,4 +68,4 @@ nsis:
   runAfterFinish: true
   # 关闭 NSIS 差分包，避免生成 .exe.blockmap
   differentialPackage: false
-  artifactName: "OneClaw-Setup-${version}-${arch}.${ext}"
+  artifactName: "PackClaw-Setup-${version}-${arch}.${ext}"

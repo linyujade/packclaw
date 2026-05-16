@@ -1,4 +1,4 @@
-// 守护回归：用户停了 OneClaw 报"对话框出来后即使在工作 Stop 按钮也消失"，
+// 守护回归：用户停了 PackClaw 报"对话框出来后即使在工作 Stop 按钮也消失"，
 // 根因是旧 isBusy = sending || stream !== null —— sending 在 chat.send ack 后立刻回 false，
 // stream 在工具间隙被冻成 null，于是 run 仍在却看不到 Stop。fix：把 canAbort（=chatRunId）也并进 isBusy。
 import test from "node:test";

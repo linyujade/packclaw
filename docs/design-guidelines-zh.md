@@ -1,6 +1,6 @@
-# OneClaw 设计规范 (Design Guidelines)
+# PackClaw 设计规范 (Design Guidelines)
 
-OneClaw 主页面（Chat UI）展现出了一种**极简、现代、轻量且呼吸感强**的设计语言。以下是核心的设计规范维度：
+PackClaw 主页面（Chat UI）展现出了一种**极简、现代、轻量且呼吸感强**的设计语言。以下是核心的设计规范维度：
 
 ## 1. 色彩系统 (Color Palette)：克制与聚焦
 
@@ -10,7 +10,7 @@ OneClaw 主页面（Chat UI）展现出了一种**极简、现代、轻量且呼
 
 ### 品牌色
 
-OneClaw 的标志性红色主题色号是：**`#c0392b`**
+PackClaw 的标志性红色主题色号是：**`#c0392b`**
 
 在代码的 CSS 变量中，它主要对应以下几个状态（根据深色/浅色模式略有微调以保证对比度）：
 

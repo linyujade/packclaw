@@ -14,7 +14,7 @@ import {
 } from "./weixin-config";
 
 test("persistWeixinLoginSuccess 应同时写入账号凭据并启用微信 channel", (t) => {
-  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-weixin-"));
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-weixin-"));
   const prevStateDir = process.env.OPENCLAW_STATE_DIR;
   process.env.OPENCLAW_STATE_DIR = stateDir;
 
@@ -72,7 +72,7 @@ test("persistWeixinLoginSuccess 应同时写入账号凭据并启用微信 chann
 });
 
 test("ensureWeixinPluginReady 应先执行 reconcile 再检查微信插件目录", async (t) => {
-  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-weixin-"));
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-weixin-"));
   const prevStateDir = process.env.OPENCLAW_STATE_DIR;
   process.env.OPENCLAW_STATE_DIR = stateDir;
 
@@ -101,7 +101,7 @@ test("ensureWeixinPluginReady 应先执行 reconcile 再检查微信插件目录
 });
 
 test("ensureWeixinPluginReady 应在 reconcile 后仍缺插件时拒绝启用微信", async (t) => {
-  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "oneclaw-weixin-"));
+  const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), "packclaw-weixin-"));
   const prevStateDir = process.env.OPENCLAW_STATE_DIR;
   process.env.OPENCLAW_STATE_DIR = stateDir;
 
