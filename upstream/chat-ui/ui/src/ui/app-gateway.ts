@@ -1,0 +1,406 @@
+import type { EventLogEntry } from "./app-events.ts";
+import type { OpenClawApp } from "./app.ts";
+import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
+import type { GatewayEventFrame, GatewayHelloOk } from "./gateway.ts";
+import type { Tab } from "./navigation.ts";
+import type { UiSettings } from "./storage.ts";
+import type { AgentsListResult, PresenceEntry, HealthSnapshot, SessionsListResult, StatusSummary } from "./types.ts";
+import { flushChatQueueForEvent, flushPendingSessionLabel, refreshChatAvatar } from "./app-chat.ts";
+import {
+  applySettings,
+  loadCron,
+  refreshActiveTab,
+  setLastActiveSessionKey,
+} from "./app-settings.ts";
+import { registerTickHandler, unregisterTickHandler, startTicker, stopTicker } from "./client-ticker.ts";
+import { loadCronJobs } from "./controllers/cron.ts";
+import { clearSessionMeterDirtyIfUsageAdvanced } from "./context-meter.ts";
+import { handleAgentEvent, resetToolStream, type AgentEventPayload } from "./app-tool-stream.ts";
+import { debugLog, isDebugEnabled } from "./debug.ts";
+import { loadAgents } from "./controllers/agents.ts";
+import { loadAssistantIdentity } from "./controllers/assistant-identity.ts";
+import { loadChatHistory } from "./controllers/chat.ts";
+import { handleChatEvent, type ChatEventPayload } from "./controllers/chat.ts";
+import { loadDevices } from "./controllers/devices.ts";
+import {
+  addExecApproval,
+  parseExecApprovalRequested,
+  parseExecApprovalResolved,
+  removeExecApproval,
+} from "./controllers/exec-approval.ts";
+import { loadNodes } from "./controllers/nodes.ts";
+import { loadSessions } from "./controllers/sessions.ts";
+import { GatewayBrowserClient } from "./gateway.ts";
+import { applySessionKeyTransition } from "./session-transition.ts";
+import { resolveVisibleSessionSelection } from "./session-visibility.ts";
+import {
+  shouldFinishUsageRefreshAttempt,
+  shouldRefreshSessionsForChatState,
+} from "./usage-refresh.ts";
+
+type GatewayHost = {
+  settings: UiSettings;
+  password: string;
+  client: GatewayBrowserClient | null;
+  connected: boolean;
+  hello: GatewayHelloOk | null;
+  lastError: string | null;
+  onboarding?: boolean;
+  eventLogBuffer: EventLogEntry[];
+  eventLog: EventLogEntry[];
+  tab: Tab;
+  presenceEntries: PresenceEntry[];
+  presenceError: string | null;
+  presenceStatus: StatusSummary | null;
+  agentsLoading: boolean;
+  agentsList: AgentsListResult | null;
+  agentsError: string | null;
+  debugHealth: HealthSnapshot | null;
+  assistantName: string;
+  assistantAvatar: string | null;
+  assistantAgentId: string | null;
+  sessionKey: string;
+  sessionsLoading: boolean;
+  sessionsResult: SessionsListResult | null;
+  sessionsError: string | null;
+  sessionsFilterActive: string;
+  sessionsFilterLimit: string;
+  sessionsIncludeGlobal: boolean;
+  sessionsIncludeUnknown: boolean;
+  chatRunId: string | null;
+  dirtyMeterSessions: Set<string>;
+  meterTotalsBaseline: Map<string, number>;
+  execApprovalQueue: ExecApprovalRequest[];
+  execApprovalError: string | null;
+};
+
+type SessionDefaultsSnapshot = {
+  defaultAgentId?: string;
+  mainKey?: string;
+  mainSessionKey?: string;
+  scope?: string;
+};
+
+function normalizeSessionKeyForDefaults(
+  value: string | undefined,
+  defaults: SessionDefaultsSnapshot,
+): string {
+  const raw = (value ?? "").trim();
+  const mainSessionKey = defaults.mainSessionKey?.trim();
+  if (!mainSessionKey) {
+    return raw;
+  }
+  if (!raw) {
+    return mainSessionKey;
+  }
+  const mainKey = defaults.mainKey?.trim() || "main";
+  const defaultAgentId = defaults.defaultAgentId?.trim();
+  const isAlias =
+    raw === "main" ||
+    raw === mainKey ||
+    (defaultAgentId &&
+      (raw === `agent:${defaultAgentId}:main` || raw === `agent:${defaultAgentId}:${mainKey}`));
+  return isAlias ? mainSessionKey : raw;
+}
+
+function applySessionDefaults(host: GatewayHost, defaults?: SessionDefaultsSnapshot) {
+  if (!defaults?.mainSessionKey) {
+    return;
+  }
+  const resolvedSessionKey = normalizeSessionKeyForDefaults(host.sessionKey, defaults);
+  const resolvedSettingsSessionKey = normalizeSessionKeyForDefaults(
+    host.settings.sessionKey,
+    defaults,
+  );
+  const resolvedLastActiveSessionKey = normalizeSessionKeyForDefaults(
+    host.settings.lastActiveSessionKey,
+    defaults,
+  );
+  const nextSessionKey = resolvedSessionKey || resolvedSettingsSessionKey || host.sessionKey;
+  const nextSettings = {
+    ...host.settings,
+    sessionKey: resolvedSettingsSessionKey || nextSessionKey,
+    lastActiveSessionKey: resolvedLastActiveSessionKey || nextSessionKey,
+  };
+  const shouldUpdateSettings =
+    nextSettings.sessionKey !== host.settings.sessionKey ||
+    nextSettings.lastActiveSessionKey !== host.settings.lastActiveSessionKey;
+  if (nextSessionKey !== host.sessionKey) {
+    host.sessionKey = nextSessionKey;
+  }
+  if (shouldUpdateSettings) {
+    applySettings(host as unknown as Parameters<typeof applySettings>[0], nextSettings);
+  }
+}
+
+function reconcileSessionSelection(host: GatewayHost) {
+  if (!host.sessionsResult) {
+    return;
+  }
+  const nextSessionKey = resolveVisibleSessionSelection(
+    host.sessionKey,
+    host.hello,
+    host.sessionsResult,
+  );
+  if (!nextSessionKey || nextSessionKey === host.sessionKey) {
+    return;
+  }
+  applySessionKeyTransition(
+    host as unknown as Parameters<typeof applySessionKeyTransition>[0],
+    nextSessionKey,
+    true,
+  );
+  void refreshChatAvatar(host as unknown as Parameters<typeof refreshChatAvatar>[0]);
+}
+
+async function loadSessionsAndReconcile(host: GatewayHost) {
+  await loadSessions(host as unknown as OpenClawApp);
+  reconcileSessionSelection(host);
+}
+
+// gap 重连状态：最多重试 3 次，指数退避 (1s, 2s, 4s)
+const GAP_RECONNECT_MAX = 3;
+let gapReconnectCount = 0;
+
+export function connectGateway(host: GatewayHost) {
+  console.info("[gateway] connectGateway start");
+  host.lastError = null;
+  host.hello = null;
+  host.connected = false;
+  host.execApprovalQueue = [];
+  host.execApprovalError = null;
+
+  const previousClient = host.client;
+  const client = new GatewayBrowserClient({
+    url: host.settings.gatewayUrl,
+    token: host.settings.token.trim() ? host.settings.token : undefined,
+    password: host.password.trim() ? host.password : undefined,
+    clientName: "openclaw-control-ui",
+    mode: "webchat",
+    onHello: (hello) => {
+      console.info("[gateway] onHello", hello.type, hello.protocol);
+      if (host.client !== client) {
+        return;
+      }
+      host.connected = true;
+      host.lastError = null;
+      // 连接成功，重置 gap 重连计数
+      gapReconnectCount = 0;
+      host.hello = hello;
+      applySnapshot(host, hello);
+      // Reset orphaned chat run state from before disconnect.
+      // Any in-flight run's final event was lost during the disconnect window.
+      host.chatRunId = null;
+      (host as unknown as { chatStream: string | null }).chatStream = null;
+      (host as unknown as { chatPendingStreamText: string | null }).chatPendingStreamText = null;
+      (host as unknown as { chatStreamStartedAt: number | null }).chatStreamStartedAt = null;
+      resetToolStream(host as unknown as Parameters<typeof resetToolStream>[0]);
+      void loadAssistantIdentity(host as unknown as OpenClawApp);
+      // 加载已配置模型列表（用于 per-session 模型选择器）
+      void (host as unknown as OpenClawApp).loadConfiguredModels();
+      void loadAgents(host as unknown as OpenClawApp);
+      void loadNodes(host as unknown as OpenClawApp, { quiet: true });
+      void loadDevices(host as unknown as OpenClawApp, { quiet: true });
+      void loadSessionsAndReconcile(host);
+      void refreshActiveTab(host as unknown as Parameters<typeof refreshActiveTab>[0]);
+      // 注册定时轮询并启动客户端定时器
+      registerTickHandler("cron", () => loadCronJobs(host as unknown as Parameters<typeof loadCronJobs>[0]));
+      registerTickHandler("sessions", () => loadSessionsAndReconcile(host));
+      startTicker();
+    },
+    onClose: ({ code, reason }) => {
+      console.warn(`[gateway] onClose code=${code} reason=${reason}`);
+      if (host.client !== client) {
+        return;
+      }
+      host.connected = false;
+      // 断开连接时注销 tick handler 并停止客户端定时器
+      unregisterTickHandler("cron");
+      unregisterTickHandler("sessions");
+      stopTicker();
+      // Code 1012 = Service Restart (expected during config saves, don't show as error)
+      if (code !== 1012) {
+        host.lastError = `disconnected (${code}): ${reason || "no reason"}`;
+      }
+    },
+    onEvent: (evt) => {
+      if (host.client !== client) {
+        return;
+      }
+      handleGatewayEvent(host, evt);
+    },
+    onGap: ({ expected, received }) => {
+      if (host.client !== client) {
+        return;
+      }
+      // 序列号跳跃 → 带退避的自动重连，最多 3 次
+      if (gapReconnectCount >= GAP_RECONNECT_MAX) {
+        console.warn(`[gateway] onGap expected=${expected} received=${received}, max retries reached`);
+        host.lastError = `event gap detected (expected seq ${expected}, got ${received}); please refresh`;
+        gapReconnectCount = 0;
+        return;
+      }
+      const delay = 1000 * 2 ** gapReconnectCount;
+      gapReconnectCount++;
+      console.warn(`[gateway] onGap expected=${expected} received=${received}, retry ${gapReconnectCount}/${GAP_RECONNECT_MAX} in ${delay}ms`);
+      setTimeout(() => {
+        if (host.client === client) {
+          connectGateway(host);
+        }
+      }, delay);
+    },
+  });
+  host.client = client;
+  previousClient?.stop();
+  client.start();
+}
+
+export function handleGatewayEvent(host: GatewayHost, evt: GatewayEventFrame) {
+  try {
+    handleGatewayEventUnsafe(host, evt);
+  } catch (err) {
+    console.error("[gateway] handleGatewayEvent error:", evt.event, err);
+  }
+}
+
+function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
+  // 调试钩子：在 DevTools 里 `localStorage.setItem("oneclaw.debug","gateway")` + 刷新即可看到。
+  // 默认 cached === false，整段 if 是常量折叠后的死代码，对生产无开销。
+  if (isDebugEnabled("gateway")) {
+    debugLog("gateway", `evt:${evt.event}`, evt.payload);
+  }
+  // 直接 unshift + 截断，避免每个事件都 spread 整个数组造成 GC 风暴
+  host.eventLogBuffer.unshift({ ts: Date.now(), event: evt.event, payload: evt.payload });
+  if (host.eventLogBuffer.length > 250) {
+    host.eventLogBuffer.length = 250;
+  }
+  if (host.tab === "debug") {
+    host.eventLog = host.eventLogBuffer;
+  }
+
+  if (evt.event === "agent") {
+    if (host.onboarding) {
+      return;
+    }
+    handleAgentEvent(
+      host as unknown as Parameters<typeof handleAgentEvent>[0],
+      evt.payload as AgentEventPayload | undefined,
+    );
+    return;
+  }
+
+  if (evt.event === "chat") {
+    const payload = evt.payload as ChatEventPayload | undefined;
+    if (payload?.sessionKey) {
+      setLastActiveSessionKey(
+        host as unknown as Parameters<typeof setLastActiveSessionKey>[0],
+        payload.sessionKey,
+      );
+    }
+    const state = handleChatEvent(host as unknown as OpenClawApp, payload);
+    if (shouldRefreshSessionsForChatState(state)) {
+      resetToolStream(host as unknown as Parameters<typeof resetToolStream>[0]);
+      void flushChatQueueForEvent(host as unknown as Parameters<typeof flushChatQueueForEvent>[0]);
+      // 每轮 chat 终态都刷新 sessions，让 context meter 的 token 数/模型窗口及时更新。
+      // final 到达时 gateway 可能还没持久化 usage；error/aborted 也复用同一兜底窗口，
+      // 避免模型切换后网络中断导致 pending override 长期停留。
+      const refreshKey = payload?.sessionKey ?? host.sessionKey;
+      // loadSessions() 会替换 sessionsResult；每轮比较都要从最新快照重新取当前会话。
+      const readUsageRow = () =>
+        (host as unknown as OpenClawApp).sessionsResult?.sessions?.find(
+          (r) => r.key === refreshKey,
+        ) ?? null;
+      // 同时比较 totalTokens 和 contextTokens：前者代表新 usage，后者代表本轮实际模型窗口。
+      const readUsage = () => {
+        const row = readUsageRow();
+        return row ? `${row.totalTokens ?? ""}:${row.contextTokens ?? ""}` : null;
+      };
+      // 终态到达时 gateway 可能还没持久化，本值作为“旧快照”供后续轮询判断。
+      const baseline = readUsage();
+      void (async () => {
+        const delays = [700, 1500];
+        for (const [i, delay] of delays.entries()) {
+          await new Promise((r) => setTimeout(r, delay));
+          await loadSessions(host as unknown as OpenClawApp);
+          const currentUsage = readUsage();
+          if (shouldFinishUsageRefreshAttempt(baseline, currentUsage, i === delays.length - 1)) {
+            // 仅当 totalTokens 真的前进时清掉冻结标记；同窗口模型切换也走这条路径。
+            const row = readUsageRow();
+            const nextTotal = typeof row?.totalTokens === "number" ? row.totalTokens : 0;
+            const prevTotal = host.meterTotalsBaseline.get(refreshKey) ?? 0;
+            const nextDirty = new Set(host.dirtyMeterSessions);
+            if (clearSessionMeterDirtyIfUsageAdvanced(nextDirty, refreshKey, prevTotal, nextTotal)) {
+              host.dirtyMeterSessions = nextDirty;
+              host.meterTotalsBaseline.delete(refreshKey);
+            }
+            return;
+          }
+        }
+      })();
+    }
+    if (state === "final") {
+      void loadChatHistory(host as unknown as OpenClawApp);
+      // agent runtime 已写完 sessions.json，此时 patch pending label 不会被覆盖
+      const sessionKey = payload?.sessionKey ?? host.sessionKey;
+      void flushPendingSessionLabel(host as unknown as OpenClawApp, sessionKey);
+    }
+    return;
+  }
+
+  if (evt.event === "presence") {
+    const payload = evt.payload as { presence?: PresenceEntry[] } | undefined;
+    if (payload?.presence && Array.isArray(payload.presence)) {
+      host.presenceEntries = payload.presence;
+      host.presenceError = null;
+      host.presenceStatus = null;
+    }
+    return;
+  }
+
+  if (evt.event === "cron" && host.tab === "cron") {
+    void loadCron(host as unknown as Parameters<typeof loadCron>[0]);
+  }
+
+  if (evt.event === "device.pair.requested" || evt.event === "device.pair.resolved") {
+    void loadDevices(host as unknown as OpenClawApp, { quiet: true });
+  }
+
+  if (evt.event === "exec.approval.requested") {
+    const entry = parseExecApprovalRequested(evt.payload);
+    if (entry) {
+      host.execApprovalQueue = addExecApproval(host.execApprovalQueue, entry);
+      host.execApprovalError = null;
+      const delay = Math.max(0, entry.expiresAtMs - Date.now() + 500);
+      window.setTimeout(() => {
+        host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, entry.id);
+      }, delay);
+    }
+    return;
+  }
+
+  if (evt.event === "exec.approval.resolved") {
+    const resolved = parseExecApprovalResolved(evt.payload);
+    if (resolved) {
+      host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, resolved.id);
+    }
+  }
+}
+
+export function applySnapshot(host: GatewayHost, hello: GatewayHelloOk) {
+  const snapshot = hello.snapshot as
+    | {
+        presence?: PresenceEntry[];
+        health?: HealthSnapshot;
+        sessionDefaults?: SessionDefaultsSnapshot;
+      }
+    | undefined;
+  if (snapshot?.presence && Array.isArray(snapshot.presence)) {
+    host.presenceEntries = snapshot.presence;
+  }
+  if (snapshot?.health) {
+    host.debugHealth = snapshot.health;
+  }
+  if (snapshot?.sessionDefaults) {
+    applySessionDefaults(host, snapshot.sessionDefaults);
+  }
+}
