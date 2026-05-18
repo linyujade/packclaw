@@ -1,6 +1,3 @@
-# 上游依赖（各自独立 git 仓库）
-upstream/
-
 # 依赖
 workspace/node_modules/
 
