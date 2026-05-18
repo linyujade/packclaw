@@ -46,3 +46,6 @@ workspace/.dev-state/
 workspace/docs/plans/
 workspace/docs/research/
 workspace/docs/progress/
+
+# 备份旧 workspace-时间戳
+workspace-*/
