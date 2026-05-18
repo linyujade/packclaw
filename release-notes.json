@@ -1,0 +1,58 @@
+[
+  {
+    "version": "2026.511.0",
+    "notes": {
+      "zh": "设置页面新增 Token 用量统计，按会话查看输入 / 输出 / 缓存消耗\n对话输入框新增上下文容量进度条\n内置 Office (Word / PowerPoint / Excel) 文档技能\n内置 OneClaw 与 OpenClaw 使用手册技能\n反馈对话改为实时刷新（SSE）\n工具调用过程流式展示\n模型预设刷新至 2026 年 4 月阵容\n频道私聊配对体验优化与多项稳定性修复",
+      "en": "Add per-session token usage stats in Settings (input / output / cache)\nAdd context meter on the compose area\nBundle Office (Word / PowerPoint / Excel) skills\nBundle OneClaw and OpenClaw user manual skill\nReal-time feedback chat via SSE\nStream intermediate tool calls during runs\nRefresh model presets to April 2026 lineup\nChannel pairing polish and various stability fixes"
+    }
+  },
+  {
+    "version": "2026.424.0",
+    "notes": {
+      "zh": "升级了 openclaw 4.5 内核",
+      "en": "Upgrade openclaw kernel to 4.5"
+    }
+  },
+  {
+    "version": "2026.408.0",
+    "notes": {
+      "zh": "定时任务支持创建、编辑和删除\n修复若干稳定性和界面问题\n整体视觉体验优化",
+      "en": "Scheduled tasks now support full create, edit, and delete\nStability and UI fixes\nOverall visual polish"
+    }
+  },
+  {
+    "version": "2026.328.4",
+    "notes": {
+      "zh": "新增反馈功能\n新增思考模式：发送消息时可开启深度思考，支持多级别切换\n修复钉钉、微信渠道兼容性问题\n修复 Kimi 登录偶发失效问题\n优化微信连接体验\nAPI 错误提示更清晰\n会话列表自动刷新",
+      "en": "Add feedback feature\nAdd thinking mode: enable deep reasoning when sending messages with multiple thinking levels\nFix DingTalk and WeChat channel compatibility issues\nFix occasional Kimi login issues\nImprove WeChat connection experience\nClearer API error messages\nAuto-refresh session list"
+    }
+  },
+  {
+    "version": "2026.322.4",
+    "notes": {
+      "zh": "新增微信聊天支持\n新增高级记忆功能和定时任务查看\nUI 交互体验优化\n命令行功能修复\nWindows 升级体验优化",
+      "en": "Add WeChat chat support\nAdd advanced memory and scheduled tasks viewer\nUI interaction improvements\nCLI fixes\nWindows upgrade experience improvements"
+    }
+  },
+  {
+    "version": "2026.321.0",
+    "notes": {
+      "zh": "新增「更新日志」弹窗，每次升级后自动展示新版本变更内容",
+      "en": "Add \"What's New\" modal to show changelog after each update"
+    }
+  },
+  {
+    "version": "2026.320.0",
+    "notes": {
+      "zh": "支持文件拖拽和剪贴板粘贴，可直接拖入文件或 Cmd+V 粘贴图片到对话",
+      "en": "Support file drag-drop and clipboard paste in compose area"
+    }
+  },
+  {
+    "version": "2026.318.0",
+    "notes": {
+      "zh": "深色模式适配技能商店与工作空间页面",
+      "en": "Fix dark mode for skills and workspace pages"
+    }
+  }
+]

@@ -1,0 +1,2109 @@
+/**
+ * OneClaw custom app-render.ts
+ * Replaces the upstream 13-tab dashboard with a minimal sidebar + chat layout.
+ * Chat view and all chat functionality are preserved from upstream.
+ */
+import { html, nothing } from "lit";
+import type { AppViewState } from "./app-view-state.ts";
+import { parseAgentSessionKey } from "../../../src/routing/session-key.js";
+import { refreshChat, refreshChatAvatar } from "./app-chat.ts";
+import { loadChatHistory } from "./controllers/chat.ts";
+import { getLocale, getThinkingPhrases, t } from "./i18n.ts";
+import { icons } from "./icons.ts";
+import { renderSidebar } from "./sidebar.ts";
+import { applySessionKeyTransition } from "./session-transition.ts";
+import { resolveMainSessionKey, resolveVisibleSessionSelection } from "./session-visibility.ts";
+import { renderChat } from "./views/chat.ts";
+import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
+import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
+import { renderRestartGatewayDialog } from "./views/restart-gateway-dialog.ts";
+import { renderSharePrompt } from "./views/share-prompt.ts";
+import { renderWebbridgePillModal } from "./views/webbridge-pill-modal.ts";
+import { renderReleaseNotesModal } from "./views/release-notes-modal.ts";
+import { renderSetupView } from "./views/setup/setup-view.ts";
+import { renderSettingsView, cleanupSettingsView } from "./views/settings/settings-view.ts";
+import {
+  renderFeedbackButton,
+  renderFeedbackDialog,
+  createFeedbackDialogState,
+  type FeedbackDialogState,
+  renderFeedbackPanel,
+  createFeedbackPanelState,
+  type FeedbackPanelState,
+  type FeedbackMessage,
+  type FeedbackThread,
+} from "./views/feedback-dialog.ts";
+import { isThreadUnread, loadFeedbackSeenMap, markFeedbackThreadSeen } from "./feedback-seen.ts";
+import { patchSession, loadSessions } from "./controllers/sessions.ts";
+import { renderSkillStoreView, type SkillStoreState } from "./skill-store-view.ts";
+import { renderWorkspaceView, initWorkspace } from "./views/workspace.ts";
+import { renderCronManage } from "./views/cron-manage.ts";
+import { loadCronRuns, loadCronJobs, loadCronStatus, removeCronJob, toggleCronJob, runCronJob, addCronJob, updateCronJob } from "./controllers/cron.ts";
+import { DEFAULT_CRON_FORM } from "./app-defaults.ts";
+import { isExpiredOneShot } from "./presenter.ts";
+import { pendingSessionLabels, removePendingSessionLabel } from "./session-pending.ts";
+import type { SkillStatusEntry } from "./types.ts";
+import {
+  loadSkills,
+  updateSkillEnabled,
+  updateSkillEdit,
+  saveSkillApiKey,
+  installSkill,
+  type SkillsState,
+  type SkillMessageMap,
+} from "./controllers/skills.ts";
+
+declare global {
+  interface Window {
+    oneclaw?: {
+      openSettings?: () => void;
+      openWebUI?: () => void;
+      openExternal?: (url: string) => unknown;
+      getGatewayPort?: () => Promise<number>;
+      downloadAndInstallUpdate?: () => Promise<boolean>;
+      skillStoreList?: (params?: Record<string, unknown>) => Promise<any>;
+      skillStoreSearch?: (params?: Record<string, unknown>) => Promise<any>;
+      skillStoreDetail?: (params?: Record<string, unknown>) => Promise<any>;
+      skillStoreInstall?: (params?: Record<string, unknown>) => Promise<any>;
+      skillStoreUninstall?: (params?: Record<string, unknown>) => Promise<any>;
+      skillStoreListInstalled?: () => Promise<any>;
+      workspaceSetRoot?: (root: string) => Promise<any>;
+      workspaceOpenFile?: (filePath: string) => Promise<any>;
+      workspaceOpenFolder?: (filePath: string) => Promise<any>;
+      workspaceListDir?: (dirPath: string) => Promise<any>;
+      workspaceReadFile?: (filePath: string) => Promise<any>;
+      submitFeedback?: (params: { content: string; screenshots: string[]; fileNames?: string[]; includeLogs: boolean; email?: string }) => Promise<{ ok: boolean; id?: number; error?: string }>;
+      feedbackThreads?: () => Promise<{ ok: boolean; data?: any; error?: string }>;
+      feedbackThread?: (id: number) => Promise<{ ok: boolean; data?: any; error?: string }>;
+      feedbackReply?: (id: number, content: string, files?: Array<{name: string; base64: string}>) => Promise<{ ok: boolean; id?: number; message?: unknown; error?: string }>;
+      feedbackPickFiles?: () => Promise<{ files: Array<{name: string; base64: string}> } | null>;
+      feedbackShowErrorDialog?: (params: { title: string; message: string; detail?: string }) => Promise<void>;
+      feedbackSubscribe?: () => Promise<{ ok: boolean }>;
+      feedbackUnsubscribe?: () => Promise<{ ok: boolean }>;
+      onFeedbackEvent?: (cb: (evt: unknown) => void) => () => void;
+      onFeedbackOpen?: (cb: () => void) => () => void;
+      onFeedbackReconnecting?: (cb: () => void) => () => void;
+      onFeedbackReconnected?: (cb: () => void) => () => void;
+      captureWindow?: () => Promise<string | null>;
+    };
+  }
+}
+
+const AVATAR_DATA_RE = /^data:/i;
+const AVATAR_HTTP_RE = /^https?:\/\//i;
+
+function resolveAssistantAvatarUrl(state: AppViewState): string | undefined {
+  const list = state.agentsList?.agents ?? [];
+  const parsed = parseAgentSessionKey(state.sessionKey);
+  const agentId = parsed?.agentId ?? state.agentsList?.defaultId ?? "main";
+  const agent = list.find((entry) => entry.id === agentId);
+  const identity = agent?.identity;
+  const candidate = identity?.avatarUrl ?? identity?.avatar;
+  if (!candidate) {
+    return undefined;
+  }
+  if (AVATAR_DATA_RE.test(candidate) || AVATAR_HTTP_RE.test(candidate)) {
+    return candidate;
+  }
+  return identity?.avatarUrl;
+}
+
+function applySessionKey(state: AppViewState, next: string, syncUrl = false) {
+  const changed = applySessionKeyTransition(
+    state as unknown as Parameters<typeof applySessionKeyTransition>[0],
+    next,
+    syncUrl,
+  );
+  if (changed) {
+    void refreshChatAvatar(state as any);
+    // 拉取最新 sessions 快照，让 context meter 立即反映新会话的 token 占用。
+    void loadSessions(state as any);
+  }
+}
+
+function resolveSessionOptionLabel(
+  key: string,
+  row?: (NonNullable<AppViewState["sessionsResult"]>["sessions"][number] | undefined),
+): string {
+  const displayName = typeof row?.displayName === "string" ? row.displayName.trim() : "";
+  const label = typeof row?.label === "string" ? row.label.trim() : "";
+  // 有别名时只显示别名，不附带 key
+  if (label && label !== key) {
+    return label;
+  }
+  if (displayName && displayName !== key) {
+    return displayName;
+  }
+  return key;
+}
+
+function resolveSessionOptions(
+  state: AppViewState,
+): Array<{ key: string; label: string; updatedAt?: number }> {
+  const sessions = state.sessionsResult?.sessions ?? [];
+  const seen = new Set<string>();
+  const options: Array<{ key: string; label: string; updatedAt?: number }> = [];
+
+  const pushOption = (
+    key: string,
+    row?: NonNullable<AppViewState["sessionsResult"]>["sessions"][number],
+    isCurrentSession = false,
+  ) => {
+    const trimmedKey = String(key || "").trim();
+    if (!trimmedKey || seen.has(trimmedKey)) {
+      return;
+    }
+    seen.add(trimmedKey);
+    // 当前活跃会话若无 updatedAt，视为"刚刚使用"排到最前
+    options.push({
+      key: trimmedKey,
+      label: resolveSessionOptionLabel(trimmedKey, row),
+      updatedAt: row?.updatedAt ?? (isCurrentSession ? Date.now() : undefined),
+    });
+  };
+
+  const current = state.sessionKey?.trim() || "main";
+  const currentSession = sessions.find((entry) => entry.key === current);
+  if (currentSession) {
+    pushOption(current, currentSession, true);
+  }
+  for (const session of sessions) {
+    pushOption(session.key, session);
+  }
+
+  // 按 updatedAt 降序排列（最近使用的在前，无时间戳的在末尾）
+  options.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+
+  return options;
+}
+
+function reconcileVisibleSession(state: AppViewState) {
+  if (!state.sessionsResult) {
+    return;
+  }
+  const next = resolveVisibleSessionSelection(state.sessionKey, state.hello, state.sessionsResult);
+  if (!next || next === state.sessionKey) {
+    return;
+  }
+  applySessionKey(state, next, true);
+}
+
+// 侧边栏点击会话：切换 session 并确保回到对话视图
+function handleSessionChange(state: AppViewState, nextSessionKey: string) {
+  if (!nextSessionKey.trim()) {
+    return;
+  }
+  setOneClawView(state, "chat");
+  applySessionKey(state, nextSessionKey, true);
+}
+
+// 侧边栏重命名回调：修改会话 label 后刷新列表
+async function patchSessionFromSidebar(state: AppViewState, key: string, newLabel: string) {
+  await patchSession(state as any, key, { label: newLabel || null });
+}
+
+// 正在删除的 session key —— 侧边栏 per-row spinner 状态
+const deletingSessionKeys = new Set<string>();
+
+// 侧边栏删除回调：同步走完 reset + delete，期间该行按钮显示 loading。
+async function deleteSessionFromSidebar(state: AppViewState, key: string) {
+  const s = state as any;
+  if (!s.client || !s.connected) return;
+  if (deletingSessionKeys.has(key)) return;
+
+  const confirmed = window.confirm(t("sidebar.deleteSession"));
+  if (!confirmed) return;
+
+  deletingSessionKeys.add(key);
+  state.requestUpdate();
+
+  try {
+    // 1) reset：触发 session-memory hook 归档对话摘要；gateway 不认识时忽略。
+    try {
+      await s.client.request("sessions.reset", { key, reason: "new" });
+    } catch {
+      // 本地独有会话（新建未发消息）gateway 不可见，跳过
+    }
+
+    // 2) delete：移除 sessions.json 条目并归档 transcript。
+    try {
+      await s.client.request("sessions.delete", { key, deleteTranscript: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/session not found|unknown session/i.test(msg)) {
+        showToast(state, `${t("sidebar.deleteSessionFailed")}: ${msg}`);
+        return;
+      }
+      // not-found 视作等效成功，继续刷新
+    }
+
+    // 3) 成功：全量刷新侧边栏；reconcileVisibleSession 会在活跃会话被删时切到下一个可见会话。
+    removePendingSessionLabel(key);
+    await loadSessions(s);
+    reconcileVisibleSession(state);
+  } finally {
+    deletingSessionKeys.delete(key);
+    state.requestUpdate();
+  }
+}
+
+function setOneClawView(state: AppViewState, next: "chat" | "setup" | "settings" | "skills" | "workspace" | "cron" | "feedback") {
+  const prev = state.settings.oneclawView ?? "chat";
+  if (prev === next) {
+    return;
+  }
+  // 离开反馈视图：释放截图缓存 + 暂停思考定时器（保留 thinkingThreadIds）+ 断 SSE
+  if (prev === "feedback" && next !== "feedback") {
+    feedbackPanelState = { ...feedbackPanelState, newScreenshots: [], newScreenshotPreviews: [], newFileNames: [] };
+    pauseThinking();
+    unsubscribeFeedbackSse(state);
+  }
+  // 进入反馈视图：建立 SSE 长连接（实时推送）+ 恢复思考动画
+  if (prev !== "feedback" && next === "feedback") {
+    subscribeFeedbackSse(state);
+    resumeThinking(state);
+  }
+  if (prev === "settings" && next !== "settings") {
+    cleanupSettingsView();
+  }
+  state.applySettings({
+    ...state.settings,
+    oneclawView: next,
+  });
+}
+
+// 后台轮询拉取 thread 列表的间隔。SSE 仅在用户进入反馈视图时建立，
+// 平时通过 5 分钟一次的 HTTP 拉取检测"过去未读"，让反馈入口的红点
+// 可以及时反映服务端推送，而不必一直占着 SSE 长连接。
+const FEEDBACK_BACKGROUND_POLL_MS = 5 * 60 * 1000;
+let feedbackBackgroundPollTimer: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * 应用启动时调用一次：立刻拉一次 thread 列表（识别启动前后端推送的"过去未读"），
+ * 并启动一个 5 分钟一次的后台轮询。SSE 不在这里建立，只在用户实际打开反馈视图时建立。
+ */
+export function initFeedbackBackground(state: AppViewState) {
+  void loadFeedbackThreads(state);
+  if (feedbackBackgroundPollTimer) return; // 幂等，防热更新重复挂表
+  feedbackBackgroundPollTimer = setInterval(() => {
+    // 用户已经在反馈视图：SSE 在推实时事件，轮询纯属浪费一次 HTTP；跳过。
+    if ((state.settings.oneclawView ?? "chat") === "feedback") return;
+    void loadFeedbackThreads(state);
+  }, FEEDBACK_BACKGROUND_POLL_MS);
+}
+
+// 打开内嵌设置页时可携带目标 tab 提示，减少用户二次定位成本。
+function openSettingsView(state: AppViewState, tabHint: string | null = null) {
+  state.settingsTabHint = tabHint;
+  setOneClawView(state, "settings");
+}
+
+// ── 反馈面板逻辑 ──
+
+async function openFeedbackView(state: AppViewState) {
+  // 先截图（视图切换前），再打开新建表单
+  let capturedBase64: string | null = null;
+  try {
+    capturedBase64 = (await window.oneclaw?.captureWindow?.()) ?? null;
+  } catch { /* 截图失败不阻塞 */ }
+
+  setOneClawView(state, "feedback");
+
+  const screenshots: string[] = [];
+  const previews: string[] = [];
+  const fileNames: string[] = [];
+  if (capturedBase64) {
+    screenshots.push(capturedBase64);
+    previews.push(`data:image/png;base64,${capturedBase64}`);
+    fileNames.push("screenshot.png");
+  }
+
+  feedbackPanelState = {
+    ...feedbackPanelState,
+    view: "new",
+    newContent: "",
+    newEmail: "",
+    newScreenshots: screenshots,
+    newScreenshotPreviews: previews,
+    newFileNames: fileNames,
+    newPreviewSrc: null,
+    newIncludeLogs: true,
+    newSubmitting: false,
+    newError: null,
+  };
+
+  loadFeedbackThreads(state);
+}
+
+async function loadFeedbackThreads(state: AppViewState) {
+  feedbackPanelState = { ...feedbackPanelState, threadsLoading: true, threadsError: null };
+  state.requestUpdate();
+  try {
+    const result = await window.oneclaw?.feedbackThreads?.();
+    if (result?.ok && result.data) {
+      const threads = Array.isArray(result.data) ? result.data : (result.data.items ?? result.data.threads ?? []);
+      // 合并"过去未读"：客户端不在线期间后端推送的回复，对照本地 seenMap 标红
+      const seenMap = loadFeedbackSeenMap();
+      // 排除"用户当前正在看"的 thread：即使 last_reply_at > seen，也不算未读，
+      // 避免 thread.updated 事件和 message.created 时间戳分歧导致误标红
+      const viewingId = feedbackPanelState.view === "detail" ? feedbackPanelState.detailThread?.id ?? null : null;
+      const pastUnread = threads
+        .filter((t: FeedbackThread) => t.id !== viewingId && isThreadUnread(t, seenMap))
+        .map((t: FeedbackThread) => t.id);
+      const mergedUnread = Array.from(new Set([
+        ...feedbackPanelState.unreadThreadIds.filter((id) => id !== viewingId),
+        ...pastUnread,
+      ]));
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        threads,
+        threadsLoading: false,
+        unreadThreadIds: mergedUnread,
+      };
+    } else {
+      feedbackPanelState = { ...feedbackPanelState, threadsLoading: false, threadsError: result?.error || "Failed to load" };
+    }
+  } catch {
+    feedbackPanelState = { ...feedbackPanelState, threadsLoading: false, threadsError: "Failed to load" };
+  }
+  state.requestUpdate();
+}
+
+async function loadFeedbackThreadDetail(state: AppViewState, id: number) {
+  // 重连时同样调用本函数；为保住"在途的 pending 占位"，仅当当前正打开的就是 id 时保留占位，
+  // 切换到不同 thread 时按原逻辑清空。
+  const samethread = feedbackPanelState.detailThread?.id === id;
+  const pendingPlaceholders = samethread
+    ? (feedbackPanelState.detailMessages ?? []).filter((m) => m._pending)
+    : [];
+  feedbackPanelState = { ...feedbackPanelState, view: "detail", detailLoading: true, detailThread: null, detailMessages: [], detailReplyContent: "", detailReplyFiles: [], detailReplyFilePreviews: [], detailReplyFileNames: [] };
+  state.requestUpdate();
+  try {
+    const result = await window.oneclaw?.feedbackThread?.(id);
+    if (result?.ok && result.data) {
+      const fresh: FeedbackMessage[] = result.data.messages ?? [];
+      // 合并 pending 占位回去，按时间排序；id 去重避免占位与服务端真实消息重复
+      const realIds = new Set(fresh.filter((m) => m.id > 0).map((m) => m.id));
+      const survivedPending = pendingPlaceholders.filter((m) => m.id <= 0 || !realIds.has(m.id));
+      const merged = [...fresh, ...survivedPending].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        detailThread: result.data.feedback ?? result.data,
+        detailMessages: merged,
+        detailLoading: false,
+      };
+    } else {
+      feedbackPanelState = { ...feedbackPanelState, detailLoading: false };
+    }
+  } catch {
+    feedbackPanelState = { ...feedbackPanelState, detailLoading: false };
+  }
+  // 加载完成后，对账 thinking 状态：若 Agent 在用户不在时已经回复，隐藏思考气泡。
+  // 判据：消息列表中最后一条是非 user 消息 → Agent 已回复，thinking 无意义。
+  if (feedbackPanelState.thinkingThreadIds.includes(id)) {
+    const msgs = feedbackPanelState.detailMessages;
+    const last = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+    if (last && last.role !== "user") {
+      hideThinking(state, id);
+    }
+  }
+  state.requestUpdate();
+  // 首屏直接落到底（instant，避免刚打开 thread 就看到滚动动画）
+  scrollFeedbackMessagesToBottom("auto");
+}
+
+// 详情页消息列表自动滚动：若用户当前在底部附近则跟随新消息，
+// 否则尊重手动滚动位置（例如在读历史），不强制下拉。
+const FEEDBACK_SCROLL_NEAR_BOTTOM_PX = 120;
+
+function getFeedbackMessagesScrollEl(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(".feedback-panel__messages");
+}
+
+function isFeedbackMessagesNearBottom(): boolean {
+  const el = getFeedbackMessagesScrollEl();
+  // 没找到容器通常意味着详情页刚打开尚未挂载 → 当作 near-bottom，让首屏直接落到底
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight < FEEDBACK_SCROLL_NEAR_BOTTOM_PX;
+}
+
+function scrollFeedbackMessagesToBottom(behavior: ScrollBehavior = "smooth") {
+  // 双 rAF：第一帧等 Lit 调度的 DOM 更新落盘，第二帧等浏览器 layout 完成
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const el = getFeedbackMessagesScrollEl();
+      if (!el) return;
+      el.scrollTo({ top: el.scrollHeight, behavior });
+    });
+  });
+}
+
+/** 把后端原始错误码映射成用户友好的中英文文案 */
+function translateFeedbackError(err: string | undefined): { title: string; message: string; detail: string } {
+  const raw = err || "";
+  const isZh = getLocale() === "zh";
+  // 已知错误码：消息数量超限
+  if (/message limit reached/i.test(raw)) {
+    return {
+      title: isZh ? "发送失败" : "Send failed",
+      message: isZh ? "此对话的消息已达上限" : "Message limit reached",
+      detail: isZh
+        ? "这个反馈会话的消息数量已经达到上限（50 条），无法继续发送。\n如需继续咨询，请新建一个反馈。"
+        : "This feedback thread has reached its 50-message limit.\nPlease create a new feedback to continue.",
+    };
+  }
+  // 网络超时
+  if (/timeout/i.test(raw)) {
+    return {
+      title: isZh ? "发送失败" : "Send failed",
+      message: isZh ? "请求超时" : "Request timeout",
+      detail: isZh ? "请检查网络连接后重试。" : "Please check your network connection and try again.",
+    };
+  }
+  // HTTP 状态码
+  const httpMatch = raw.match(/^HTTP (\d+)/);
+  if (httpMatch) {
+    return {
+      title: isZh ? "发送失败" : "Send failed",
+      message: isZh ? `服务器返回错误 (${httpMatch[1]})` : `Server error (${httpMatch[1]})`,
+      detail: raw,
+    };
+  }
+  // 兜底
+  return {
+    title: isZh ? "发送失败" : "Send failed",
+    message: isZh ? "消息发送失败" : "Failed to send message",
+    detail: raw || (isZh ? "未知错误" : "Unknown error"),
+  };
+}
+
+/** 弹出原生错误对话框（通过 IPC 调用主进程的 dialog.showMessageBox） */
+function showFeedbackReplyErrorDialog(err: string | undefined): Promise<void> | void {
+  const payload = translateFeedbackError(err);
+  return window.oneclaw?.feedbackShowErrorDialog?.(payload);
+}
+
+/** 详情页 scroll 事件回调：用户滚到底部时清除"有新消息"提示 */
+function handleFeedbackDetailScroll(state: AppViewState) {
+  if (isFeedbackMessagesNearBottom() && feedbackPanelState.hasNewMessagesBelow) {
+    feedbackPanelState = { ...feedbackPanelState, hasNewMessagesBelow: false };
+    state.requestUpdate();
+  }
+}
+
+type FeedbackSseEvent =
+  | { type: "message.created"; thread_id: number; message: FeedbackMessage & { feedback_id: number } }
+  | { type: "thread.updated"; thread_id: number; thread: Partial<FeedbackThread> & { id: number } }
+  | { type: "agent.thinking"; thread_id: number }
+  | { type: "agent.done"; thread_id: number }
+  | { type: "agent.manual_pending"; thread_id: number }
+  | { type: "agent.online"; thread_id: number };
+
+// thread_id → 5 分钟自动隐藏定时器；防 agent.done 丢失导致动画卡死
+const thinkingSafetyTimers = new Map<number, ReturnType<typeof setTimeout>>();
+const THINKING_SAFETY_TIMEOUT_MS = 300_000; // 5 分钟，对齐设计文档 §3.3 的客户端建议
+
+// ── "AI 思考中" 轮播短语 ──
+let thinkingPhraseIndex = 0;
+let thinkingPhraseTimer: ReturnType<typeof setInterval> | null = null;
+const THINKING_PHRASE_INTERVAL_MS = 3_000; // 每 3 秒切换一条
+
+/** 有任意 thread 在 thinking 时启动轮播定时器 */
+function startPhraseRotation(state: AppViewState) {
+  if (thinkingPhraseTimer) return; // 已在运行
+  const phrases = getThinkingPhrases();
+  thinkingPhraseIndex = 0;
+  feedbackPanelState = { ...feedbackPanelState, thinkingPhrase: phrases[0] };
+  thinkingPhraseTimer = setInterval(() => {
+    const p = getThinkingPhrases();
+    thinkingPhraseIndex = (thinkingPhraseIndex + 1) % p.length;
+    feedbackPanelState = { ...feedbackPanelState, thinkingPhrase: p[thinkingPhraseIndex] };
+    state.requestUpdate();
+  }, THINKING_PHRASE_INTERVAL_MS);
+}
+
+/** 所有 thinking 结束后停止轮播 */
+function stopPhraseRotation() {
+  if (thinkingPhraseTimer) {
+    clearInterval(thinkingPhraseTimer);
+    thinkingPhraseTimer = null;
+  }
+  thinkingPhraseIndex = 0;
+  feedbackPanelState = { ...feedbackPanelState, thinkingPhrase: "" };
+}
+
+function showThinking(state: AppViewState, threadId: number) {
+  // 重置 5 分钟兜底（同一 thread 收到二次 thinking 不应延长，但收到 done 后再来新 thinking 需重启）
+  const existing = thinkingSafetyTimers.get(threadId);
+  if (existing) clearTimeout(existing);
+  thinkingSafetyTimers.set(
+    threadId,
+    setTimeout(() => hideThinking(state, threadId), THINKING_SAFETY_TIMEOUT_MS),
+  );
+  if (feedbackPanelState.thinkingThreadIds.includes(threadId)) return;
+  const wasEmpty = feedbackPanelState.thinkingThreadIds.length === 0;
+  feedbackPanelState = {
+    ...feedbackPanelState,
+    thinkingThreadIds: [...feedbackPanelState.thinkingThreadIds, threadId],
+  };
+  if (wasEmpty) startPhraseRotation(state);
+}
+
+function hideThinking(state: AppViewState, threadId: number) {
+  const timer = thinkingSafetyTimers.get(threadId);
+  if (timer) {
+    clearTimeout(timer);
+    thinkingSafetyTimers.delete(threadId);
+  }
+  if (!feedbackPanelState.thinkingThreadIds.includes(threadId)) return;
+  feedbackPanelState = {
+    ...feedbackPanelState,
+    thinkingThreadIds: feedbackPanelState.thinkingThreadIds.filter((x) => x !== threadId),
+  };
+  if (feedbackPanelState.thinkingThreadIds.length === 0) stopPhraseRotation();
+  state.requestUpdate();
+}
+
+/** 暂停定时器和轮播，但保留 thinkingThreadIds，用户回来时可恢复。 */
+function pauseThinking() {
+  for (const t of thinkingSafetyTimers.values()) clearTimeout(t);
+  thinkingSafetyTimers.clear();
+  stopPhraseRotation();
+}
+
+/** 进入反馈视图时，为保留的 thinkingThreadIds 重启安全定时器和轮播。 */
+function resumeThinking(state: AppViewState) {
+  if (feedbackPanelState.thinkingThreadIds.length === 0) return;
+  for (const tid of feedbackPanelState.thinkingThreadIds) {
+    thinkingSafetyTimers.set(tid, setTimeout(() => hideThinking(state, tid), THINKING_SAFETY_TIMEOUT_MS));
+  }
+  startPhraseRotation(state);
+}
+
+/** 清除某 thread 的"人工回复模式"提示 */
+function clearManualPending(threadId: number) {
+  if (!feedbackPanelState.manualPendingThreadIds.includes(threadId)) return;
+  feedbackPanelState = {
+    ...feedbackPanelState,
+    manualPendingThreadIds: feedbackPanelState.manualPendingThreadIds.filter((x) => x !== threadId),
+  };
+}
+
+// thread_id → "智能客服已上线"短暂提示的自动清除定时器
+const agentOnlineTimers = new Map<number, ReturnType<typeof setTimeout>>();
+const AGENT_ONLINE_DISPLAY_MS = 5_000; // 5 秒后自动隐藏
+
+/** 清除某 thread 的"智能客服已上线"短暂提示 */
+function clearAgentOnline(threadId: number) {
+  const timer = agentOnlineTimers.get(threadId);
+  if (timer) {
+    clearTimeout(timer);
+    agentOnlineTimers.delete(threadId);
+  }
+  if (!feedbackPanelState.agentOnlineThreadIds.includes(threadId)) return;
+  feedbackPanelState = {
+    ...feedbackPanelState,
+    agentOnlineThreadIds: feedbackPanelState.agentOnlineThreadIds.filter((x) => x !== threadId),
+  };
+}
+
+function appendDetailMessageDedup(msg: FeedbackMessage) {
+  const list = feedbackPanelState.detailMessages ?? [];
+  // 以 id 为主键去重；id <= 0 表示乐观占位，不参与去重判定。
+  // 不再按 content 移除占位 —— SSE echo 乱序时按 content 匹配会错配；占位由 POST 响应路径用 _tempKey 精确替换。
+  if (msg.id > 0 && list.some((m) => m.id === msg.id)) return;
+  const merged = [...list, msg].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  feedbackPanelState = { ...feedbackPanelState, detailMessages: merged };
+}
+
+function handleFeedbackEvent(state: AppViewState, evt: FeedbackSseEvent) {
+  // 只有 view=detail 时才视为"正在看"；list/new 视图下 detailThread 可能是上次残留
+  const openId = feedbackPanelState.view === "detail"
+    ? feedbackPanelState.detailThread?.id ?? null
+    : null;
+  // 在 state 变化之前拍一次"是否已滚到底部附近"快照，用于决定是否跟随新内容滚动
+  const wasNearBottom = openId === evt.thread_id ? isFeedbackMessagesNearBottom() : false;
+
+  if (evt.type === "message.created") {
+    const incoming: FeedbackMessage = {
+      id: evt.message.id,
+      thread_id: evt.message.feedback_id ?? evt.thread_id,
+      role: evt.message.role,
+      content: evt.message.content,
+      file_keys: evt.message.file_keys ?? [],
+      created_at: evt.message.created_at,
+    };
+    if (openId === evt.thread_id) {
+      // 当前正在看这个 thread → 去重 append + 推进 seen 时间戳，
+      // 避免"边看边来新消息，关掉重开又被算未读"
+      appendDetailMessageDedup(incoming);
+      markFeedbackThreadSeen(evt.thread_id, incoming.created_at);
+    } else if (incoming.role !== "user") {
+      // 其他 thread 且不是自己发的 → 标记未读
+      if (!feedbackPanelState.unreadThreadIds.includes(evt.thread_id)) {
+        feedbackPanelState = {
+          ...feedbackPanelState,
+          unreadThreadIds: [...feedbackPanelState.unreadThreadIds, evt.thread_id],
+        };
+      }
+    }
+    // 非 user 消息到达 → 清除所有状态提示（thinking + manualPending + agentOnline）
+    if (incoming.role !== "user") {
+      hideThinking(state, evt.thread_id);
+      clearManualPending(evt.thread_id);
+      clearAgentOnline(evt.thread_id);
+    }
+    state.requestUpdate();
+    // 当前打开的 thread 新增气泡
+    if (openId === evt.thread_id) {
+      if (wasNearBottom) {
+        // 用户在底部 → 跟随滚动
+        scrollFeedbackMessagesToBottom("smooth");
+      } else if (incoming.role !== "user") {
+        // 用户不在底部 + 官方回复 → 显示"有新消息"浮动提示
+        feedbackPanelState = { ...feedbackPanelState, hasNewMessagesBelow: true };
+        state.requestUpdate();
+      }
+    }
+  } else if (evt.type === "thread.updated") {
+    const idx = feedbackPanelState.threads.findIndex((t) => t.id === evt.thread_id);
+    if (idx >= 0) {
+      const prev = feedbackPanelState.threads[idx];
+      const next = { ...prev, ...evt.thread } as FeedbackThread;
+      const threads = [...feedbackPanelState.threads];
+      threads[idx] = next;
+      // last_reply_at 变化 + 非当前打开的 thread → 标记未读（设计文档 §3.3：thread.updated 用于列表页红点）
+      const replyChanged = evt.thread.last_reply_at && evt.thread.last_reply_at !== prev.last_reply_at;
+      const unread = replyChanged && openId !== evt.thread_id
+        && !feedbackPanelState.unreadThreadIds.includes(evt.thread_id);
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        threads,
+        ...(unread ? { unreadThreadIds: [...feedbackPanelState.unreadThreadIds, evt.thread_id] } : {}),
+      };
+      // 用户正在看该 thread → 同步推进 seen 时间戳，避免后续 loadFeedbackThreads
+      // 用旧 seen 对比新 last_reply_at 误标未读（即使没收到 message.created 也能兜住）
+      if (openId === evt.thread_id && evt.thread.last_reply_at) {
+        markFeedbackThreadSeen(evt.thread_id, evt.thread.last_reply_at);
+      }
+      state.requestUpdate();
+    }
+  } else if (evt.type === "agent.thinking") {
+    showThinking(state, evt.thread_id);
+    // 收到 thinking 说明 agent 已开始跑 → 清除人工回复和"AI 已上线"提示
+    clearManualPending(evt.thread_id);
+    clearAgentOnline(evt.thread_id);
+    state.requestUpdate();
+    // 思考动画出现在消息列表底部 → 用户原本贴底就跟着滚下来
+    if (openId === evt.thread_id && wasNearBottom) {
+      scrollFeedbackMessagesToBottom("smooth");
+    }
+  } else if (evt.type === "agent.manual_pending") {
+    // 人工回复模式 → 显示提示（同时清除 "AI 已上线"，避免旧提示残留）
+    clearAgentOnline(evt.thread_id);
+    if (!feedbackPanelState.manualPendingThreadIds.includes(evt.thread_id)) {
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        manualPendingThreadIds: [...feedbackPanelState.manualPendingThreadIds, evt.thread_id],
+      };
+    }
+    state.requestUpdate();
+    if (openId === evt.thread_id && wasNearBottom) {
+      scrollFeedbackMessagesToBottom("smooth");
+    }
+  } else if (evt.type === "agent.online") {
+    // /auto on → 仅当当前正在显示"人工客服已接管"时，才替换为"智能客服已上线"短暂提示。
+    // 如果用户此前没看到过人工回复提示，就静默切换（不打扰）。
+    const wasManualPending = feedbackPanelState.manualPendingThreadIds.includes(evt.thread_id);
+    clearManualPending(evt.thread_id);
+    if (wasManualPending) {
+      // 已有定时器则重置
+      const existing = agentOnlineTimers.get(evt.thread_id);
+      if (existing) clearTimeout(existing);
+      if (!feedbackPanelState.agentOnlineThreadIds.includes(evt.thread_id)) {
+        feedbackPanelState = {
+          ...feedbackPanelState,
+          agentOnlineThreadIds: [...feedbackPanelState.agentOnlineThreadIds, evt.thread_id],
+        };
+      }
+      agentOnlineTimers.set(
+        evt.thread_id,
+        setTimeout(() => {
+          clearAgentOnline(evt.thread_id);
+          state.requestUpdate();
+        }, AGENT_ONLINE_DISPLAY_MS),
+      );
+    }
+    state.requestUpdate();
+  } else if (evt.type === "agent.done") {
+    // 静默隐藏思考动画，不向用户暴露 Agent 成功/失败状态
+    hideThinking(state, evt.thread_id);
+  }
+  // 未知 type 默认忽略，符合设计文档 §3.1 约定
+}
+
+function subscribeFeedbackSse(state: AppViewState) {
+  if (feedbackSseUnsub) return; // 幂等
+  void window.oneclaw?.feedbackSubscribe?.();
+  feedbackSseUnsub = window.oneclaw?.onFeedbackEvent?.((evt) => {
+    handleFeedbackEvent(state, evt as FeedbackSseEvent);
+  }) ?? null;
+  feedbackReconnectedUnsub = window.oneclaw?.onFeedbackReconnected?.(() => {
+    // 重连成功（首字节到达）→ 兜底刷新列表 + 打开的详情
+    loadFeedbackThreads(state);
+    const openId = feedbackPanelState.detailThread?.id ?? null;
+    if (openId) void loadFeedbackThreadDetail(state, openId);
+  }) ?? null;
+}
+
+function unsubscribeFeedbackSse(_state: AppViewState) {
+  feedbackSseUnsub?.();
+  feedbackReconnectedUnsub?.();
+  feedbackSseUnsub = null;
+  feedbackReconnectedUnsub = null;
+  void window.oneclaw?.feedbackUnsubscribe?.();
+  // 注意：不在这里清 thinkingThreadIds —— 由 setOneClawView 调用 pauseThinking 保留状态，
+  // 用户重新进入时通过 resumeThinking 恢复。clearAllThinking 仅在应用退出等场景使用。
+}
+
+function buildFeedbackPanelCallbacks(state: AppViewState) {
+  return {
+    onLoadThreads: () => loadFeedbackThreads(state),
+    onOpenNew: () => {
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        view: "new",
+        newContent: "",
+        newEmail: "",
+        newScreenshots: [],
+        newScreenshotPreviews: [],
+        newFileNames: [],
+        newPreviewSrc: null,
+        newIncludeLogs: true,
+        newSubmitting: false,
+        newError: null,
+      };
+      state.requestUpdate();
+    },
+    onOpenDetail: (id: number) => {
+      // 清除该 thread 的未读标记 + 持久化"已读到现在"，
+      // 这样下次重启 OneClaw 时这个 thread 不会被算成"过去未读"
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        unreadThreadIds: feedbackPanelState.unreadThreadIds.filter((x) => x !== id),
+        hasNewMessagesBelow: false,
+      };
+      markFeedbackThreadSeen(id);
+      void loadFeedbackThreadDetail(state, id);
+    },
+    onBackToList: () => {
+      // 离开 detail 前，用所有已知时间戳的最大值刷新 seenMap，
+      // 确保 loadFeedbackThreads 拉到的 last_reply_at 不会大于 seen
+      const thread = feedbackPanelState.detailThread;
+      if (thread) {
+        const msgs = feedbackPanelState.detailMessages;
+        const candidates = [
+          new Date().toISOString(),
+          thread.last_reply_at || "",
+          thread.updated_at || "",
+          msgs.length > 0 ? msgs[msgs.length - 1].created_at : "",
+        ];
+        const latest = candidates.sort().pop()!;
+        markFeedbackThreadSeen(thread.id, latest);
+      }
+      feedbackPanelState = { ...feedbackPanelState, view: "list" };
+      loadFeedbackThreads(state);
+    },
+    onNewContentChange: (value: string) => {
+      feedbackPanelState = { ...feedbackPanelState, newContent: value };
+      state.requestUpdate();
+    },
+    onNewEmailChange: (value: string) => {
+      feedbackPanelState = { ...feedbackPanelState, newEmail: value };
+      state.requestUpdate();
+    },
+    onNewToggleLogs: (checked: boolean) => {
+      feedbackPanelState = { ...feedbackPanelState, newIncludeLogs: checked };
+      state.requestUpdate();
+    },
+    onNewAddScreenshots: (files: FileList) => {
+      Array.from(files).forEach((file) => {
+        const isImage = file.type.startsWith("image/");
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          const base64 = dataUrl.split(",")[1];
+          feedbackPanelState = {
+            ...feedbackPanelState,
+            newScreenshots: [...feedbackPanelState.newScreenshots, base64],
+            newScreenshotPreviews: [...feedbackPanelState.newScreenshotPreviews, isImage ? dataUrl : ""],
+            newFileNames: [...feedbackPanelState.newFileNames, file.name],
+          };
+          state.requestUpdate();
+        };
+        reader.readAsDataURL(file);
+      });
+    },
+    onNewPickFiles: async () => {
+      const result = await window.oneclaw?.feedbackPickFiles?.();
+      if (!result?.files?.length) return;
+      for (const f of result.files) {
+        const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name);
+        feedbackPanelState = {
+          ...feedbackPanelState,
+          newScreenshots: [...feedbackPanelState.newScreenshots, f.base64],
+          newScreenshotPreviews: [...feedbackPanelState.newScreenshotPreviews, isImage ? `data:image/png;base64,${f.base64}` : ""],
+          newFileNames: [...feedbackPanelState.newFileNames, f.name],
+        };
+      }
+      state.requestUpdate();
+    },
+    onNewRemoveScreenshot: (index: number) => {
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        newScreenshots: feedbackPanelState.newScreenshots.filter((_, i) => i !== index),
+        newScreenshotPreviews: feedbackPanelState.newScreenshotPreviews.filter((_, i) => i !== index),
+        newFileNames: feedbackPanelState.newFileNames.filter((_, i) => i !== index),
+      };
+      state.requestUpdate();
+    },
+    onNewPaste: (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (!file) continue;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            const base64 = dataUrl.split(",")[1];
+            feedbackPanelState = {
+              ...feedbackPanelState,
+              newScreenshots: [...feedbackPanelState.newScreenshots, base64],
+              newScreenshotPreviews: [...feedbackPanelState.newScreenshotPreviews, dataUrl],
+            };
+            state.requestUpdate();
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    },
+    onNewPreviewScreenshot: (src: string | null) => {
+      feedbackPanelState = { ...feedbackPanelState, newPreviewSrc: src };
+      state.requestUpdate();
+    },
+    onNewSubmit: async () => {
+      feedbackPanelState = { ...feedbackPanelState, newSubmitting: true, newError: null };
+      state.requestUpdate();
+      try {
+        const result = await window.oneclaw?.submitFeedback?.({
+          content: feedbackPanelState.newContent,
+          screenshots: feedbackPanelState.newScreenshots,
+          fileNames: feedbackPanelState.newFileNames,
+          includeLogs: feedbackPanelState.newIncludeLogs,
+          email: feedbackPanelState.newEmail || undefined,
+        });
+        if (result?.ok) {
+          feedbackPanelState = { ...feedbackPanelState, newSubmitting: false };
+          showToast(state, t("feedback.success"));
+          if (result.id) {
+            // 有 id → 直接跳转新建的 thread 详情
+            loadFeedbackThreads(state);
+            void loadFeedbackThreadDetail(state, result.id);
+          } else {
+            // 无 id → 回退到列表
+            feedbackPanelState = { ...feedbackPanelState, view: "list" };
+            loadFeedbackThreads(state);
+          }
+        } else {
+          feedbackPanelState = { ...feedbackPanelState, newSubmitting: false, newError: result?.error || t("feedback.error") };
+        }
+      } catch {
+        feedbackPanelState = { ...feedbackPanelState, newSubmitting: false, newError: t("feedback.error") };
+      }
+      state.requestUpdate();
+    },
+    onReplyChange: (value: string) => {
+      feedbackPanelState = { ...feedbackPanelState, detailReplyContent: value };
+      state.requestUpdate();
+    },
+    onReplyAddFiles: (files: FileList) => {
+      Array.from(files).forEach((file) => {
+        const isImage = file.type.startsWith("image/");
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          const base64 = dataUrl.split(",")[1];
+          feedbackPanelState = {
+            ...feedbackPanelState,
+            detailReplyFiles: [...feedbackPanelState.detailReplyFiles, base64],
+            detailReplyFilePreviews: [...feedbackPanelState.detailReplyFilePreviews, isImage ? dataUrl : ""],
+            detailReplyFileNames: [...feedbackPanelState.detailReplyFileNames, file.name],
+          };
+          state.requestUpdate();
+        };
+        reader.readAsDataURL(file);
+      });
+    },
+    onReplyPickFiles: async () => {
+      const result = await window.oneclaw?.feedbackPickFiles?.();
+      if (!result?.files?.length) return;
+      for (const f of result.files) {
+        const isImage = /\.(png|jpe?g|gif|webp|bmp)$/i.test(f.name);
+        feedbackPanelState = {
+          ...feedbackPanelState,
+          detailReplyFiles: [...feedbackPanelState.detailReplyFiles, f.base64],
+          detailReplyFilePreviews: [...feedbackPanelState.detailReplyFilePreviews, isImage ? `data:image/png;base64,${f.base64}` : ""],
+          detailReplyFileNames: [...feedbackPanelState.detailReplyFileNames, f.name],
+        };
+      }
+      state.requestUpdate();
+    },
+    onReplyRemoveFile: (index: number) => {
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        detailReplyFiles: feedbackPanelState.detailReplyFiles.filter((_, i) => i !== index),
+        detailReplyFilePreviews: feedbackPanelState.detailReplyFilePreviews.filter((_, i) => i !== index),
+        detailReplyFileNames: feedbackPanelState.detailReplyFileNames.filter((_, i) => i !== index),
+      };
+      state.requestUpdate();
+    },
+    onDetailScroll: () => handleFeedbackDetailScroll(state),
+    onScrollToBottom: () => {
+      feedbackPanelState = { ...feedbackPanelState, hasNewMessagesBelow: false };
+      state.requestUpdate();
+      scrollFeedbackMessagesToBottom("smooth");
+    },
+    onReplySend: async () => {
+      if (!feedbackPanelState.detailThread || (!feedbackPanelState.detailReplyContent.trim() && feedbackPanelState.detailReplyFiles.length === 0)) return;
+      const threadId = feedbackPanelState.detailThread.id;
+      const content = feedbackPanelState.detailReplyContent;
+      const files = feedbackPanelState.detailReplyFiles.length > 0
+        ? feedbackPanelState.detailReplyFiles.map((base64, i) => ({ name: feedbackPanelState.detailReplyFileNames[i] || `file-${i + 1}`, base64 }))
+        : undefined;
+
+      // 1. 本地先插入临时 pending 气泡
+      const tempKey = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const tempMsg: FeedbackMessage = {
+        id: 0,
+        thread_id: threadId,
+        role: "user",
+        content,
+        file_keys: [],
+        created_at: new Date().toISOString(),
+        _pending: true,
+        _tempKey: tempKey,
+      };
+      // 乐观更新：本地立刻插入 pending 气泡并清空输入框，不把 detailReplySending 置 true，
+      // 这样 POST 期间（后端可能要 10+ 秒）用户仍可继续输入和发送下一条。
+      feedbackPanelState = {
+        ...feedbackPanelState,
+        detailMessages: [...feedbackPanelState.detailMessages, tempMsg],
+        detailReplyContent: "",
+        detailReplyFiles: [],
+        detailReplyFilePreviews: [],
+        detailReplyFileNames: [],
+      };
+      state.requestUpdate();
+      // 用户主动发消息 → 总是滚到底（不判 near-bottom），让用户看到自己的气泡
+      scrollFeedbackMessagesToBottom("smooth");
+
+      // 2. 后台异步发 POST（不阻塞输入）
+      void (async () => {
+        let result: any;
+        try {
+          result = await window.oneclaw?.feedbackReply?.(threadId, content, files);
+        } catch (err) {
+          feedbackPanelState = {
+            ...feedbackPanelState,
+            detailMessages: feedbackPanelState.detailMessages.map((msg) =>
+              msg._tempKey === tempKey ? { ...msg, _pending: false, _failed: true } : msg,
+            ),
+          };
+          state.requestUpdate();
+          void showFeedbackReplyErrorDialog(String(err));
+          return;
+        }
+        if (result?.ok && result.message) {
+          // 3a. 用真实 message 替换临时占位
+          const m = result.message as any;
+          const real: FeedbackMessage = {
+            id: m.id,
+            thread_id: m.feedback_id ?? threadId,
+            role: m.role ?? "user",
+            content: m.content ?? content,
+            file_keys: m.file_keys ?? [],
+            created_at: m.created_at ?? tempMsg.created_at,
+          };
+          // 移除临时占位 + 追加真实消息；若 SSE echo 已先到，按 id 去重
+          const withoutTemp = feedbackPanelState.detailMessages.filter((msg) => msg._tempKey !== tempKey);
+          const alreadyHasReal = real.id > 0 && withoutTemp.some((msg) => msg.id === real.id);
+          const merged = alreadyHasReal ? withoutTemp : [...withoutTemp, real];
+          merged.sort((a, b) => a.created_at.localeCompare(b.created_at));
+          feedbackPanelState = { ...feedbackPanelState, detailMessages: merged };
+        } else if (result?.ok) {
+          // 3b. 后端 200 但没回 message：客户端按 _tempKey 清占位，否则会永远 pending。
+          // SSE echo 到达时按 id 去重，不会重复显示；老服务端不发 SSE echo 时会丢气泡，下次拉详情时补回。
+          feedbackPanelState = {
+            ...feedbackPanelState,
+            detailMessages: feedbackPanelState.detailMessages.filter((msg) => msg._tempKey !== tempKey),
+          };
+        } else {
+          // 3c. 失败：把临时气泡标红（保留给用户，避免丢字）+ 弹原生错误对话框
+          feedbackPanelState = {
+            ...feedbackPanelState,
+            detailMessages: feedbackPanelState.detailMessages.map((msg) =>
+              msg._tempKey === tempKey ? { ...msg, _pending: false, _failed: true } : msg,
+            ),
+          };
+          void showFeedbackReplyErrorDialog(result?.error);
+        }
+        state.requestUpdate();
+      })();
+    },
+    requestUpdate: () => state.requestUpdate(),
+  };
+}
+
+// ── 技能页子标签 ──
+
+// ── Cron 只读视图状态 ──
+let cronExpandedJobId: string | null = null;
+let cronRunsLoading = false;
+let cronShowForm = false;
+let cronEditingJobId: string | null = null;
+
+// "installed" = 已安装/内置技能（gateway RPC），"store" = 技能商店（clawhub API）
+let skillsSubTab: "installed" | "store" = "installed";
+
+// ── 技能商店状态 ──
+
+// 商店模式：浏览（按排序）或搜索
+type StoreMode = "trending" | "downloads" | "updated" | "search";
+let storeMode: StoreMode = "trending";
+
+const skillStoreState: SkillStoreState = {
+  skills: [],
+  installedSlugs: new Set(),
+  loading: false,
+  error: null,
+  searchQuery: "",
+  sort: "trending",
+  nextCursor: null,
+  installingSlugs: new Set(),
+  toastMessage: null,
+};
+
+// ── 反馈弹窗状态 ──
+
+let feedbackState: FeedbackDialogState = createFeedbackDialogState();
+
+// ── 反馈面板状态 ──
+
+let feedbackPanelState: FeedbackPanelState = createFeedbackPanelState();
+let feedbackSseUnsub: (() => void) | null = null;
+let feedbackReconnectedUnsub: (() => void) | null = null;
+
+// toast 定时器句柄
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+// 显示 toast 并在 4 秒后自动消失（通用方法，复用 skillStore toast UI）
+function showToast(state: AppViewState, message: string) {
+  if (toastTimer) clearTimeout(toastTimer);
+  skillStoreState.toastMessage = message;
+  state.requestUpdate();
+  toastTimer = setTimeout(() => {
+    skillStoreState.toastMessage = null;
+    toastTimer = null;
+    state.requestUpdate();
+  }, 4000);
+}
+let skillStoreDataLoaded = false;
+
+// 加载技能列表（初次或切换排序时调用）
+async function loadSkillStoreData(state: AppViewState, append = false) {
+  if (!window.oneclaw?.skillStoreList) return;
+  skillStoreState.loading = true;
+  skillStoreState.error = null;
+  state.requestUpdate();
+  try {
+    const result = await window.oneclaw.skillStoreList({
+      sort: skillStoreState.sort,
+      limit: 20,
+      cursor: append ? skillStoreState.nextCursor : undefined,
+    });
+    if (result?.success && result.data) {
+      const skills = Array.isArray(result.data.skills) ? result.data.skills : [];
+      skillStoreState.skills = append
+        ? [...skillStoreState.skills, ...skills]
+        : skills;
+      skillStoreState.nextCursor = result.data.nextCursor ?? null;
+    } else {
+      skillStoreState.error = result?.message ?? t("skillStore.error");
+    }
+    // 同步已安装列表
+    await refreshInstalledSlugs();
+  } catch {
+    skillStoreState.error = t("skillStore.error");
+  } finally {
+    skillStoreState.loading = false;
+    skillStoreDataLoaded = true;
+    state.requestUpdate();
+  }
+}
+
+// 搜索技能
+async function searchSkillStore(state: AppViewState) {
+  if (!window.oneclaw?.skillStoreSearch) return;
+  const q = skillStoreState.searchQuery.trim();
+  if (!q) {
+    skillStoreDataLoaded = false;
+    await loadSkillStoreData(state);
+    return;
+  }
+  skillStoreState.loading = true;
+  skillStoreState.error = null;
+  state.requestUpdate();
+  try {
+    const result = await window.oneclaw.skillStoreSearch({ q, limit: 20 });
+    if (result?.success && result.data) {
+      skillStoreState.skills = Array.isArray(result.data.skills) ? result.data.skills : [];
+      skillStoreState.nextCursor = null;
+    } else {
+      skillStoreState.error = result?.message ?? t("skillStore.error");
+    }
+  } catch {
+    skillStoreState.error = t("skillStore.error");
+  } finally {
+    skillStoreState.loading = false;
+    state.requestUpdate();
+  }
+}
+
+// 刷新已安装列表
+async function refreshInstalledSlugs() {
+  if (!window.oneclaw?.skillStoreListInstalled) return;
+  try {
+    const result = await window.oneclaw.skillStoreListInstalled();
+    if (result?.success && Array.isArray(result.data)) {
+      skillStoreState.installedSlugs = new Set(result.data);
+    }
+  } catch { /* ignore */ }
+}
+
+// 安装技能
+async function installSkillFromStore(state: AppViewState, slug: string) {
+  if (!window.oneclaw?.skillStoreInstall) return;
+  skillStoreState.installingSlugs.add(slug);
+  state.requestUpdate();
+  try {
+    const result = await window.oneclaw.skillStoreInstall({ slug });
+    if (result?.success) {
+      skillStoreState.installedSlugs.add(slug);
+    } else {
+      showToast(state, t("skillStore.installFailed"));
+    }
+  } catch {
+    showToast(state, t("skillStore.installFailed"));
+  }
+  skillStoreState.installingSlugs.delete(slug);
+  state.requestUpdate();
+}
+
+// 卸载技能
+async function uninstallSkillFromStore(state: AppViewState, slug: string) {
+  if (!window.oneclaw?.skillStoreUninstall) return;
+  skillStoreState.installingSlugs.add(slug);
+  state.requestUpdate();
+  try {
+    const result = await window.oneclaw.skillStoreUninstall({ slug });
+    if (result?.success) {
+      skillStoreState.installedSlugs.delete(slug);
+    } else {
+      showToast(state, t("skillStore.uninstallFailed"));
+    }
+  } catch {
+    showToast(state, t("skillStore.uninstallFailed"));
+  }
+  skillStoreState.installingSlugs.delete(slug);
+  state.requestUpdate();
+}
+
+// 从已安装页面卸载技能（调用 clawhub uninstall 后刷新技能列表）
+async function uninstallLocalSkill(state: AppViewState, slug: string) {
+  if (!window.oneclaw?.skillStoreUninstall) return;
+  state.skillsBusyKey = slug;
+  state.requestUpdate();
+  try {
+    const result = await window.oneclaw.skillStoreUninstall({ slug });
+    if (result?.success) {
+      // 刷新已安装列表和商店已安装标记
+      void loadSkills(state as unknown as SkillsState);
+      await refreshInstalledSlugs();
+    } else {
+      showToast(state, t("skillStore.uninstallFailed"));
+    }
+  } catch {
+    showToast(state, t("skillStore.uninstallFailed"));
+  }
+  state.skillsBusyKey = "";
+  state.requestUpdate();
+}
+
+// ── 已安装技能视图（本地化重写） ──
+
+// 分组定义：id → i18n key
+const SKILL_GROUPS = [
+  { id: "workspace", i18nKey: "skills.groupWorkspace", sources: ["openclaw-workspace"] },
+  { id: "built-in", i18nKey: "skills.groupBuiltIn", sources: ["openclaw-bundled"] },
+  { id: "installed", i18nKey: "skills.groupInstalled", sources: ["openclaw-managed"] },
+  { id: "extra", i18nKey: "skills.groupExtra", sources: ["openclaw-extra"] },
+];
+
+// 按来源分组
+function groupLocalSkills(skills: SkillStatusEntry[]) {
+  const groups = new Map<string, { id: string; label: string; skills: SkillStatusEntry[] }>();
+  for (const def of SKILL_GROUPS) {
+    groups.set(def.id, { id: def.id, label: t(def.i18nKey), skills: [] });
+  }
+  const builtInDef = SKILL_GROUPS.find((g) => g.id === "built-in");
+  const other = { id: "other", label: t("skills.groupOther"), skills: [] as SkillStatusEntry[] };
+  for (const skill of skills) {
+    const match = skill.bundled
+      ? builtInDef
+      : SKILL_GROUPS.find((g) => g.sources.includes(skill.source));
+    if (match) {
+      groups.get(match.id)?.skills.push(skill);
+    } else {
+      other.skills.push(skill);
+    }
+  }
+  const ordered = SKILL_GROUPS
+    .map((g) => groups.get(g.id))
+    .filter((g): g is NonNullable<typeof g> => Boolean(g && g.skills.length > 0));
+  if (other.skills.length > 0) ordered.push(other);
+  return ordered;
+}
+
+// 字母头像颜色
+const SKILL_COLORS = [
+  "#c0392b", "#d35400", "#e67e22", "#f39c12",
+  "#27ae60", "#1abc9c", "#2980b9", "#8e44ad",
+  "#3498db", "#16a085", "#9b59b6", "#34495e",
+];
+function skillColor(key: string): string {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = ((h << 5) - h + key.charCodeAt(i)) | 0;
+  return SKILL_COLORS[Math.abs(h) % SKILL_COLORS.length];
+}
+
+// 截断描述
+function clamp(text: string | undefined, max: number): string {
+  if (!text) return "";
+  return text.length > max ? text.slice(0, max) + "…" : text;
+}
+
+// 渲染已安装技能视图
+function renderInstalledSkillsView(state: AppViewState) {
+  const report = state.skillsReport;
+  const allSkills = report?.skills ?? [];
+  // 1. 过滤被阻止的 skill（blockedByAllowlist 或 eligible === false）
+  const visibleSkills = allSkills.filter((s: SkillStatusEntry) => s.eligible !== false);
+  const filter = ((state as any).skillsFilter ?? "").trim().toLowerCase();
+  const filtered = filter
+    ? visibleSkills.filter((s: SkillStatusEntry) =>
+        [s.name, s.description, s.source].join(" ").toLowerCase().includes(filter),
+      )
+    : visibleSkills;
+  const groups = groupLocalSkills(filtered);
+  const busy = state.skillsBusyKey;
+  const messages = state.skillMessages as SkillMessageMap;
+
+  return html`
+    ${state.skillsError
+      ? html`<div class="skill-store__error">${state.skillsError}</div>`
+      : nothing}
+
+    ${filtered.length === 0 && !state.skillsLoading
+      ? html`<div class="skill-store__empty">${t("skills.empty")}</div>`
+      : nothing}
+
+    ${groups.map((group) => html`
+      <details class="skills-group" open>
+        <summary class="skills-group__header">
+          <span>${group.label}</span>
+          <span class="skills-group__count">${group.skills.length}</span>
+          <span class="skills-group__chevron"></span>
+        </summary>
+        <div class="skill-store__list">
+          ${group.skills.map((skill: SkillStatusEntry) => {
+            const key = skill.skillKey ?? "";
+            const isBusy = busy === key;
+            const msg = messages[key] ?? null;
+            const letter = (skill.emoji || (skill.name ?? "?").charAt(0)).toUpperCase();
+            const missing = [
+              ...(skill.missing?.bins ?? []).map((b: string) => `bin:${b}`),
+              ...(skill.missing?.env ?? []).map((e: string) => `env:${e}`),
+              ...(skill.missing?.config ?? []).map((c: string) => `config:${c}`),
+              ...(skill.missing?.os ?? []).map((o: string) => `os:${o}`),
+            ];
+            return html`
+              <div class="skill-store__card">
+                <div class="skill-store__card-header">
+                  <div class="skill-store__card-icon" style="background: ${skillColor(key)}; color: #fff;">
+                    <span class="skill-store__card-letter">${letter}</span>
+                  </div>
+                  <div class="skill-store__card-info">
+                    <div class="skill-store__card-name">${skill.name ?? key}</div>
+                    <div class="skill-store__card-meta">
+                      <span class="skills-badge">${skill.source}</span>
+                    </div>
+                  </div>
+                  <div class="skill-store__card-action">
+                    ${skill.source !== "openclaw-bundled"
+                      ? html`
+                        <button
+                          class="skill-card__uninstall"
+                          type="button"
+                          title="${t("skillStore.uninstall")}"
+                          ?disabled=${isBusy}
+                          @click=${() => void uninstallLocalSkill(state, skill.name ?? key)}
+                        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>`
+                      : nothing}
+                    <label class="skill-toggle-switch">
+                      <input
+                        type="checkbox"
+                        .checked=${!skill.disabled}
+                        ?disabled=${isBusy}
+                        @change=${() => void updateSkillEnabled(state as unknown as SkillsState, key, !!skill.disabled)}
+                      />
+                      <span class="skill-toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+                <div class="skill-store__card-desc">${clamp(skill.description as string, 160)}</div>
+                ${missing.length > 0
+                  ? html`<div class="skills-missing">${t("skills.missing")}: ${missing.join(", ")}</div>`
+                  : nothing}
+                ${msg
+                  ? html`<div class="skills-msg ${msg.kind === "error" ? "skills-msg--error" : "skills-msg--ok"}">${msg.message}</div>`
+                  : nothing}
+                ${skill.primaryEnv
+                  ? html`
+                    <div class="skills-apikey-row">
+                      <input
+                        class="skill-store__search-input"
+                        type="password"
+                        placeholder="API key (${skill.primaryEnv})"
+                        .value=${state.skillEdits[key] ?? ""}
+                        @input=${(e: Event) => updateSkillEdit(state as unknown as SkillsState, key, (e.target as HTMLInputElement).value)}
+                      />
+                      <button
+                        class="skill-store__btn skill-store__btn--install"
+                        type="button"
+                        ?disabled=${isBusy}
+                        @click=${() => void saveSkillApiKey(state as unknown as SkillsState, key)}
+                      >${t("skills.saveKey")}</button>
+                    </div>
+                  `
+                  : nothing}
+              </div>
+            `;
+          })}
+        </div>
+      </details>
+    `)}
+  `;
+}
+
+// 打开技能管理视图（默认显示已安装技能）
+function openSkillsView(state: AppViewState, subTab: "installed" | "store" = "installed") {
+  skillsSubTab = subTab;
+  setOneClawView(state, "skills");
+  if (subTab === "installed") {
+    void loadSkills(state as unknown as SkillsState);
+  } else if (!skillStoreDataLoaded) {
+    void loadSkillStoreData(state);
+  }
+}
+
+// 打开工作区文件浏览视图
+function openWorkspaceView(state: AppViewState) {
+  setOneClawView(state, "workspace");
+  void initWorkspace(state);
+}
+
+// 新建会话：同步写入本地列表后再切换，异步同步到 Gateway 供跨终端访问
+function createNewSession(state: AppViewState) {
+  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const newKey = `agent:main:${id}`;
+  const label = t("chat.newSession");
+  setOneClawView(state, "chat");
+  // 先把新会话插入本地列表，UI 立即可见正确的名称
+  const sessions = state.sessionsResult?.sessions ?? [];
+  state.sessionsResult = {
+    ...state.sessionsResult,
+    sessions: [{ key: newKey, label, updatedAt: Date.now() }, ...sessions],
+  };
+  applySessionKey(state, newKey, true);
+  // 新建会话时重置模型选择为默认
+  state.resetModelToDefault();
+  // 标记为待自动命名。label 将在首条消息发送 + chat.event final 后持久化到 gateway。
+  pendingSessionLabels.set(newKey, label);
+}
+
+function confirmAndCreateNewSession(state: AppViewState) {
+  const ok = window.confirm(t("chat.confirmNewSession"));
+  if (!ok) {
+    return;
+  }
+  setOneClawView(state, "chat");
+  return state.handleSendChat("/new", { restoreDraft: true });
+}
+
+async function handleRefreshChat(state: AppViewState) {
+  if (state.chatLoading) return;
+  const app = state as any;
+  app.chatManualRefreshInFlight = true;
+  app.chatNewMessagesBelow = false;
+  await state.updateComplete;
+  app.resetToolStream();
+  try {
+    await refreshChat(state as unknown as Parameters<typeof refreshChat>[0], {
+      scheduleScroll: false,
+    });
+    app.scrollToBottom({ smooth: true });
+  } finally {
+    requestAnimationFrame(() => {
+      app.chatManualRefreshInFlight = false;
+      app.chatNewMessagesBelow = false;
+    });
+  }
+}
+
+// 断开连接时尝试重连，3 秒后仍失败则弹窗询问是否重启 Gateway
+function handleReconnect(state: AppViewState) {
+  (state as any).client?.reconnectNow();
+  setTimeout(() => {
+    if (!state.connected) {
+      state.showRestartGatewayDialog = true;
+    }
+  }, 3000);
+}
+
+async function handleOpenWebUI(state: AppViewState) {
+  if (window.oneclaw?.openWebUI) {
+    window.oneclaw.openWebUI();
+  } else if (window.oneclaw?.openExternal) {
+    let port = 18789;
+    try {
+      if (window.oneclaw.getGatewayPort) {
+        port = await window.oneclaw.getGatewayPort();
+      }
+    } catch { /* use default */ }
+    const token = state.settings.token.trim();
+    const query = token ? `?token=${encodeURIComponent(token)}` : "";
+    window.oneclaw.openExternal(`http://127.0.0.1:${port}/${query}`);
+  }
+}
+
+// 仅在存在可用更新时触发下载与安装，避免误触发无效 IPC 调用。
+async function handleApplyUpdate(state: AppViewState) {
+  const current = state.updateBannerState;
+  if (current.status !== "available") {
+    return;
+  }
+  try {
+    await window.oneclaw?.downloadAndInstallUpdate?.();
+  } catch {
+    // ignore bridge failure; main process会记录日志并回退状态
+  }
+}
+
+// Settings iframe bridge + renderer removed: Settings is now a native Lit component (renderSettingsView)
+
+// 文件拖拽/粘贴事件桥接
+let fileDropBound = false;
+function ensureFileDropBridge(state: AppViewState) {
+  if (fileDropBound) return;
+  fileDropBound = true;
+  let latestState = state;
+  // 更新引用以便事件回调能访问最新的 state
+  (window as any).__oneclawFileDropState = { update: (s: AppViewState) => { latestState = s; } };
+  window.addEventListener("oneclaw:file-drop", ((e: CustomEvent<{ paths: string[] }>) => {
+    const current = latestState.chatAttachments ?? [];
+    const additions = e.detail.paths.map((p: string) => ({
+      id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      filePath: p,
+      name: p.split(/[/\\]/).pop() || p,
+    }));
+    latestState.chatAttachments = [...current, ...additions];
+  }) as EventListener);
+}
+function updateFileDropState(state: AppViewState) {
+  (window as any).__oneclawFileDropState?.update(state);
+}
+
+export function renderApp(state: AppViewState) {
+  ensureFileDropBridge(state);
+  updateFileDropState(state);
+  const chatDisabledReason = state.connected ? null : t("error.disconnected");
+  const showThinking = state.onboarding ? false : state.settings.chatShowThinking;
+  const assistantAvatarUrl = resolveAssistantAvatarUrl(state);
+  const chatAvatarUrl = state.chatAvatarUrl ?? assistantAvatarUrl ?? null;
+  const chatFocus = state.onboarding;
+  const sidebarCollapsed = !state.onboarding && state.settings.navCollapsed;
+  const currentSessionKey = state.sessionKey;
+  const sessionOptions = resolveSessionOptions(state);
+  const oneclawView = state.settings.oneclawView ?? "chat";
+  const setupActive = oneclawView === "setup";
+  const settingsActive = oneclawView === "settings";
+  const skillsActive = oneclawView === "skills";
+  const workspaceActive = oneclawView === "workspace";
+  const cronActive = oneclawView === "cron";
+  const feedbackActive = oneclawView === "feedback";
+  const updateBannerState = state.updateBannerState;
+
+  return html`
+    <div
+      class="oneclaw-shell ${navigator.platform?.includes("Mac") ? "is-mac" : ""} ${navigator.platform?.includes("Win") ? "is-win" : ""} ${chatFocus ? "oneclaw-shell--focus" : ""} ${sidebarCollapsed ? "oneclaw-shell--sidebar-collapsed" : ""} ${setupActive || settingsActive || skillsActive || workspaceActive || cronActive || feedbackActive ? "oneclaw-shell--fullpage" : ""}"
+    >
+      ${chatFocus || sidebarCollapsed || setupActive || settingsActive || skillsActive || workspaceActive || cronActive || feedbackActive
+        ? nothing
+        : renderSidebar({
+            connected: state.connected,
+            currentSessionKey,
+            mainSessionKey: resolveMainSessionKey(state.hello, state.sessionsResult),
+            sessionOptions,
+            settingsActive,
+            skillsActive,
+            workspaceActive,
+            cronActive,
+            cronJobCount: state.cronJobs.filter((j) => !isExpiredOneShot(j)).length,
+            onOpenCron: () => setOneClawView(state, "cron"),
+            feedbackActive,
+            // 全局红点派生自当前会话内的未读 thread 集合；点开 thread 自动清除
+            feedbackHasReply: feedbackPanelState.unreadThreadIds.length > 0,
+            onOpenFeedback: () => openFeedbackView(state),
+            updateStatus: updateBannerState.status,
+            updateVersion: updateBannerState.version,
+            updatePercent: updateBannerState.percent,
+            updateShowBadge: updateBannerState.showBadge,
+            webbridgeRepairVisible: state.webbridgeRepairVisible,
+            webbridgeRepairBrowserName: state.webbridgeRepairBrowserName,
+            webbridgeRepairChecking: state.webbridgeRepairChecking,
+            onWebbridgeRepairClick: () => {
+              void state.onWebbridgeRepairClick();
+            },
+            onSelectSession: (nextSessionKey: string) => handleSessionChange(state, nextSessionKey),
+            onNewChat: () => createNewSession(state),
+            onRenameSession: (key: string, newLabel: string) => {
+              void patchSessionFromSidebar(state, key, newLabel);
+            },
+            onDeleteSession: (key: string) => {
+              void deleteSessionFromSidebar(state, key);
+            },
+            isDeletingSession: (key: string) => deletingSessionKeys.has(key),
+            onToggleSidebar: () => {
+              state.applySettings({
+                ...state.settings,
+                navCollapsed: !state.settings.navCollapsed,
+              });
+            },
+            settingsBadge: !localStorage.getItem("oneclaw:weixin-badge-seen"),
+            onOpenSettings: () => {
+              localStorage.setItem("oneclaw:weixin-badge-seen", "1");
+              openSettingsView(state, null);
+            },
+            onOpenSkillStore: () => openSkillsView(state),
+            onOpenWorkspace: () => openWorkspaceView(state),
+            onOpenWebUI: () => void handleOpenWebUI(state),
+            errors: [chatDisabledReason, state.lastError].filter(Boolean) as string[],
+            onReconnect: () => handleReconnect(state),
+            onOpenDocs: () => {
+              if (window.oneclaw?.openExternal) {
+                window.oneclaw.openExternal("https://oneclaw.cn/docs");
+              } else {
+                window.open("https://oneclaw.cn/docs", "_blank");
+              }
+            },
+            onApplyUpdate: () => void handleApplyUpdate(state),
+          })}
+
+      <div class="oneclaw-main">
+        <div class="oneclaw-titlebar">
+          ${
+            setupActive
+              ? nothing
+              : settingsActive || skillsActive || workspaceActive || cronActive || feedbackActive
+              ? html`
+                  <div class="oneclaw-floating-actions">
+                    <button
+                      class="oneclaw-floating-btn"
+                      type="button"
+                      @click=${() => setOneClawView(state, "chat")}
+                      data-tooltip=${t("sidebar.backToChat")}
+                      data-tooltip-pos="bottom"
+                      aria-label=${t("sidebar.backToChat")}
+                    >
+                      ${icons.arrowLeft}
+                    </button>
+                  </div>
+                `
+              : sidebarCollapsed && !chatFocus
+                ? html`
+                    <div class="oneclaw-floating-actions">
+                      <button
+                        class="oneclaw-floating-btn"
+                        type="button"
+                        @click=${() => {
+                          state.applySettings({
+                            ...state.settings,
+                            navCollapsed: false,
+                          });
+                        }}
+                        data-tooltip=${t("sidebar.expand")}
+                        data-tooltip-pos="bottom"
+                        aria-label=${t("sidebar.expand")}
+                      >
+                        ${icons.panelLeft}
+                      </button>
+                      <button
+                        class="oneclaw-floating-btn"
+                        type="button"
+                        @click=${() => handleSessionChange(state, generateSessionKey())}
+                        data-tooltip=${t("sidebar.newChat")}
+                        data-tooltip-pos="bottom"
+                        aria-label=${t("sidebar.newChat")}
+                      >
+                        ${icons.messagePlus}
+                      </button>
+                    </div>
+                  `
+                : nothing
+          }
+          <div class="oneclaw-titlebar-right">
+            ${renderFeedbackButton(
+              () => openFeedbackView(state),
+              feedbackPanelState.unreadThreadIds.length > 0,
+            )}
+          </div>
+        </div>
+
+        <main class="oneclaw-content">
+          ${setupActive
+            ? renderSetupView(state)
+            : settingsActive
+            ? renderSettingsView(state)
+            : skillsActive
+              ? html`
+                  <div class="skills-scroll" @scroll=${(e: Event) => {
+                    if (skillsSubTab !== "store") return;
+                    if (skillStoreState.loading || !skillStoreState.nextCursor) return;
+                    const el = e.target as HTMLElement;
+                    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
+                      void loadSkillStoreData(state, true);
+                    }
+                  }}>
+                    <section class="skill-store">
+                      <div class="skill-store__header">
+                        <h2 class="skill-store__title">${t("skillStore.title")}</h2>
+                      </div>
+
+                      <!-- 标签栏 + 右侧操作区 -->
+                      <div class="skills-tab-bar">
+                        <button
+                          class="skills-tab-btn ${skillsSubTab === "installed" ? "active" : ""}"
+                          type="button"
+                          @click=${() => {
+                            skillsSubTab = "installed";
+                            void loadSkills(state as unknown as SkillsState);
+                            state.requestUpdate();
+                          }}
+                        >${t("skills.tabInstalled")}</button>
+                        <button
+                          class="skills-tab-btn ${skillsSubTab === "store" ? "active" : ""}"
+                          type="button"
+                          @click=${() => {
+                            skillsSubTab = "store";
+                            if (!skillStoreDataLoaded) {
+                              void loadSkillStoreData(state);
+                            }
+                            state.requestUpdate();
+                          }}
+                        >${t("skills.tabStore")}</button>
+                        <div class="skills-tab-bar__actions">
+                          ${skillsSubTab === "installed"
+                            ? html`
+                                <span class="skills-count">${t("skills.shown").replace("{n}", String((state.skillsReport?.skills ?? []).length))}</span>
+                                <button
+                                  class="skill-store__sort-btn"
+                                  type="button"
+                                  ?disabled=${state.skillsLoading}
+                                  @click=${() => void loadSkills(state as unknown as SkillsState)}
+                                >${state.skillsLoading ? t("skills.refreshing") : t("skills.refresh")}</button>
+                              `
+                            : html`
+                                ${(["trending", "downloads", "updated"] as const).map((key) => html`
+                                  <button
+                                    class="skill-store__sort-btn ${storeMode === key ? "active" : ""}"
+                                    type="button"
+                                    @click=${() => {
+                                      storeMode = key;
+                                      skillStoreState.sort = key;
+                                      skillStoreState.skills = [];
+                                      skillStoreState.nextCursor = null;
+                                      skillStoreState.searchQuery = "";
+                                      skillStoreState.error = null;
+                                      skillStoreDataLoaded = false;
+                                      state.requestUpdate();
+                                      void loadSkillStoreData(state);
+                                    }}
+                                  >${t(`skillStore.sort${key.charAt(0).toUpperCase() + key.slice(1)}`)}</button>
+                                `)}
+                                <button
+                                  class="skill-store__sort-btn ${storeMode === "search" ? "active" : ""}"
+                                  type="button"
+                                  @click=${() => {
+                                    storeMode = "search";
+                                    skillStoreState.skills = [];
+                                    skillStoreState.nextCursor = null;
+                                    skillStoreState.searchQuery = "";
+                                    skillStoreState.error = null;
+                                    state.requestUpdate();
+                                    requestAnimationFrame(() => {
+                                      (state.renderRoot?.querySelector(".skill-store__search-input") as HTMLInputElement)?.focus();
+                                    });
+                                  }}
+                                  data-tooltip="${t("skillStore.search")}"
+                                ><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+                              `
+                          }
+                        </div>
+                      </div>
+
+                      <!-- 搜索框：已安装 tab 始终显示，商店 tab 仅搜索模式显示 -->
+                      ${skillsSubTab === "installed" || storeMode === "search"
+                        ? html`
+                          <div class="skill-store__toolbar">
+                            <div class="skill-store__search">
+                              <input
+                                class="skill-store__search-input"
+                                type="text"
+                                placeholder=${t(skillsSubTab === "installed" ? "skills.search" : "skillStore.search")}
+                                .value=${skillsSubTab === "installed" ? ((state as any).skillsFilter ?? "") : skillStoreState.searchQuery}
+                                @input=${(e: Event) => {
+                                  const val = (e.target as HTMLInputElement).value;
+                                  if (skillsSubTab === "installed") {
+                                    (state as any).skillsFilter = val;
+                                    state.requestUpdate();
+                                  } else {
+                                    skillStoreState.searchQuery = val;
+                                    state.requestUpdate();
+                                  }
+                                }}
+                                @keydown=${(e: KeyboardEvent) => {
+                                  if (e.key === "Enter" && skillsSubTab === "store") {
+                                    void searchSkillStore(state);
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+                        `
+                        : nothing
+                      }
+
+                      <!-- 标签页内容 -->
+                      ${skillsSubTab === "installed"
+                        ? renderInstalledSkillsView(state)
+                        : renderSkillStoreView(skillStoreState, {
+                            onInstall: (slug) => void installSkillFromStore(state, slug),
+                            onUninstall: (slug) => void uninstallSkillFromStore(state, slug),
+                          })
+                      }
+                    </section>
+                  </div>
+                `
+              : workspaceActive
+                ? renderWorkspaceView(state, () => setOneClawView(state, "chat"))
+              : cronActive
+                ? renderCronManage({
+                    jobs: state.cronJobs,
+                    loading: state.cronLoading,
+                    error: state.cronError,
+                    expandedJobId: cronExpandedJobId,
+                    runs: state.cronRuns,
+                    runsLoading: cronRunsLoading,
+                    busy: state.cronBusy,
+                    showForm: cronShowForm,
+                    editingJobId: cronEditingJobId,
+                    form: state.cronForm,
+                    channelMeta: state.channelsSnapshot?.channelMeta ?? [],
+                    onToggleExpand: (jobId: string) => {
+                      cronExpandedJobId = jobId;
+                      cronShowForm = false;
+                      cronRunsLoading = true;
+                      state.requestUpdate();
+                      void loadCronRuns(state as any, jobId).finally(() => {
+                        cronRunsLoading = false;
+                        state.requestUpdate();
+                      });
+                    },
+                    onNavigateToSession: (sessionKey: string) => {
+                      setOneClawView(state, "chat");
+                      state.applySettings({
+                        ...state.settings,
+                        sessionKey,
+                        oneclawView: "chat",
+                      });
+                    },
+                    onRemove: (jobId: string) => {
+                      const job = state.cronJobs.find((j) => j.id === jobId);
+                      if (job) {
+                        void removeCronJob(state as any, job).then(() => state.requestUpdate());
+                      }
+                    },
+                    onToggle: (jobId: string, enabled: boolean) => {
+                      const job = state.cronJobs.find((j) => j.id === jobId);
+                      if (job) {
+                        void toggleCronJob(state as any, job, enabled).then(() => state.requestUpdate());
+                      }
+                    },
+                    onRun: (jobId: string) => {
+                      const job = state.cronJobs.find((j) => j.id === jobId);
+                      if (job) {
+                        void runCronJob(state as any, job).then(() => state.requestUpdate());
+                      }
+                    },
+                    onToggleForm: () => {
+                      cronShowForm = !cronShowForm;
+                      cronEditingJobId = null;
+                      if (cronShowForm) {
+                        cronExpandedJobId = null;
+                        state.cronForm = { ...DEFAULT_CRON_FORM };
+                      }
+                      state.requestUpdate();
+                    },
+                    onFormChange: (patch) => {
+                      state.cronForm = { ...state.cronForm, ...patch };
+                      state.requestUpdate();
+                    },
+                    onAddJob: () => {
+                      if (cronEditingJobId) {
+                        void updateCronJob(state as any, cronEditingJobId).then(() => {
+                          if (!state.cronError) {
+                            cronShowForm = false;
+                            cronEditingJobId = null;
+                          }
+                          state.requestUpdate();
+                        });
+                      } else {
+                        void addCronJob(state as any).then(() => {
+                          if (!state.cronError) {
+                            cronShowForm = false;
+                          }
+                          state.requestUpdate();
+                        });
+                      }
+                    },
+                    onEdit: (jobId: string) => {
+                      const job = state.cronJobs.find((j) => j.id === jobId);
+                      if (!job) return;
+                      cronEditingJobId = jobId;
+                      cronShowForm = true;
+                      cronExpandedJobId = null;
+                      // Detect daily pattern: "M H * * *" → convert to daily mode
+                      let editKind: string = job.schedule.kind;
+                      let editCronExpr = job.schedule.expr ?? "0 7 * * *";
+                      if (job.schedule.kind === "cron" && job.schedule.expr) {
+                        const dm = job.schedule.expr.match(/^(\d{1,2})\s+(\d{1,2})\s+\*\s+\*\s+\*$/);
+                        if (dm) {
+                          editKind = "daily";
+                          editCronExpr = `${dm[2].padStart(2, "0")}:${dm[1].padStart(2, "0")}`;
+                        }
+                      }
+                      state.cronForm = {
+                        ...DEFAULT_CRON_FORM,
+                        name: job.name ?? "",
+                        scheduleKind: editKind as any,
+                        scheduleAt: job.schedule.at ?? "",
+                        everyAmount: job.schedule.everyMs ? String(Math.round(job.schedule.everyMs / 60000)) : "30",
+                        everyUnit: "minutes",
+                        cronExpr: editCronExpr,
+                        cronTz: job.schedule.tz ?? "",
+                        payloadKind: job.payload.kind,
+                        payloadText: job.payload.message ?? job.payload.text ?? "",
+                        sessionTarget: (job as any).sessionTarget ?? "isolated",
+                        deliveryMode: job.delivery?.mode ?? "announce",
+                        deliveryChannel: job.delivery?.channel ?? "last",
+                        deliveryTo: job.delivery?.to ?? "",
+                      };
+                      state.requestUpdate();
+                    },
+                  })
+                : feedbackActive
+                  ? renderFeedbackPanel(feedbackPanelState, buildFeedbackPanelCallbacks(state))
+                : html`
+                ${renderChat({
+                  sessionKey: state.sessionKey,
+                  onSessionKeyChange: (next) => applySessionKey(state, next),
+                  thinkingLevel: state.chatThinkingLevel,
+                  showThinking,
+                  loading: state.chatLoading,
+                  sending: state.chatSending,
+                  compactionStatus: state.compactionStatus,
+                  assistantAvatarUrl: chatAvatarUrl,
+                  messages: state.chatMessages,
+                  visibleHistoryCount: (state as any).chatVisibleMessageCount,
+                  toolMessages: state.chatToolMessages,
+                  stream: state.chatStream,
+                  streamStartedAt: (state as any).chatStreamStartedAt,
+                  draft: state.chatMessage,
+                  queue: state.chatQueue,
+                  connected: state.connected,
+                  canSend: state.connected,
+                  disabledReason: null,
+                  error: state.lastError,
+                  sessions: state.sessionsResult,
+                  focusMode: false,
+                  onRefresh: () => {
+                    (state as any).resetToolStream();
+                    return Promise.all([loadChatHistory(state as any), refreshChatAvatar(state as any)]);
+                  },
+                  onToggleFocusMode: () => {},
+                  onChatScroll: (event) => state.handleChatScroll(event),
+                  onDraftChange: (next) => (state.chatMessage = next),
+                  configuredModels: state.configuredModels,
+                  currentModel: state.currentModel,
+                  dirtyMeterSessions: state.dirtyMeterSessions,
+                  onModelChange: (modelKey) => state.handleModelChange(modelKey),
+                  thinkingToggleLevel: state.thinkingLevel,
+                  thinkingToggleLevels: state.thinkingLevels,
+                  isBinaryThinking: state.isBinaryThinking,
+                  onThinkingToggle: () => state.handleThinkingToggle(),
+                  onThinkingLevelChange: (level: string) => state.handleThinkingLevelChange(level),
+                  attachments: state.chatAttachments,
+                  onAttachmentsChange: (next) => (state.chatAttachments = next),
+                  onSend: () => state.handleSendChat(),
+                  canAbort: Boolean(state.chatRunId),
+                  onAbort: () => void state.handleAbortChat(),
+                  onQueueRemove: (id) => state.removeQueuedMessage(id),
+                  onNewSession: () => confirmAndCreateNewSession(state),
+                  showNewMessages: !state.chatUserNearBottom,
+                  onScrollToBottom: () => state.scrollToBottom(),
+                  sidebarOpen: state.sidebarOpen,
+                  sidebarContent: state.sidebarContent,
+                  sidebarError: state.sidebarError,
+                  splitRatio: state.splitRatio,
+                  onOpenSidebar: (content: string) => state.handleOpenSidebar(content),
+                  onCloseSidebar: () => state.handleCloseSidebar(),
+                  onSplitRatioChange: (ratio: number) => state.handleSplitRatioChange(ratio),
+                  assistantName: state.assistantName,
+                  assistantAvatar: state.assistantAvatar,
+                })}
+              `}
+        </main>
+      </div>
+
+      ${renderExecApprovalPrompt(state)}
+      ${renderGatewayUrlConfirmation(state)}
+      ${renderRestartGatewayDialog(state)}
+      ${renderSharePrompt(state)}
+      ${renderReleaseNotesModal(state)}
+      ${renderWebbridgePillModal(state)}
+      ${renderFeedbackDialog(feedbackState, {
+        onClose: () => {
+          feedbackState = createFeedbackDialogState();
+          state.requestUpdate();
+        },
+        onSubmit: async () => {
+          feedbackState = { ...feedbackState, submitting: true, error: null };
+          state.requestUpdate();
+          try {
+            const result = await window.oneclaw?.submitFeedback?.({
+              content: feedbackState.content,
+              screenshots: feedbackState.screenshots,
+              includeLogs: feedbackState.includeLogs,
+            });
+            if (result?.ok) {
+              feedbackState = createFeedbackDialogState();
+              // 通用 toast 提示反馈提交成功
+              showToast(state, t("feedback.success"));
+            } else {
+              feedbackState = { ...feedbackState, submitting: false, error: result?.error || t("feedback.error") };
+            }
+          } catch {
+            feedbackState = { ...feedbackState, submitting: false, error: t("feedback.error") };
+          }
+          state.requestUpdate();
+        },
+        onContentChange: (value) => {
+          feedbackState = { ...feedbackState, content: value };
+          state.requestUpdate();
+        },
+        onToggleLogs: (checked) => {
+          feedbackState = { ...feedbackState, includeLogs: checked };
+          state.requestUpdate();
+        },
+        onAddScreenshots: (files) => {
+          // 读取文件为 base64
+          Array.from(files).forEach((file) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result as string;
+              const base64 = dataUrl.split(",")[1];
+              feedbackState = {
+                ...feedbackState,
+                screenshots: [...feedbackState.screenshots, base64],
+                screenshotPreviews: [...feedbackState.screenshotPreviews, dataUrl],
+              };
+              state.requestUpdate();
+            };
+            reader.readAsDataURL(file);
+          });
+        },
+        onRemoveScreenshot: (index) => {
+          feedbackState = {
+            ...feedbackState,
+            screenshots: feedbackState.screenshots.filter((_, i) => i !== index),
+            screenshotPreviews: feedbackState.screenshotPreviews.filter((_, i) => i !== index),
+          };
+          state.requestUpdate();
+        },
+        onPaste: (e) => {
+          const items = e.clipboardData?.items;
+          if (!items) return;
+          for (const item of Array.from(items)) {
+            if (item.type.startsWith("image/")) {
+              e.preventDefault();
+              const file = item.getAsFile();
+              if (!file) continue;
+              const reader = new FileReader();
+              reader.onload = () => {
+                const dataUrl = reader.result as string;
+                const base64 = dataUrl.split(",")[1];
+                feedbackState = {
+                  ...feedbackState,
+                  screenshots: [...feedbackState.screenshots, base64],
+                  screenshotPreviews: [...feedbackState.screenshotPreviews, dataUrl],
+                };
+                state.requestUpdate();
+              };
+              reader.readAsDataURL(file);
+            }
+          }
+        },
+        onPreviewScreenshot: (src) => {
+          feedbackState = { ...feedbackState, previewSrc: src };
+          state.requestUpdate();
+        },
+      })}
+      ${skillStoreState.toastMessage
+        ? html`<div class="global-toast">${skillStoreState.toastMessage}</div>`
+        : nothing}
+    </div>
+  `;
+}
