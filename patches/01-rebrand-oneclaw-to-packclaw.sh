@@ -87,4 +87,27 @@ find "$WS" -depth -type d -name "*oneclaw*" \
   fi
 done
 
+# ── Step 4: Fix electron-builder path in dist scripts ────────────────
+
+echo "==> Patching package.json: electron-builder → npx electron-builder..."
+
+if [ -f "$WS/package.json" ]; then
+  perl -pi -e 's/(?<!npx )electron-builder --win/npx electron-builder --win/g' "$WS/package.json"
+  echo "    Done."
+else
+  echo "    Skipped (package.json not found)."
+fi
+
+# ── Step 5: Dev mode ASAR support ────────────────────────────────────
+
+echo "==> Patching constants.ts: dev mode ASAR support..."
+
+CONSTANTS_FILE="$WS/src/constants.ts"
+if [ -f "$CONSTANTS_FILE" ]; then
+  perl -pi -e 'BEGIN { $/=undef } s/function resolveGatewayRoot\(\): string \{\n  const res = resolveResourcesPath\(\);\n  \/\/ dev 模式用真实 Node\.js，无法读取 asar 虚拟路径，直接走散文件\n  if \(!app\.isPackaged\) \{\n    return path\.join\(res, "gateway"\);\n  \}\n  const asarPath = path\.join\(res, "gateway\.asar"\);\n  if \(path\.extname\(asarPath\) === "\.asar" && fs\.existsSync\(asarPath\)\) \{\n    return asarPath;\n  \}\n  return path\.join\(res, "gateway"\);\n\}/function resolveGatewayRoot(): string {\n  const res = resolveResourcesPath();\n  const asarPath = path.join(res, "gateway.asar");\n  if (path.extname(asarPath) === ".asar" \&\& fs.existsSync(asarPath)) {\n    return asarPath;\n  }\n  return path.join(res, "gateway");\n}/sg' "$CONSTANTS_FILE"
+  echo "    Done."
+else
+  echo "    Skipped (src/constants.ts not found)."
+fi
+
 echo "==> Rebrand complete."
