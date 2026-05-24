@@ -6,6 +6,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build:chat": "cd chat-ui/ui && npm install --prefer-offline && npx vite build",
+    "watch:chat": "cd chat-ui/ui && npx vite build --watch",
     "build": "npm run build:chat && tsc -p tsconfig.json",
     "predev": "npm install && npm run package:resources && npm run build",
     "dev": "electron .",

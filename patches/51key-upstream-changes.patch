@@ -1,0 +1,774 @@
+diff --git a/workspace/chat-ui/ui/src/ui/chat/grouped-render.ts b/workspace/chat-ui/ui/src/ui/chat/grouped-render.ts
+index fcfc299..fda2500 100644
+--- a/workspace/chat-ui/ui/src/ui/chat/grouped-render.ts
++++ b/workspace/chat-ui/ui/src/ui/chat/grouped-render.ts
+@@ -14,11 +14,11 @@ import {
+ import { isToolResultMessage, normalizeRoleForGrouping } from "./message-normalizer.ts";
+ import { linkifyPaths } from "./path-linker.ts";
+ import { extractToolCards, renderToolCardSidebar } from "./tool-cards.ts";
++import { render51keyEmptyResponse } from "./chat-51key-balance.ts";
+ 
+ // JSON 自动检测最大字符数，防止大 JSON 导致渲染卡顿
+ const MAX_JSON_AUTOPARSE_CHARS = 20_000;
+ 
+-// 检测文本是否为 JSON 对象或数组
+ function detectJson(text: string): { parsed: unknown; pretty: string } | null {
+   const t = text.trim();
+   if (t.length > MAX_JSON_AUTOPARSE_CHARS) {
+@@ -329,6 +329,8 @@ function renderGroupedMessage(
+   }
+ 
+   if (!markdown && !hasToolCards && !hasImages) {
++    const empty51key = render51keyEmptyResponse(m, bubbleClasses);
++    if (empty51key) return empty51key;
+     return nothing;
+   }
+ 
+diff --git a/workspace/chat-ui/ui/src/ui/i18n.ts b/workspace/chat-ui/ui/src/ui/i18n.ts
+index 53efa9b..41eb6e6 100644
+--- a/workspace/chat-ui/ui/src/ui/i18n.ts
++++ b/workspace/chat-ui/ui/src/ui/i18n.ts
+@@ -4,6 +4,8 @@
+  * Language detection: navigator.language or ?lang= URL param.
+  */
+ 
++import { i18n51key } from "./i18n-51key.ts";
++
+ export type Locale = "zh" | "en";
+ 
+ const dict: Record<Locale, Record<string, string>> = {
+@@ -1137,6 +1139,11 @@ const dict: Record<Locale, Record<string, string>> = {
+   },
+ };
+ 
++// Merge 51key i18n plugin into main dict
++for (const locale of Object.keys(i18n51key) as Locale[]) {
++  Object.assign(dict[locale], i18n51key[locale]);
++}
++
+ let currentLocale: Locale = detectLocale();
+ 
+ function detectLocale(): Locale {
+diff --git a/workspace/chat-ui/ui/src/ui/views/settings/settings-constants.ts b/workspace/chat-ui/ui/src/ui/views/settings/settings-constants.ts
+index a5fa13f..dcc4cdf 100644
+--- a/workspace/chat-ui/ui/src/ui/views/settings/settings-constants.ts
++++ b/workspace/chat-ui/ui/src/ui/views/settings/settings-constants.ts
+@@ -26,7 +26,6 @@ export interface SettingsTab {
+ export const SETTINGS_TABS: SettingsTab[] = [
+   { id: "channels", labelKey: "settings.nav.channels" },
+   { id: "provider", labelKey: "settings.nav.provider" },
+-  { id: "search", labelKey: "settings.nav.search" },
+   { id: "memory", labelKey: "settings.nav.memory" },
+   { id: "appearance", labelKey: "settings.nav.appearance" },
+   { id: "advanced", labelKey: "settings.nav.advanced" },
+diff --git a/workspace/chat-ui/ui/src/ui/views/settings/tab-memory.ts b/workspace/chat-ui/ui/src/ui/views/settings/tab-memory.ts
+index 91a131c..40f77ea 100644
+--- a/workspace/chat-ui/ui/src/ui/views/settings/tab-memory.ts
++++ b/workspace/chat-ui/ui/src/ui/views/settings/tab-memory.ts
+@@ -70,14 +70,6 @@ export function renderTabMemory(state: AppViewState) {
+         ></oc-toggle-switch>
+       </div>
+ 
+-      <div class="oc-settings__form-group">
+-        <oc-toggle-switch .label=${t("settings.memory.embedding")} .checked=${s.embeddingEnabled}
+-          .disabled=${!s.isKimiCodeConfigured}
+-          @change=${(e: CustomEvent) => { s.embeddingEnabled = e.detail.checked; state.requestUpdate(); }}
+-        ></oc-toggle-switch>
+-        ${embeddingStatus ? html`<div class="oc-settings__field-hint">${embeddingStatus}</div>` : ""}
+-      </div>
+-
+       <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>
+       <oc-message-box .message=${s.successMsg ?? ""} .type=${"success"} .visible=${!!s.successMsg}></oc-message-box>
+ 
+diff --git a/workspace/chat-ui/ui/src/ui/views/settings/tab-provider.ts b/workspace/chat-ui/ui/src/ui/views/settings/tab-provider.ts
+index 424784e..0ae0e10 100644
+--- a/workspace/chat-ui/ui/src/ui/views/settings/tab-provider.ts
++++ b/workspace/chat-ui/ui/src/ui/views/settings/tab-provider.ts
+@@ -15,6 +15,8 @@ import {
+   PROVIDERS, CUSTOM_PRESETS, KIMI_CODE_MODELS, SUB_PLATFORM_URLS,
+   CUSTOM_MODEL_SENTINEL, PROVIDER_DISPLAY_ORDER, getProviderLabels,
+ } from "../setup/setup-constants.ts";
++import { init51keyDefaults, load51keyState, handle51keyProviderChange } from "../setup/setup-51key-section.ts";
++import { render51keySettingsSection } from "./settings-51key-section.ts";
+ 
+ /* ── types ── */
+ 
+@@ -30,7 +32,7 @@ interface EditorState {
+ function createProviderState() {
+   return {
+     editMode: "idle" as "idle" | "add" | "edit",
+-    currentProvider: "moonshot",
++    currentProvider: "51key",
+     subPlatform: "kimi-code",
+     customPreset: "" as string,
+     configuredModels: [] as ConfiguredModel[],
+@@ -57,12 +59,13 @@ function createProviderState() {
+     showCustomModelInput: false,
+     lockedProvider: null as string | null,
+     initialized: false,
++    ...init51keyDefaults(),
+   };
+ }
+ 
+ const s = createProviderState();
+ 
+-// 退出 Settings 时必须把 Provider 页恢复到干净初始态。
++
+ function resetProviderState() {
+   Object.assign(s, createProviderState());
+ }
+@@ -279,6 +282,13 @@ async function init(state: AppViewState) {
+       if (config.supportImage !== undefined) s.imageSupport = !!config.supportImage;
+     }
+     if (models) s.configuredModels = models;
++    if (s.currentProvider === "51key") {
++      load51keyState(s);
++      if (!s.modelId) {
++        const m = PROVIDERS["51key"]?.models ?? [];
++        if (m.length) s.modelId = m[0];
++      }
++    }
+     if (isKimiCodeProvider()) await checkOAuthStatus(state);
+     state.requestUpdate();
+   } catch {}
+@@ -532,15 +542,19 @@ function onProviderChange(provider: string, state: AppViewState) {
+   s.oauthSuccess = false;
+   s.oauthNoMembership = false;
+   if (provider === "moonshot") s.subPlatform = "kimi-code";
+-  const models = getModels();
+-  if (models.length) s.modelId = models[0];
+-  // Fill from saved
+-  const saved = lookupSavedProvider(provider);
+-  fillSavedProviderFields(saved);
++  if (provider === "51key") {
++    handle51keyProviderChange(s, state);
++  } else {
++    const models = getModels();
++    if (models.length) s.modelId = models[0];
++    const saved = lookupSavedProvider(provider);
++    fillSavedProviderFields(saved);
++  }
+   if (isKimiCodeProvider()) checkOAuthStatus(state);
+   state.requestUpdate();
+ }
+ 
++
+ function onSubPlatformChange(sp: string, state: AppViewState) {
+   s.subPlatform = sp;
+   s.apiKey = "";
+@@ -857,126 +871,129 @@ export function renderTabProvider(state: AppViewState) {
+             @select=${(e: CustomEvent) => onProviderChange(e.detail.provider, state)}
+           ></oc-provider-segment>
+ 
+-          ${s.currentProvider === "moonshot" ? html`
+-            <div class="oc-settings__form-group" style="margin-top:16px">
+-              <label class="oc-settings__label">${t("setup.provider.platform")}</label>
+-              <div class="oc-settings__radio-group">
+-                <label class="oc-settings__radio">
+-                  <input type="radio" name="settingsSubPlatform" value="kimi-code" .checked=${s.subPlatform === "kimi-code"}
+-                    @change=${() => onSubPlatformChange("kimi-code", state)} /> ${t("setup.provider.subPlatform.kimiCode")}<span class="oc-settings__badge">${t("setup.provider.subPlatform.searchBadge")}</span>
+-                </label>
+-                <label class="oc-settings__radio">
+-                  <input type="radio" name="settingsSubPlatform" value="moonshot-cn" .checked=${s.subPlatform === "moonshot-cn"}
+-                    @change=${() => onSubPlatformChange("moonshot-cn", state)} /> ${t("setup.provider.subPlatform.moonshotCn")}
+-                </label>
++          ${s.currentProvider === "51key" ? render51keySettingsSection(s, state, () => handleSave(state), getSaveButtonLabel, onModelSelectChange) : html`
++            ${s.currentProvider === "moonshot" ? html`
++              <div class="oc-settings__form-group" style="margin-top:16px">
++                <label class="oc-settings__label">${t("setup.provider.platform")}</label>
++                <div class="oc-settings__radio-group">
++                  <label class="oc-settings__radio">
++                    <input type="radio" name="settingsSubPlatform" value="kimi-code" .checked=${s.subPlatform === "kimi-code"}
++                      @change=${() => onSubPlatformChange("kimi-code", state)} /> ${t("setup.provider.subPlatform.kimiCode")}<span class="oc-settings__badge">${t("setup.provider.subPlatform.searchBadge")}</span>
++                  </label>
++                  <label class="oc-settings__radio">
++                    <input type="radio" name="settingsSubPlatform" value="moonshot-cn" .checked=${s.subPlatform === "moonshot-cn"}
++                      @change=${() => onSubPlatformChange("moonshot-cn", state)} /> ${t("setup.provider.subPlatform.moonshotCn")}
++                  </label>
++                </div>
+               </div>
+-            </div>
+-          ` : nothing}
++            ` : nothing}
++
++            ${isOAuth ? renderOAuthSection(state) : nothing}
++            ${isOAuth && s.oauthLoggedIn && s.editMode !== "add" ? renderUsagePanel(state) : nothing}
++
++            ${isCustom ? html`
++              <div class="oc-settings__form-group" style="margin-top:12px">
++                <label class="oc-settings__label">${t("setup.provider.preset")}</label>
++                <select class="oc-settings__select" .value=${s.customPreset}
++                  @change=${(e: Event) => onPresetChange((e.target as HTMLSelectElement).value, state)}>
++                  <option value="__placeholder__" disabled ?selected=${!s.customPreset}>${t("setup.provider.presetPlaceholder")}</option>
++                  ${Object.entries(CUSTOM_PRESETS).map(([k, v]) => html`
++                    <option value=${k} ?selected=${s.customPreset === k}>${v.providerKey}</option>
++                  `)}
++                  <option value="">${t("setup.provider.presetManual")}</option>
++                </select>
++              </div>
++            ` : nothing}
++
++            ${isManualCustom ? html`
++              <div class="oc-settings__form-group">
++                <label class="oc-settings__label">${t("setup.provider.baseUrl")}</label>
++                <input class="oc-settings__input" .value=${s.baseUrl}
++                  @input=${(e: Event) => { s.baseUrl = (e.target as HTMLInputElement).value; }} />
++              </div>
++              <div class="oc-settings__form-group">
++                <label class="oc-settings__label">${t("setup.provider.apiType")}</label>
++                <div class="oc-settings__radio-group">
++                  ${["openai-completions", "anthropic-messages", "openai-responses"].map(v => html`
++                    <label class="oc-settings__radio">
++                      <input type="radio" name="settingsApiType" value=${v} .checked=${s.apiType === v}
++                        @change=${() => { s.apiType = v; state.requestUpdate(); }} /> ${v}
++                    </label>
++                  `)}
++                </div>
++              </div>
++            ` : nothing}
+ 
+-          ${isOAuth ? renderOAuthSection(state) : nothing}
+-          ${isOAuth && s.oauthLoggedIn && s.editMode !== "add" ? renderUsagePanel(state) : nothing}
++            ${isOAuth ? html`
++              <details class="oc-settings__details-advanced" style="margin-top:16px">
++                <summary>${t("setup.provider.oauth.advanced")}</summary>
++                <div class="oc-settings__form-group">
++                  ${renderApiKeyInput(state)}
++                </div>
++              </details>
++            ` : renderApiKeyInput(state)}
+ 
+-          ${isCustom ? html`
+             <div class="oc-settings__form-group" style="margin-top:12px">
+-              <label class="oc-settings__label">${t("setup.provider.preset")}</label>
+-              <select class="oc-settings__select" .value=${s.customPreset}
+-                @change=${(e: Event) => onPresetChange((e.target as HTMLSelectElement).value, state)}>
+-                <option value="__placeholder__" disabled ?selected=${!s.customPreset}>${t("setup.provider.presetPlaceholder")}</option>
+-                ${Object.entries(CUSTOM_PRESETS).map(([k, v]) => html`
+-                  <option value=${k} ?selected=${s.customPreset === k}>${v.providerKey}</option>
+-                `)}
+-                <option value="">${t("setup.provider.presetManual")}</option>
+-              </select>
++              <label class="oc-settings__label">${t("settings.provider.modelAlias")}</label>
++              <input class="oc-settings__input" .value=${s.modelAlias} placeholder=${t("settings.provider.modelAliasPlaceholder")}
++                @input=${(e: Event) => { s.modelAlias = (e.target as HTMLInputElement).value; }} />
+             </div>
+-          ` : nothing}
+ 
+-          ${isManualCustom ? html`
+-            <div class="oc-settings__form-group">
+-              <label class="oc-settings__label">${t("setup.provider.baseUrl")}</label>
+-              <input class="oc-settings__input" .value=${s.baseUrl}
+-                @input=${(e: Event) => { s.baseUrl = (e.target as HTMLInputElement).value; }} />
+-            </div>
+-            <div class="oc-settings__form-group">
+-              <label class="oc-settings__label">${t("setup.provider.apiType")}</label>
+-              <div class="oc-settings__radio-group">
+-                ${["openai-completions", "anthropic-messages", "openai-responses"].map(v => html`
+-                  <label class="oc-settings__radio">
+-                    <input type="radio" name="settingsApiType" value=${v} .checked=${s.apiType === v}
+-                      @change=${() => { s.apiType = v; state.requestUpdate(); }} /> ${v}
+-                  </label>
+-                `)}
++            ${models.length > 0 ? html`
++              <div class="oc-settings__form-group">
++                <label class="oc-settings__label">${t("setup.provider.model")}</label>
++                <select class="oc-settings__select" .value=${s.modelId}
++                  @change=${(e: Event) => onModelSelectChange((e.target as HTMLSelectElement).value, state)}>
++                  ${models.map(m => html`<option value=${m} ?selected=${s.modelId === m}>${m}</option>`)}
++                  <option value=${CUSTOM_MODEL_SENTINEL}>${t("setup.provider.customModelOption")}</option>
++                </select>
+               </div>
+-            </div>
+-          ` : nothing}
++            ` : nothing}
+ 
+-          ${isOAuth ? html`
+-            <details class="oc-settings__details-advanced" style="margin-top:16px">
+-              <summary>${t("setup.provider.oauth.advanced")}</summary>
++            ${s.showCustomModelInput || isManualCustom ? html`
+               <div class="oc-settings__form-group">
+-                ${renderApiKeyInput(state)}
++                <label class="oc-settings__label">${t("setup.provider.customModelId")}</label>
++                <input class="oc-settings__input" .value=${s.customModelId}
++                  @input=${(e: Event) => { s.customModelId = (e.target as HTMLInputElement).value; }} />
+               </div>
+-            </details>
+-          ` : renderApiKeyInput(state)}
+-
+-          <div class="oc-settings__form-group" style="margin-top:12px">
+-            <label class="oc-settings__label">${t("settings.provider.modelAlias")}</label>
+-            <input class="oc-settings__input" .value=${s.modelAlias} placeholder=${t("settings.provider.modelAliasPlaceholder")}
+-              @input=${(e: Event) => { s.modelAlias = (e.target as HTMLInputElement).value; }} />
+-          </div>
++            ` : nothing}
+ 
+-          ${models.length > 0 ? html`
+-            <div class="oc-settings__form-group">
+-              <label class="oc-settings__label">${t("setup.provider.model")}</label>
+-              <select class="oc-settings__select" .value=${s.modelId}
+-                @change=${(e: Event) => onModelSelectChange((e.target as HTMLSelectElement).value, state)}>
+-                ${models.map(m => html`<option value=${m} ?selected=${s.modelId === m}>${m}</option>`)}
+-                <option value=${CUSTOM_MODEL_SENTINEL}>${t("setup.provider.customModelOption")}</option>
+-              </select>
+-            </div>
+-          ` : nothing}
++            ${isManualCustom ? html`
++              <div class="oc-settings__form-group">
++                <label class="oc-settings__checkbox">
++                  <input type="checkbox" .checked=${s.imageSupport}
++                    @change=${(e: Event) => { s.imageSupport = (e.target as HTMLInputElement).checked; state.requestUpdate(); }} />
++                  ${t("setup.provider.imageSupport")}
++                </label>
++              </div>
++            ` : nothing}
+ 
+-          ${s.showCustomModelInput || isManualCustom ? html`
+-            <div class="oc-settings__form-group">
+-              <label class="oc-settings__label">${t("setup.provider.customModelId")}</label>
+-              <input class="oc-settings__input" .value=${s.customModelId}
+-                @input=${(e: Event) => { s.customModelId = (e.target as HTMLInputElement).value; }} />
+-            </div>
+-          ` : nothing}
+-
+-          ${isManualCustom ? html`
+-            <div class="oc-settings__form-group">
+-              <label class="oc-settings__checkbox">
+-                <input type="checkbox" .checked=${s.imageSupport}
+-                  @change=${(e: Event) => { s.imageSupport = (e.target as HTMLInputElement).checked; state.requestUpdate(); }} />
+-                ${t("setup.provider.imageSupport")}
+-              </label>
+-            </div>
+-          ` : nothing}
+-
+-          ${s.oauthNoMembership ? html`
+-            <div style="padding:10px 14px;background:rgba(231,76,60,0.08);border-radius:8px;font-size:13px;margin-bottom:12px">
+-              <span>${t("setup.provider.oauth.noMembership")}</span>
+-              <a style="color:var(--accent);cursor:pointer;margin-left:6px" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=packclaw"); }}>
+-                ${t("setup.provider.oauth.subscribeLink")}
+-              </a>
+-            </div>
+-          ` : nothing}
++            ${s.oauthNoMembership ? html`
++              <div style="padding:10px 14px;background:rgba(231,76,60,0.08);border-radius:8px;font-size:13px;margin-bottom:12px">
++                <span>${t("setup.provider.oauth.noMembership")}</span>
++                <a style="color:var(--accent);cursor:pointer;margin-left:6px" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=packclaw"); }}>
++                  ${t("setup.provider.oauth.subscribeLink")}
++                </a>
++              </div>
++            ` : nothing}
+ 
+-          <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>
+-          <oc-message-box .message=${s.successMsg ?? ""} .type=${"success"} .visible=${!!s.successMsg}></oc-message-box>
++            <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>
++            <oc-message-box .message=${s.successMsg ?? ""} .type=${"success"} .visible=${!!s.successMsg}></oc-message-box>
+ 
+-          <div class="oc-settings__btn-row">
+-            <button class="oc-settings__btn oc-settings__btn--primary" ?disabled=${s.saving}
+-              @click=${() => handleSave(state)}>
+-              ${getSaveButtonLabel()}
+-            </button>
+-          </div>
++            <div class="oc-settings__btn-row">
++              <button class="oc-settings__btn oc-settings__btn--primary" ?disabled=${s.saving}
++                @click=${() => handleSave(state)}>
++                ${getSaveButtonLabel()}
++              </button>
++            </div>
++          `}
+         </div>
+       </div>
+     </div>
+   `;
+ }
+ 
++
+ function renderApiKeyInput(state: AppViewState) {
+   return html`
+     <div class="oc-settings__form-group" style="margin-top:12px">
+diff --git a/workspace/chat-ui/ui/src/ui/views/setup/setup-constants.ts b/workspace/chat-ui/ui/src/ui/views/setup/setup-constants.ts
+index d1f0c57..1cfab6e 100644
+--- a/workspace/chat-ui/ui/src/ui/views/setup/setup-constants.ts
++++ b/workspace/chat-ui/ui/src/ui/views/setup/setup-constants.ts
+@@ -3,6 +3,9 @@
+  * Migrated from setup/setup.js.
+  */
+ import { t } from "../../i18n.ts";
++import { PROVIDER_51KEY, KEY_51KEY_LOCAL_STATE, API_51KEY } from "./provider-51key-config.ts";
++
++export { KEY_51KEY_LOCAL_STATE, API_51KEY };
+ 
+ export interface ProviderDef {
+   placeholder: string;
+@@ -46,6 +49,7 @@ export const PROVIDERS: Record<string, ProviderDef> = {
+     platformUrl: "https://aistudio.google.com?utm_source=packclaw",
+     models: ["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-3-flash-preview"],
+   },
++  "51key": PROVIDER_51KEY,
+   custom: {
+     placeholder: "",
+     models: [],
+@@ -116,7 +120,7 @@ export const SUB_PLATFORM_URLS: Record<string, string> = {
+   "kimi-code": "https://kimi.com/code?utm_source=packclaw",
+ };
+ 
+-export const PROVIDER_DISPLAY_ORDER = ["moonshot", "anthropic", "openai", "google", "custom"] as const;
++export const PROVIDER_DISPLAY_ORDER = ["51key", "moonshot", "anthropic", "openai", "google", "custom"] as const;
+ 
+ /** Returns i18n-driven display labels for the provider segment selector. */
+ export function getProviderLabels(): Record<string, string> {
+@@ -125,6 +129,7 @@ export function getProviderLabels(): Record<string, string> {
+     anthropic: t("setup.provider.label.anthropic"),
+     openai: t("setup.provider.label.openai"),
+     google: t("setup.provider.label.google"),
++    "51key": t("setup.provider.label.51key"),
+     custom: t("setup.provider.label.custom"),
+   };
+ }
+diff --git a/workspace/chat-ui/ui/src/ui/views/setup/setup-step2-provider.ts b/workspace/chat-ui/ui/src/ui/views/setup/setup-step2-provider.ts
+index e4336ee..cb71e8c 100644
+--- a/workspace/chat-ui/ui/src/ui/views/setup/setup-step2-provider.ts
++++ b/workspace/chat-ui/ui/src/ui/views/setup/setup-step2-provider.ts
+@@ -13,14 +13,19 @@ import {
+   PROVIDERS, CUSTOM_PRESETS, KIMI_CODE_MODELS, SUB_PLATFORM_URLS,
+   CUSTOM_MODEL_SENTINEL, PROVIDER_DISPLAY_ORDER, getProviderLabels,
+ } from "./setup-constants.ts";
++import {
++  init51keyDefaults, ensure51keyStateLoaded, handle51keyProviderChange,
++  handle51keyVerifyAndContinue, render51keySection,
++} from "./setup-51key-section.ts";
+ 
+ const s = {
+-  currentProvider: "moonshot",
++  currentProvider: "51key",
+   subPlatform: "kimi-code" as string,
+   customPreset: "" as string,
+   apiKey: "",
+   modelId: "",
+   customModelId: "",
++  modelAlias: "",
+   baseUrl: "",
+   apiType: "openai-completions",
+   imageSupport: true,
+@@ -30,6 +35,7 @@ const s = {
+   oauthSuccess: false,
+   oauthNoMembership: false,
+   error: null as string | null,
++  ...init51keyDefaults(),
+ };
+ 
+ function getSubPlatform(): string {
+@@ -222,9 +228,12 @@ function onProviderChange(provider: string, state: AppViewState) {
+   if (provider === "moonshot") {
+     s.subPlatform = "kimi-code";
+   }
+-  // Auto-select first model
+-  const models = getModels();
+-  if (models.length) s.modelId = models[0];
++  if (provider === "51key") {
++    handle51keyProviderChange(s, state);
++  } else {
++    const models = getModels();
++    if (models.length) s.modelId = models[0];
++  }
+   state.requestUpdate();
+ }
+ 
+@@ -263,14 +272,16 @@ function onPresetChange(value: string, state: AppViewState) {
+   state.requestUpdate();
+ }
+ 
++
+ export function renderStep2(state: AppViewState, goToStep: (step: number) => void) {
++  if (s.currentProvider === "51key") ensure51keyStateLoaded(s);
+   const models = getModels();
+   const platformUrl = getPlatformUrl();
+   const isOAuth = s.currentProvider === "moonshot" && s.subPlatform === "kimi-code";
+   const isCustom = s.currentProvider === "custom";
+   const isManualCustom = isCustom && !s.customPreset;
++  const is51key = s.currentProvider === "51key";
+ 
+-  // Ensure modelId has a value
+   if (!s.modelId && models.length) s.modelId = models[0];
+ 
+   return html`
+@@ -285,135 +296,145 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
+         @select=${(e: CustomEvent) => onProviderChange(e.detail.provider, state)}
+       ></oc-provider-segment>
+ 
+-      ${s.currentProvider === "moonshot" ? html`
+-        <div class="oc-setup-form-group">
+-          <label class="oc-setup-label">${t("setup.provider.platform")}</label>
+-          <div class="oc-setup-radio-group">
+-            <label class="oc-setup-radio">
+-              <input type="radio" name="subPlatform" value="kimi-code" .checked=${s.subPlatform === "kimi-code"}
+-                @change=${() => onSubPlatformChange("kimi-code", state)} />
+-              ${t("setup.provider.subPlatform.kimiCode")}<span class="oc-settings__badge">${t("setup.provider.subPlatform.searchBadge")}</span>
+-            </label>
+-            <label class="oc-setup-radio">
+-              <input type="radio" name="subPlatform" value="moonshot-cn" .checked=${s.subPlatform === "moonshot-cn"}
+-                @change=${() => onSubPlatformChange("moonshot-cn", state)} />
+-              ${t("setup.provider.subPlatform.moonshotCn")}
+-            </label>
++      ${is51key ? render51keySection(s, state) : html`
++        ${s.currentProvider === "moonshot" ? html`
++          <div class="oc-setup-form-group">
++            <label class="oc-setup-label">${t("setup.provider.platform")}</label>
++            <div class="oc-setup-radio-group">
++              <label class="oc-setup-radio">
++                <input type="radio" name="subPlatform" value="kimi-code" .checked=${s.subPlatform === "kimi-code"}
++                  @change=${() => onSubPlatformChange("kimi-code", state)} />
++                ${t("setup.provider.subPlatform.kimiCode")}<span class="oc-settings__badge">${t("setup.provider.subPlatform.searchBadge")}</span>
++              </label>
++              <label class="oc-setup-radio">
++                <input type="radio" name="subPlatform" value="moonshot-cn" .checked=${s.subPlatform === "moonshot-cn"}
++                  @change=${() => onSubPlatformChange("moonshot-cn", state)} />
++                ${t("setup.provider.subPlatform.moonshotCn")}
++              </label>
++            </div>
+           </div>
+-        </div>
+-      ` : nothing}
++        ` : nothing}
+ 
+-      ${platformUrl ? html`
+-        <div style="display:flex;gap:16px;margin-bottom:16px">
+-          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal(platformUrl); }}>${getPlatformLinkText()}</a>
+-          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://packclaw.cn/docs?utm_source=packclaw"); }}>${t("setup.provider.docsLink")}</a>
+-        </div>
+-      ` : nothing}
++        ${platformUrl ? html`
++          <div style="display:flex;gap:16px;margin-bottom:16px">
++            <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal(platformUrl); }}>${getPlatformLinkText()}</a>
++            <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://packclaw.cn/docs?utm_source=packclaw"); }}>${t("setup.provider.docsLink")}</a>
++          </div>
++        ` : nothing}
+ 
+-      ${isOAuth ? renderOAuthSection(state, goToStep) : nothing}
++        ${isOAuth ? renderOAuthSection(state, goToStep) : nothing}
++
++        ${isCustom ? html`
++          <div class="oc-setup-form-group">
++            <label class="oc-setup-label">${t("setup.provider.preset")}</label>
++            <select class="oc-setup-select" .value=${s.customPreset}
++              @change=${(e: Event) => onPresetChange((e.target as HTMLSelectElement).value, state)}>
++              <option value="__placeholder__" disabled ?selected=${!s.customPreset}>${t("setup.provider.presetPlaceholder")}</option>
++              ${Object.entries(CUSTOM_PRESETS).map(([k, v]) => html`
++                <option value=${k} ?selected=${s.customPreset === k}>${v.providerKey}</option>
++              `)}
++              <option value="">${t("setup.provider.presetManual")}</option>
++            </select>
++          </div>
++        ` : nothing}
+ 
+-      ${isCustom ? html`
+-        <div class="oc-setup-form-group">
+-          <label class="oc-setup-label">${t("setup.provider.preset")}</label>
+-          <select class="oc-setup-select" .value=${s.customPreset}
+-            @change=${(e: Event) => onPresetChange((e.target as HTMLSelectElement).value, state)}>
+-            <option value="__placeholder__" disabled ?selected=${!s.customPreset}>${t("setup.provider.presetPlaceholder")}</option>
+-            ${Object.entries(CUSTOM_PRESETS).map(([k, v]) => html`
+-              <option value=${k} ?selected=${s.customPreset === k}>${v.providerKey}</option>
+-            `)}
+-            <option value="">${t("setup.provider.presetManual")}</option>
+-          </select>
+-        </div>
+-      ` : nothing}
++        ${isManualCustom ? html`
++          <div class="oc-setup-form-group">
++            <label class="oc-setup-label">${t("setup.provider.baseUrl")}</label>
++            <input class="oc-setup-input" .value=${s.baseUrl}
++              @input=${(e: Event) => { s.baseUrl = (e.target as HTMLInputElement).value; }} />
++          </div>
++          <div class="oc-setup-form-group">
++            <label class="oc-setup-label">${t("setup.provider.apiType")}</label>
++            <div class="oc-setup-radio-group">
++              <label class="oc-setup-radio">
++                <input type="radio" name="apiType" value="openai-completions" .checked=${s.apiType === "openai-completions"}
++                  @change=${() => { s.apiType = "openai-completions"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.openaiCompletions")}
++              </label>
++              <label class="oc-setup-radio">
++                <input type="radio" name="apiType" value="anthropic-messages" .checked=${s.apiType === "anthropic-messages"}
++                  @change=${() => { s.apiType = "anthropic-messages"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.anthropicMessages")}
++              </label>
++              <label class="oc-setup-radio">
++                <input type="radio" name="apiType" value="openai-responses" .checked=${s.apiType === "openai-responses"}
++                  @change=${() => { s.apiType = "openai-responses"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.openaiResponses")}
++              </label>
++            </div>
++          </div>
++        ` : nothing}
+ 
+-      ${isManualCustom ? html`
+-        <div class="oc-setup-form-group">
+-          <label class="oc-setup-label">${t("setup.provider.baseUrl")}</label>
+-          <input class="oc-setup-input" .value=${s.baseUrl}
+-            @input=${(e: Event) => { s.baseUrl = (e.target as HTMLInputElement).value; }} />
+-        </div>
+-        <div class="oc-setup-form-group">
+-          <label class="oc-setup-label">${t("setup.provider.apiType")}</label>
+-          <div class="oc-setup-radio-group">
+-            <label class="oc-setup-radio">
+-              <input type="radio" name="apiType" value="openai-completions" .checked=${s.apiType === "openai-completions"}
+-                @change=${() => { s.apiType = "openai-completions"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.openaiCompletions")}
+-            </label>
+-            <label class="oc-setup-radio">
+-              <input type="radio" name="apiType" value="anthropic-messages" .checked=${s.apiType === "anthropic-messages"}
+-                @change=${() => { s.apiType = "anthropic-messages"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.anthropicMessages")}
+-            </label>
+-            <label class="oc-setup-radio">
+-              <input type="radio" name="apiType" value="openai-responses" .checked=${s.apiType === "openai-responses"}
+-                @change=${() => { s.apiType = "openai-responses"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.openaiResponses")}
+-            </label>
++        ${(!isOAuth || (isOAuth && !s.oauthSuccess)) ? html`
++          <div class="oc-setup-form-group" style="${isOAuth ? 'display:none' : ''}">
++            <label class="oc-setup-label">${t("setup.provider.apiKey")}</label>
++            <oc-password-input .value=${s.apiKey} .placeholder=${getPlaceholder()}
++              @input=${(e: CustomEvent) => { s.apiKey = e.detail.value; state.requestUpdate(); }}
++            ></oc-password-input>
+           </div>
+-        </div>
+-      ` : nothing}
++        ` : nothing}
+ 
+-      ${(!isOAuth || (isOAuth && !s.oauthSuccess)) ? html`
+-        <div class="oc-setup-form-group" style="${isOAuth ? 'display:none' : ''}">
+-          <label class="oc-setup-label">${t("setup.provider.apiKey")}</label>
+-          <oc-password-input .value=${s.apiKey} .placeholder=${getPlaceholder()}
+-            @input=${(e: CustomEvent) => { s.apiKey = e.detail.value; state.requestUpdate(); }}
+-          ></oc-password-input>
+-        </div>
+-      ` : nothing}
++        ${models.length > 0 ? html`
++          <div class="oc-setup-form-group">
++            <label class="oc-setup-label">${t("setup.provider.model")}</label>
++            <select class="oc-setup-select" .value=${s.modelId}
++              @change=${(e: Event) => onModelSelectChange((e.target as HTMLSelectElement).value, state)}>
++              ${models.map(m => html`<option value=${m} ?selected=${s.modelId === m}>${m}</option>`)}
++              <option value=${CUSTOM_MODEL_SENTINEL}>${t("setup.provider.customModelOption")}</option>
++            </select>
++          </div>
++        ` : nothing}
+ 
+-      ${models.length > 0 ? html`
+-        <div class="oc-setup-form-group">
+-          <label class="oc-setup-label">${t("setup.provider.model")}</label>
+-          <select class="oc-setup-select" .value=${s.modelId}
+-            @change=${(e: Event) => onModelSelectChange((e.target as HTMLSelectElement).value, state)}>
+-            ${models.map(m => html`<option value=${m} ?selected=${s.modelId === m}>${m}</option>`)}
+-            <option value=${CUSTOM_MODEL_SENTINEL}>${t("setup.provider.customModelOption")}</option>
+-          </select>
+-        </div>
+-      ` : nothing}
++        ${(s.showCustomModelInput || (isManualCustom && !s.customPreset)) ? html`
++          <div class="oc-setup-form-group">
++            <label class="oc-setup-label">${t("setup.provider.customModelId")}</label>
++            <input class="oc-setup-input" .value=${s.customModelId}
++              @input=${(e: Event) => { s.customModelId = (e.target as HTMLInputElement).value; }} />
++          </div>
++        ` : nothing}
+ 
+-      ${(s.showCustomModelInput || (isManualCustom && !s.customPreset)) ? html`
+-        <div class="oc-setup-form-group">
+-          <label class="oc-setup-label">${t("setup.provider.customModelId")}</label>
+-          <input class="oc-setup-input" .value=${s.customModelId}
+-            @input=${(e: Event) => { s.customModelId = (e.target as HTMLInputElement).value; }} />
+-        </div>
+-      ` : nothing}
++        ${isManualCustom ? html`
++          <div class="oc-setup-form-group">
++            <oc-toggle-switch .label=${t("setup.provider.imageSupport")} .checked=${s.imageSupport}
++              @change=${(e: CustomEvent) => { s.imageSupport = e.detail.checked; state.requestUpdate(); }}
++            ></oc-toggle-switch>
++          </div>
++        ` : nothing}
+ 
+-      ${isManualCustom ? html`
+-        <div class="oc-setup-form-group">
+-          <oc-toggle-switch .label=${t("setup.provider.imageSupport")} .checked=${s.imageSupport}
+-            @change=${(e: CustomEvent) => { s.imageSupport = e.detail.checked; state.requestUpdate(); }}
+-          ></oc-toggle-switch>
+-        </div>
+-      ` : nothing}
++    ${!s["51keyApiKeyRetrieved"] ? html`<oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>` : nothing}
+ 
+-      <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>
++        ${s.oauthNoMembership ? html`
++          <div class="oc-setup-oauth-no-membership">
++            <span>${t("setup.provider.oauth.noMembership")}</span>
++            <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=packclaw"); }}>
++              ${t("setup.provider.oauth.subscribeLink")}
++            </a>
++          </div>
++        ` : nothing}
++      `}
+ 
+-      ${s.oauthNoMembership ? html`
+-        <div class="oc-setup-oauth-no-membership">
+-          <span>${t("setup.provider.oauth.noMembership")}</span>
+-          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=packclaw"); }}>
+-            ${t("setup.provider.oauth.subscribeLink")}
+-          </a>
+-        </div>
+-      ` : nothing}
+       </div>
+ 
+       <div class="oc-setup-btn-row">
+         <button class="oc-setup-btn oc-setup-btn--secondary" @click=${() => goToStep(1)}>
+           ${t("setup.provider.back")}
+         </button>
+-        ${!isOAuth ? html`
++        ${!isOAuth && !is51key ? html`
+           <button class="oc-setup-btn oc-setup-btn--primary" ?disabled=${s.verifying}
+             @click=${() => handleVerify(state, goToStep)}>
+             ${s.verifying ? "..." : t("setup.provider.verify")}
+           </button>
+         ` : nothing}
++        ${is51key && s["51keyApiKeyRetrieved"] ? html`
++          <button class="oc-setup-btn oc-setup-btn--primary" ?disabled=${s.verifying}
++            @click=${() => handle51keyVerifyAndContinue(s, state, goToStep)}>
++            ${s.verifying ? "..." : t("setup.provider.51key.verifyAndContinue")}
++          </button>
++        ` : nothing}
+       </div>
+     </div>
+   `;
+ }
+ 
++
+ function renderOAuthSection(state: AppViewState, goToStep: (step: number) => void) {
+   return html`
+     <div class="oc-setup-oauth-section">
+diff --git a/workspace/package.json b/workspace/package.json
+index e1ccbaa..e986749 100644
+--- a/workspace/package.json
++++ b/workspace/package.json
+@@ -6,6 +6,7 @@
+   "main": "dist/main.js",
+   "scripts": {
+     "build:chat": "cd chat-ui/ui && npm install --prefer-offline && npx vite build",
++    "watch:chat": "cd chat-ui/ui && npx vite build --watch",
+     "build": "npm run build:chat && tsc -p tsconfig.json",
+     "predev": "npm install && npm run package:resources && npm run build",
+     "dev": "electron .",
+diff --git a/workspace/src/provider-config.ts b/workspace/src/provider-config.ts
+index 58f6160..afbf02b 100644
+--- a/workspace/src/provider-config.ts
++++ b/workspace/src/provider-config.ts
+@@ -16,6 +16,7 @@ export const PROVIDER_PRESETS: Record<string, ProviderPreset> = {
+   anthropic: { baseUrl: "https://api.anthropic.com/v1", api: "anthropic-messages" },
+   openai: { baseUrl: "https://api.openai.com/v1", api: "openai-completions" },
+   google: { baseUrl: "https://generativelanguage.googleapis.com/v1beta", api: "google-generative-ai" },
++  "51key": { baseUrl: "https://api.lmdone.com/v1", api: "openai-completions" },
+ };
+ 
+ // Moonshot 三个子平台配置
+@@ -478,6 +479,8 @@ export async function verifyProvider(params: {
+       case "google":
+         await verifyGoogle(apiKey!);
+         break;
++      case "51key":
++        break;
+       case "moonshot":
+         if (subPlatform === "kimi-code") {
+           if (!proxyPort || proxyPort <= 0) throw new Error("Kimi Code auth proxy not running");

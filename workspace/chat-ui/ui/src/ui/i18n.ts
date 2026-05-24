@@ -4,6 +4,8 @@
  * Language detection: navigator.language or ?lang= URL param.
  */
 
+import { i18n51key } from "./i18n-51key.ts";
+
 export type Locale = "zh" | "en";
 
 const dict: Record<Locale, Record<string, string>> = {
@@ -1136,6 +1138,11 @@ const dict: Record<Locale, Record<string, string>> = {
     "error.disconnected": "Disconnected from gateway.",
   },
 };
+
+// Merge 51key i18n plugin into main dict
+for (const locale of Object.keys(i18n51key) as Locale[]) {
+  Object.assign(dict[locale], i18n51key[locale]);
+}
 
 let currentLocale: Locale = detectLocale();
 

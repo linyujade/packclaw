@@ -70,14 +70,6 @@ export function renderTabMemory(state: AppViewState) {
         ></oc-toggle-switch>
       </div>
 
-      <div class="oc-settings__form-group">
-        <oc-toggle-switch .label=${t("settings.memory.embedding")} .checked=${s.embeddingEnabled}
-          .disabled=${!s.isKimiCodeConfigured}
-          @change=${(e: CustomEvent) => { s.embeddingEnabled = e.detail.checked; state.requestUpdate(); }}
-        ></oc-toggle-switch>
-        ${embeddingStatus ? html`<div class="oc-settings__field-hint">${embeddingStatus}</div>` : ""}
-      </div>
-
       <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>
       <oc-message-box .message=${s.successMsg ?? ""} .type=${"success"} .visible=${!!s.successMsg}></oc-message-box>
 

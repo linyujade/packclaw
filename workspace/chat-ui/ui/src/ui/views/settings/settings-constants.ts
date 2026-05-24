@@ -26,7 +26,6 @@ export interface SettingsTab {
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: "channels", labelKey: "settings.nav.channels" },
   { id: "provider", labelKey: "settings.nav.provider" },
-  { id: "search", labelKey: "settings.nav.search" },
   { id: "memory", labelKey: "settings.nav.memory" },
   { id: "appearance", labelKey: "settings.nav.appearance" },
   { id: "advanced", labelKey: "settings.nav.advanced" },
