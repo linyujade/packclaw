@@ -120,7 +120,7 @@ export const SUB_PLATFORM_URLS: Record<string, string> = {
   "kimi-code": "https://kimi.com/code?utm_source=packclaw",
 };
 
-export const PROVIDER_DISPLAY_ORDER = ["51key", "moonshot", "anthropic", "openai", "google", "custom"] as const;
+export const PROVIDER_DISPLAY_ORDER = ["51key", "anthropic", "openai", "google", "custom"] as const;
 
 /** Returns i18n-driven display labels for the provider segment selector. */
 export function getProviderLabels(): Record<string, string> {

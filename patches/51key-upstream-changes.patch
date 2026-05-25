@@ -413,7 +413,7 @@ index d1f0c57..1cfab6e 100644
  };
  
 -export const PROVIDER_DISPLAY_ORDER = ["moonshot", "anthropic", "openai", "google", "custom"] as const;
-+export const PROVIDER_DISPLAY_ORDER = ["51key", "moonshot", "anthropic", "openai", "google", "custom"] as const;
++export const PROVIDER_DISPLAY_ORDER = ["51key", "anthropic", "openai", "google", "custom"] as const;
  
  /** Returns i18n-driven display labels for the provider segment selector. */
  export function getProviderLabels(): Record<string, string> {

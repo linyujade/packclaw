@@ -15,10 +15,12 @@ WS="$ROOT/workspace"
 
 echo "==> [51key] Patching upstream files..."
 
-# ─── 1. chat-ui/ui/src/ui/chat/grouped-render.ts ───
-# Add import of 51key empty response renderer and hook it into renderGroupedMessage
-patch -p2 -d "$WS" < "$ROOT/patches/51key-upstream-changes.patch" --reject-file=- 2>/dev/null || {
-  echo "  ⚠ Patch may have partially failed, trying file-by-file..."
+# ─── 1. Apply all upstream file patches ───
+# Patch is generated as diff between upstream/ and workspace/
+# After pull-upstream.sh, workspace is a fresh copy of upstream,
+# so we strip the "upstream/" prefix with -p1
+patch -p1 -d "$WS" < "$ROOT/patches/51key-upstream-changes.patch" || {
+  echo "  ⚠ Patch failed. Check rejects and apply manually."
 }
 
 # ─── 2. Copy new 51key files from overlay (if not already present) ───
