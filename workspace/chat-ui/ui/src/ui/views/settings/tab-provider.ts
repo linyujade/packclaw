@@ -15,7 +15,8 @@ import {
   PROVIDERS, CUSTOM_PRESETS, KIMI_CODE_MODELS, SUB_PLATFORM_URLS,
   CUSTOM_MODEL_SENTINEL, PROVIDER_DISPLAY_ORDER, getProviderLabels,
 } from "../setup/setup-constants.ts";
-import { init51keyDefaults, load51keyState, handle51keyProviderChange } from "../setup/setup-51key-section.ts";
+import { init51keyDefaults, load51keyState, handle51keyProviderChange, refresh51keyBalance } from "../setup/setup-51key-section.ts";
+import { fetch51keyModels } from "../setup/provider-51key-config.ts";
 import { render51keySettingsSection } from "./settings-51key-section.ts";
 
 /* ── types ── */
@@ -796,6 +797,11 @@ export function resetProviderTab() { resetProviderState(); }
 export function renderTabProvider(state: AppViewState) {
   injectStyles();
   if (!s.initialized) init(state);
+
+  if (s.currentProvider === "51key") {
+    fetch51keyModels();
+    refresh51keyBalance(s, state);
+  }
 
   const models = s.editMode === "edit" ? getEditorModels() : getModels();
   const isOAuth = isKimiCodeProvider();

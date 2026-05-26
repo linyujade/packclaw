@@ -22,11 +22,13 @@
     "clean": "rm -rf dist resources/runtime resources/gateway resources/targets out"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "nodemailer": "^8.0.8"
   },
   "devDependencies": {
     "@electron/asar": "^4.1.0",
     "@types/node": "^22.15.0",
+    "@types/nodemailer": "^8.0.0",
     "electron": "^40.2.1",
     "electron-builder": "^26.7.0",
     "esbuild": "^0.25.12",

@@ -26,5 +26,8 @@ sh ./patches/01-rebrand-oneclaw-to-packclaw.sh workspace
 # 第三步半：应用 51key provider 补丁
 sh ./patches/02-apply-51key-patches.sh
 
+# 第三步又半：应用反馈邮件 + 禁用 kimi-claw 补丁
+sh ./patches/03-apply-feedback-email-patches.sh
+
 # 第四步：覆盖 overlay
 rsync -av ./overlay/ workspace/
