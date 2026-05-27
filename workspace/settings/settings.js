@@ -435,7 +435,7 @@
       "nav.chat": "远程控制",
       "nav.feishu": "飞书集成",
       "chat.title": "远程控制",
-      "chat.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 PackClaw",
+      "chat.desc": "连接微信、飞书、企业微信、钉钉 或 QQ，从聊天软件远程控制 PackClaw",
       "chat.platformFeishu": "飞书",
       "chat.platformFeishuMeta": "Lark / 飞书机器人",
       "chat.platformWecom": "企业微信",

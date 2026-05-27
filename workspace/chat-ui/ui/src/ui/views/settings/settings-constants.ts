@@ -14,7 +14,7 @@ export const CHANNEL_PLATFORMS: ChannelPlatform[] = [
   { id: "feishu", labelKey: "settings.channels.feishu", descKey: "settings.channels.feishu.desc" },
   { id: "wecom", labelKey: "settings.channels.wecom", descKey: "settings.channels.wecom.desc" },
   { id: "dingtalk", labelKey: "settings.channels.dingtalk", descKey: "settings.channels.dingtalk.desc" },
-  { id: "kimiclaw", labelKey: "settings.channels.kimiclaw", descKey: "settings.channels.kimiclaw.desc" },
+  // { id: "kimiclaw", labelKey: "settings.channels.kimiclaw", descKey: "settings.channels.kimiclaw.desc" },
   { id: "qqbot", labelKey: "settings.channels.qqbot", descKey: "settings.channels.qqbot.desc" },
 ];
 

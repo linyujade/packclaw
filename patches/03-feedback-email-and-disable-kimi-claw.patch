@@ -295,3 +295,60 @@ index 94c2e7b..3213a21 100644
        void reconcileCliOnAppLaunch().catch((err) => {
          log.error(`[migrate] CLI launch reconciliation failed: ${err instanceof Error ? err.message : String(err)}`);
        });
+diff --git a/workspace/chat-ui/ui/src/ui/i18n.ts b/workspace/chat-ui/ui/src/ui/i18n.ts
+index 41eb6e6..0906ad3 100644
+--- a/workspace/chat-ui/ui/src/ui/i18n.ts
++++ b/workspace/chat-ui/ui/src/ui/i18n.ts
+@@ -331,7 +331,7 @@ const dict: Record<Locale, Record<string, string>> = {
+     "settings.about.upToDate": "当前已是最新版本",
+ 
+     // Settings: Channels
+-    "settings.channels.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 PackClaw",
++    "settings.channels.desc": "连接微信、飞书、企业微信、钉钉 或 QQ，从聊天软件远程控制 PackClaw",
+     "settings.channels.enable": "启用",
+     "settings.channels.weixin": "微信",
+     "settings.channels.weixin.desc": "连接微信 在微信中直接与 AI 对话",
+diff --git a/workspace/chat-ui/ui/src/ui/views/settings/settings-constants.ts b/workspace/chat-ui/ui/src/ui/views/settings/settings-constants.ts
+index dcc4cdf..7663944 100644
+--- a/workspace/chat-ui/ui/src/ui/views/settings/settings-constants.ts
++++ b/workspace/chat-ui/ui/src/ui/views/settings/settings-constants.ts
+@@ -14,7 +14,7 @@ export const CHANNEL_PLATFORMS: ChannelPlatform[] = [
+   { id: "feishu", labelKey: "settings.channels.feishu", descKey: "settings.channels.feishu.desc" },
+   { id: "wecom", labelKey: "settings.channels.wecom", descKey: "settings.channels.wecom.desc" },
+   { id: "dingtalk", labelKey: "settings.channels.dingtalk", descKey: "settings.channels.dingtalk.desc" },
+-  { id: "kimiclaw", labelKey: "settings.channels.kimiclaw", descKey: "settings.channels.kimiclaw.desc" },
++  // { id: "kimiclaw", labelKey: "settings.channels.kimiclaw", descKey: "settings.channels.kimiclaw.desc" },
+   { id: "qqbot", labelKey: "settings.channels.qqbot", descKey: "settings.channels.qqbot.desc" },
+ ];
+ 
+diff --git a/workspace/chat-ui/ui/src/ui/views/settings/tab-advanced.ts b/workspace/chat-ui/ui/src/ui/views/settings/tab-advanced.ts
+index 31d32e6..3ef68f2 100644
+--- a/workspace/chat-ui/ui/src/ui/views/settings/tab-advanced.ts
++++ b/workspace/chat-ui/ui/src/ui/views/settings/tab-advanced.ts
+@@ -405,13 +405,6 @@ export function renderTabAdvanced(state: AppViewState) {
+       <div class="oc-settings__form-group">
+         <label class="oc-settings__label">${t("settings.advanced.browserProfile")}</label>
+         <div class="oc-settings__radio-group">
+-          <label class="oc-settings__radio">
+-            <input type="radio" name="adv-browser" value="webbridge"
+-              .checked=${s.browserMode === "webbridge"}
+-              ?disabled=${s.precheckInflight}
+-              @change=${() => onBrowserModeChange(state, "webbridge")} />
+-            ${t("settings.advanced.browserWebbridge")}
+-          </label>
+           <label class="oc-settings__radio">
+             <input type="radio" name="adv-browser" value="openclaw"
+               .checked=${s.browserMode === "openclaw"}
+diff --git a/workspace/settings/settings.js b/workspace/settings/settings.js
+index e44f214..76b0359 100644
+--- a/workspace/settings/settings.js
++++ b/workspace/settings/settings.js
+@@ -435,7 +435,7 @@
+       "nav.chat": "远程控制",
+       "nav.feishu": "飞书集成",
+       "chat.title": "远程控制",
+-      "chat.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 PackClaw",
++      "chat.desc": "连接微信、飞书、企业微信、钉钉 或 QQ，从聊天软件远程控制 PackClaw",
+       "chat.platformFeishu": "飞书",
+       "chat.platformFeishuMeta": "Lark / 飞书机器人",
+       "chat.platformWecom": "企业微信",

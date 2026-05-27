@@ -331,7 +331,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "settings.about.upToDate": "当前已是最新版本",
 
     // Settings: Channels
-    "settings.channels.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 PackClaw",
+    "settings.channels.desc": "连接微信、飞书、企业微信、钉钉 或 QQ，从聊天软件远程控制 PackClaw",
     "settings.channels.enable": "启用",
     "settings.channels.weixin": "微信",
     "settings.channels.weixin.desc": "连接微信 在微信中直接与 AI 对话",

@@ -406,13 +406,6 @@ export function renderTabAdvanced(state: AppViewState) {
         <label class="oc-settings__label">${t("settings.advanced.browserProfile")}</label>
         <div class="oc-settings__radio-group">
           <label class="oc-settings__radio">
-            <input type="radio" name="adv-browser" value="webbridge"
-              .checked=${s.browserMode === "webbridge"}
-              ?disabled=${s.precheckInflight}
-              @change=${() => onBrowserModeChange(state, "webbridge")} />
-            ${t("settings.advanced.browserWebbridge")}
-          </label>
-          <label class="oc-settings__radio">
             <input type="radio" name="adv-browser" value="openclaw"
               .checked=${s.browserMode === "openclaw"}
               @change=${() => onBrowserModeChange(state, "openclaw")} />
