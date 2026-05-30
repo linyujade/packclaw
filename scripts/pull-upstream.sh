@@ -29,5 +29,8 @@ sh ./patches/02-apply-51key-patches.sh
 # 第三步又半：应用反馈邮件 + 禁用 kimi-claw 补丁
 sh ./patches/03-apply-feedback-email-patches.sh
 
+# 第三步再又半：应用 auto-updater 错误中文化补丁
+sh ./patches/04-apply-localize-auto-updater-error.sh
+
 # 第四步：覆盖 overlay
 rsync -av ./overlay/ workspace/
