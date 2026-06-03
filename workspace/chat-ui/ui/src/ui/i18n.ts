@@ -4,6 +4,8 @@
  * Language detection: navigator.language or ?lang= URL param.
  */
 
+import { i18n51key } from "./i18n-51key.ts";
+
 export type Locale = "zh" | "en";
 
 const dict: Record<Locale, Record<string, string>> = {
@@ -329,7 +331,7 @@ const dict: Record<Locale, Record<string, string>> = {
     "settings.about.upToDate": "当前已是最新版本",
 
     // Settings: Channels
-    "settings.channels.desc": "连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 PackClaw",
+    "settings.channels.desc": "连接微信、飞书、企业微信、钉钉 或 QQ，从聊天软件远程控制 PackClaw",
     "settings.channels.enable": "启用",
     "settings.channels.weixin": "微信",
     "settings.channels.weixin.desc": "连接微信 在微信中直接与 AI 对话",
@@ -1136,6 +1138,11 @@ const dict: Record<Locale, Record<string, string>> = {
     "error.disconnected": "Disconnected from gateway.",
   },
 };
+
+// Merge 51key i18n plugin into main dict
+for (const locale of Object.keys(i18n51key) as Locale[]) {
+  Object.assign(dict[locale], i18n51key[locale]);
+}
 
 let currentLocale: Locale = detectLocale();
 

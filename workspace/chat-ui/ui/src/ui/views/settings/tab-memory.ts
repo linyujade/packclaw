@@ -12,8 +12,6 @@ import "../../components/message-box.ts";
 function createMemoryState() {
   return {
     sessionMemoryEnabled: false,
-    embeddingEnabled: false,
-    isKimiCodeConfigured: false,
     saving: false,
     error: null as string | null,
     successMsg: null as string | null,
@@ -34,8 +32,6 @@ async function init(state: AppViewState) {
   try {
     const config = await ipc.settingsGetMemoryConfig();
     s.sessionMemoryEnabled = config.sessionMemoryEnabled ?? false;
-    s.embeddingEnabled = config.embeddingEnabled ?? false;
-    s.isKimiCodeConfigured = config.isKimiCodeConfigured ?? false;
     state.requestUpdate();
   } catch {}
 }
@@ -43,7 +39,7 @@ async function init(state: AppViewState) {
 async function handleSave(state: AppViewState) {
   s.saving = true; s.error = null; s.successMsg = null; state.requestUpdate();
   try {
-    await ipc.settingsSaveMemoryConfig({ sessionMemoryEnabled: s.sessionMemoryEnabled, embeddingEnabled: s.embeddingEnabled });
+    await ipc.settingsSaveMemoryConfig({ sessionMemoryEnabled: s.sessionMemoryEnabled });
     s.saving = false; s.successMsg = t("settings.saved"); state.requestUpdate();
   } catch (e: any) { s.saving = false; s.error = tWithDetail("settings.error.saveFailed", e?.message); state.requestUpdate(); }
 }
@@ -52,12 +48,6 @@ export function resetMemoryTab() { resetMemoryState(); }
 
 export function renderTabMemory(state: AppViewState) {
   if (!s.initialized) init(state);
-
-  const embeddingStatus = s.isKimiCodeConfigured && s.embeddingEnabled
-    ? t("settings.memory.embeddingEnabled")
-    : !s.isKimiCodeConfigured
-      ? t("settings.memory.embeddingRequiresKimi")
-      : "";
 
   return html`
     <div class="oc-settings__section">
@@ -68,14 +58,6 @@ export function renderTabMemory(state: AppViewState) {
         <oc-toggle-switch .label=${t("settings.memory.autoSave")} .checked=${s.sessionMemoryEnabled}
           @change=${(e: CustomEvent) => { s.sessionMemoryEnabled = e.detail.checked; state.requestUpdate(); }}
         ></oc-toggle-switch>
-      </div>
-
-      <div class="oc-settings__form-group">
-        <oc-toggle-switch .label=${t("settings.memory.embedding")} .checked=${s.embeddingEnabled}
-          .disabled=${!s.isKimiCodeConfigured}
-          @change=${(e: CustomEvent) => { s.embeddingEnabled = e.detail.checked; state.requestUpdate(); }}
-        ></oc-toggle-switch>
-        ${embeddingStatus ? html`<div class="oc-settings__field-hint">${embeddingStatus}</div>` : ""}
       </div>
 
       <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>

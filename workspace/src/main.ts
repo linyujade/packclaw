@@ -290,6 +290,20 @@ function migrateKimiPluginDeviceId(): void {
   }
 }
 
+function migrateDisableKimiClaw(): void {
+  try {
+    const config = readUserConfig();
+    const entry = config?.plugins?.entries?.["kimi-claw"];
+    if (!entry || typeof entry !== "object") return;
+    if ((entry as any).enabled === false) return;
+    (entry as any).enabled = false;
+    writeUserConfig(config);
+    log.info("[migrate] 已禁用 kimi-claw 插件（防止后台消耗 API 额度）");
+  } catch {
+    // 迁移失败不阻塞启动
+  }
+}
+
 // 存量用户迁移：openclaw 2026.4.x 的 dingtalk-connector 新 schema 设置 additionalProperties: false，
 // 拒绝旧版本遗留的 gatewayToken / sessionTimeout 字段，会导致 gateway 启动时配置校验失败。
 // 幂等删除这两个字段；失败不阻塞启动。
@@ -888,6 +902,7 @@ app.whenReady().then(async () => {
       migrateDeprecatedDingtalkFields();
       migrateBrowserProfileConfig();
       migrateKimiPluginDeviceId();
+      migrateDisableKimiClaw();
       void reconcileCliOnAppLaunch().catch((err) => {
         log.error(`[migrate] CLI launch reconciliation failed: ${err instanceof Error ? err.message : String(err)}`);
       });
@@ -903,6 +918,7 @@ app.whenReady().then(async () => {
       migrateDeprecatedDingtalkFields();
       migrateBrowserProfileConfig();
       migrateKimiPluginDeviceId();
+      migrateDisableKimiClaw();
       void reconcileCliOnAppLaunch().catch((err) => {
         log.error(`[migrate] CLI launch reconciliation failed: ${err instanceof Error ? err.message : String(err)}`);
       });

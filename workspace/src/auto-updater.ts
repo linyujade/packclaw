@@ -31,6 +31,28 @@ function formatUpdaterError(err: unknown): string {
   return String(err);
 }
 
+function translateUpdateError(err: unknown): string {
+  const msg = formatUpdaterError(err);
+  if (msg.includes("ERR_UPDATER_CHANNEL_FILE_NOT_FOUND") || msg.includes("404") || msg.includes("Cannot find channel")) {
+    return "暂无可用更新，更新服务正在部署中，请稍后再试。";
+  }
+  if (msg.includes("net::ERR_CONNECTION") || msg.includes("ECONNREFUSED") || msg.includes("ETIMEDOUT") || msg.includes("fetch failed")) {
+    return "网络连接失败，请检查网络后重试。";
+  }
+  if (msg.includes("ERR_UPDATER_INVALID_VERSION")) {
+    return "更新信息格式异常，请稍后再试。";
+  }
+  if (msg.includes("ERR_CHECKSUM_MISMATCH")) {
+    return "更新文件校验失败，请重新检查更新。";
+  }
+  if (msg.includes("ERR_UPDATER_NO_CHECKSUM")) {
+    return "更新文件信息不完整，请联系开发者。";
+  }
+  return msg;
+}
+
+let manualErrorHandled = false;
+
 // 统一发布侧栏更新状态，保证主进程与渲染层状态一致。
 function publishUpdateBannerState(
   event: Parameters<typeof reduceUpdateBannerState>[1],
@@ -89,7 +111,7 @@ export function setupAutoUpdater(): void {
     if (isManualCheck) {
       void dialog.showMessageBox({
         type: "info",
-        title: "No Updates",
+        title: "检查更新",
         message: `当前已是最新版本 (${info.version})`,
       });
     }
@@ -132,12 +154,12 @@ export function setupAutoUpdater(): void {
     if (updateBannerState.status === "downloading") {
       publishUpdateBannerState({ type: "download-failed" });
     }
-    if (isManualCheck) {
+    if (isManualCheck && !manualErrorHandled) {
+      manualErrorHandled = true;
       void dialog.showMessageBox({
         type: "error",
-        title: "Update Error",
-        message: "检查更新失败",
-        detail: err.message,
+        title: "检查更新失败",
+        message: translateUpdateError(err),
       });
     }
     isManualCheck = false;
@@ -147,14 +169,15 @@ export function setupAutoUpdater(): void {
 // 检查更新（manual=true 时弹窗反馈"已是最新"或错误）
 export function checkForUpdates(manual = false): void {
   isManualCheck = manual;
+  manualErrorHandled = false;
   void autoUpdater.checkForUpdates().catch((err) => {
     log.error(`[updater] 检查更新调用失败: ${formatUpdaterError(err)}`);
-    if (manual) {
+    if (manual && !manualErrorHandled) {
+      manualErrorHandled = true;
       void dialog.showMessageBox({
         type: "error",
-        title: "Update Error",
-        message: "检查更新失败",
-        detail: formatUpdaterError(err),
+        title: "检查更新失败",
+        message: translateUpdateError(err),
       });
     }
     isManualCheck = false;

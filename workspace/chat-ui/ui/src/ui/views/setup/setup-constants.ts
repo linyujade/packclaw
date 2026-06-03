@@ -3,6 +3,9 @@
  * Migrated from setup/setup.js.
  */
 import { t } from "../../i18n.ts";
+import { PROVIDER_51KEY, KEY_51KEY_LOCAL_STATE, API_51KEY } from "./provider-51key-config.ts";
+
+export { KEY_51KEY_LOCAL_STATE, API_51KEY };
 
 export interface ProviderDef {
   placeholder: string;
@@ -46,6 +49,7 @@ export const PROVIDERS: Record<string, ProviderDef> = {
     platformUrl: "https://aistudio.google.com?utm_source=packclaw",
     models: ["gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview", "gemini-3-flash-preview"],
   },
+  "51key": PROVIDER_51KEY,
   custom: {
     placeholder: "",
     models: [],
@@ -116,7 +120,7 @@ export const SUB_PLATFORM_URLS: Record<string, string> = {
   "kimi-code": "https://kimi.com/code?utm_source=packclaw",
 };
 
-export const PROVIDER_DISPLAY_ORDER = ["moonshot", "anthropic", "openai", "google", "custom"] as const;
+export const PROVIDER_DISPLAY_ORDER = ["51key", "anthropic", "openai", "google", "custom"] as const;
 
 /** Returns i18n-driven display labels for the provider segment selector. */
 export function getProviderLabels(): Record<string, string> {
@@ -125,6 +129,8 @@ export function getProviderLabels(): Record<string, string> {
     anthropic: t("setup.provider.label.anthropic"),
     openai: t("setup.provider.label.openai"),
     google: t("setup.provider.label.google"),
+    "51key": t("setup.provider.label.51key"),
+    moonshot: t("setup.provider.label.moonshot"),
     custom: t("setup.provider.label.custom"),
   };
 }

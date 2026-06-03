@@ -48,3 +48,5 @@ private_keys/
 docs/plans/
 docs/research/
 docs/progress/
+
+tmp/

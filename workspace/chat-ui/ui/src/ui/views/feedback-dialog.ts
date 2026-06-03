@@ -312,16 +312,10 @@ export function renderFeedbackPanel(
   state: FeedbackPanelState,
   callbacks: FeedbackPanelCallbacks,
 ) {
-  const selectedId = state.detailThread?.id ?? null;
   return html`
-    <div class="feedback-layout">
-      ${renderSidebarNav(state, callbacks, selectedId)}
+    <div class="feedback-layout feedback-layout--simple">
       <div class="feedback-layout__content">
-        ${state.view === "detail"
-          ? renderDetailContent(state, callbacks)
-          : state.view === "new"
-            ? renderNewContent(state, callbacks)
-            : renderEmptyContent()}
+        ${renderNewContent(state, callbacks)}
       </div>
     </div>
     ${state.newPreviewSrc ? html`
@@ -397,7 +391,9 @@ function renderNewContent(
 ) {
   return html`
     <div class="feedback-layout__content-inner">
-      <h2 class="feedback-layout__content-title">${t("feedback.newThread")}</h2>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <h2 class="feedback-layout__content-title" style="margin:0">${t("feedback.title")}</h2>
+      </div>
 
       <textarea
         class="feedback-textarea"

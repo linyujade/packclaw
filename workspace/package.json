@@ -6,6 +6,8 @@
   "main": "dist/main.js",
   "scripts": {
     "build:chat": "cd chat-ui/ui && npm install --prefer-offline && npx vite build",
+    "watch:chat": "cd chat-ui/ui && npx vite build --watch",
+    "watch:chat": "cd chat-ui/ui && npx vite build --watch",
     "build": "npm run build:chat && tsc -p tsconfig.json",
     "predev": "npm install && npm run package:resources && npm run build",
     "dev": "electron .",
@@ -21,11 +23,15 @@
     "clean": "rm -rf dist resources/runtime resources/gateway resources/targets out"
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "nodemailer": "^8.0.10",
+    "nodemailer": "^8.0.10"
   },
   "devDependencies": {
     "@electron/asar": "^4.1.0",
     "@types/node": "^22.15.0",
+    "@types/nodemailer": "^8.0.0",
+    "@types/nodemailer": "^8.0.0",
     "electron": "^40.2.1",
     "electron-builder": "^26.7.0",
     "esbuild": "^0.25.12",

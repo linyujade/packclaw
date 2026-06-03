@@ -15,6 +15,8 @@ import {
   PROVIDERS, CUSTOM_PRESETS, KIMI_CODE_MODELS, SUB_PLATFORM_URLS,
   CUSTOM_MODEL_SENTINEL, PROVIDER_DISPLAY_ORDER, getProviderLabels,
 } from "../setup/setup-constants.ts";
+import { init51keyDefaults, load51keyState, handle51keyProviderChange } from "../setup/setup-51key-section.ts";
+import { render51keySettingsSection } from "./settings-51key-section.ts";
 
 /* ── types ── */
 
@@ -30,7 +32,7 @@ interface EditorState {
 function createProviderState() {
   return {
     editMode: "idle" as "idle" | "add" | "edit",
-    currentProvider: "moonshot",
+    currentProvider: "51key",
     subPlatform: "kimi-code",
     customPreset: "" as string,
     configuredModels: [] as ConfiguredModel[],
@@ -57,6 +59,7 @@ function createProviderState() {
     showCustomModelInput: false,
     lockedProvider: null as string | null,
     initialized: false,
+    ...init51keyDefaults(),
   };
 }
 
@@ -279,6 +282,13 @@ async function init(state: AppViewState) {
       if (config.supportImage !== undefined) s.imageSupport = !!config.supportImage;
     }
     if (models) s.configuredModels = models;
+    if (s.currentProvider === "51key") {
+      load51keyState(s);
+      if (!s.modelId) {
+        const m = PROVIDERS["51key"]?.models ?? [];
+        if (m.length) s.modelId = m[0];
+      }
+    }
     if (isKimiCodeProvider()) await checkOAuthStatus(state);
     state.requestUpdate();
   } catch {}
@@ -532,11 +542,14 @@ function onProviderChange(provider: string, state: AppViewState) {
   s.oauthSuccess = false;
   s.oauthNoMembership = false;
   if (provider === "moonshot") s.subPlatform = "kimi-code";
-  const models = getModels();
-  if (models.length) s.modelId = models[0];
-  // Fill from saved
-  const saved = lookupSavedProvider(provider);
-  fillSavedProviderFields(saved);
+  if (provider === "51key") {
+    handle51keyProviderChange(s, state);
+  } else {
+    const models = getModels();
+    if (models.length) s.modelId = models[0];
+    const saved = lookupSavedProvider(provider);
+    fillSavedProviderFields(saved);
+  }
   if (isKimiCodeProvider()) checkOAuthStatus(state);
   state.requestUpdate();
 }
@@ -857,6 +870,7 @@ export function renderTabProvider(state: AppViewState) {
             @select=${(e: CustomEvent) => onProviderChange(e.detail.provider, state)}
           ></oc-provider-segment>
 
+          ${s.currentProvider === "51key" ? render51keySettingsSection(s, state, () => handleSave(state), getSaveButtonLabel, onModelSelectChange) : html`
           ${s.currentProvider === "moonshot" ? html`
             <div class="oc-settings__form-group" style="margin-top:16px">
               <label class="oc-settings__label">${t("setup.provider.platform")}</label>
@@ -971,6 +985,7 @@ export function renderTabProvider(state: AppViewState) {
               ${getSaveButtonLabel()}
             </button>
           </div>
+          `}
         </div>
       </div>
     </div>

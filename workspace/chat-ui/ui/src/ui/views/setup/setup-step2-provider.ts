@@ -13,14 +13,19 @@ import {
   PROVIDERS, CUSTOM_PRESETS, KIMI_CODE_MODELS, SUB_PLATFORM_URLS,
   CUSTOM_MODEL_SENTINEL, PROVIDER_DISPLAY_ORDER, getProviderLabels,
 } from "./setup-constants.ts";
+import {
+  init51keyDefaults, ensure51keyStateLoaded, handle51keyProviderChange,
+  handle51keyVerifyAndContinue, render51keySection,
+} from "./setup-51key-section.ts";
 
 const s = {
-  currentProvider: "moonshot",
+  currentProvider: "51key",
   subPlatform: "kimi-code" as string,
   customPreset: "" as string,
   apiKey: "",
   modelId: "",
   customModelId: "",
+  modelAlias: "",
   baseUrl: "",
   apiType: "openai-completions",
   imageSupport: true,
@@ -30,6 +35,7 @@ const s = {
   oauthSuccess: false,
   oauthNoMembership: false,
   error: null as string | null,
+  ...init51keyDefaults(),
 };
 
 function getSubPlatform(): string {
@@ -222,9 +228,12 @@ function onProviderChange(provider: string, state: AppViewState) {
   if (provider === "moonshot") {
     s.subPlatform = "kimi-code";
   }
-  // Auto-select first model
-  const models = getModels();
-  if (models.length) s.modelId = models[0];
+  if (provider === "51key") {
+    handle51keyProviderChange(s, state);
+  } else {
+    const models = getModels();
+    if (models.length) s.modelId = models[0];
+  }
   state.requestUpdate();
 }
 
@@ -264,13 +273,14 @@ function onPresetChange(value: string, state: AppViewState) {
 }
 
 export function renderStep2(state: AppViewState, goToStep: (step: number) => void) {
+  if (s.currentProvider === "51key") ensure51keyStateLoaded(s);
   const models = getModels();
   const platformUrl = getPlatformUrl();
   const isOAuth = s.currentProvider === "moonshot" && s.subPlatform === "kimi-code";
   const isCustom = s.currentProvider === "custom";
   const isManualCustom = isCustom && !s.customPreset;
+  const is51key = s.currentProvider === "51key";
 
-  // Ensure modelId has a value
   if (!s.modelId && models.length) s.modelId = models[0];
 
   return html`
@@ -285,6 +295,7 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
         @select=${(e: CustomEvent) => onProviderChange(e.detail.provider, state)}
       ></oc-provider-segment>
 
+      ${is51key ? render51keySection(s, state) : html`
       ${s.currentProvider === "moonshot" ? html`
         <div class="oc-setup-form-group">
           <label class="oc-setup-label">${t("setup.provider.platform")}</label>
@@ -387,7 +398,7 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
         </div>
       ` : nothing}
 
-      <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>
+    ${!s["51keyApiKeyRetrieved"] ? html`<oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>` : nothing}
 
       ${s.oauthNoMembership ? html`
         <div class="oc-setup-oauth-no-membership">
@@ -397,16 +408,23 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
           </a>
         </div>
       ` : nothing}
+      `}
       </div>
 
       <div class="oc-setup-btn-row">
         <button class="oc-setup-btn oc-setup-btn--secondary" @click=${() => goToStep(1)}>
           ${t("setup.provider.back")}
         </button>
-        ${!isOAuth ? html`
+        ${!isOAuth && !is51key ? html`
           <button class="oc-setup-btn oc-setup-btn--primary" ?disabled=${s.verifying}
             @click=${() => handleVerify(state, goToStep)}>
             ${s.verifying ? "..." : t("setup.provider.verify")}
+          </button>
+        ` : nothing}
+        ${is51key && s["51keyApiKeyRetrieved"] ? html`
+          <button class="oc-setup-btn oc-setup-btn--primary" ?disabled=${s.verifying}
+            @click=${() => handle51keyVerifyAndContinue(s, state, goToStep)}>
+            ${s.verifying ? "..." : t("setup.provider.51key.verifyAndContinue")}
           </button>
         ` : nothing}
       </div>

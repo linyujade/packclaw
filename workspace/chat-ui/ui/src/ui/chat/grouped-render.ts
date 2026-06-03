@@ -14,6 +14,7 @@ import {
 import { isToolResultMessage, normalizeRoleForGrouping } from "./message-normalizer.ts";
 import { linkifyPaths } from "./path-linker.ts";
 import { extractToolCards, renderToolCardSidebar } from "./tool-cards.ts";
+import { render51keyEmptyResponse } from "./chat-51key-balance.ts";
 
 // JSON 自动检测最大字符数，防止大 JSON 导致渲染卡顿
 const MAX_JSON_AUTOPARSE_CHARS = 20_000;
@@ -329,6 +330,8 @@ function renderGroupedMessage(
   }
 
   if (!markdown && !hasToolCards && !hasImages) {
+    const empty51key = render51keyEmptyResponse(m, bubbleClasses);
+    if (empty51key) return empty51key;
     return nothing;
   }
 

@@ -797,22 +797,8 @@ function buildFeedbackPanelCallbacks(state: AppViewState) {
       void loadFeedbackThreadDetail(state, id);
     },
     onBackToList: () => {
-      // 离开 detail 前，用所有已知时间戳的最大值刷新 seenMap，
-      // 确保 loadFeedbackThreads 拉到的 last_reply_at 不会大于 seen
-      const thread = feedbackPanelState.detailThread;
-      if (thread) {
-        const msgs = feedbackPanelState.detailMessages;
-        const candidates = [
-          new Date().toISOString(),
-          thread.last_reply_at || "",
-          thread.updated_at || "",
-          msgs.length > 0 ? msgs[msgs.length - 1].created_at : "",
-        ];
-        const latest = candidates.sort().pop()!;
-        markFeedbackThreadSeen(thread.id, latest);
-      }
-      feedbackPanelState = { ...feedbackPanelState, view: "list" };
-      loadFeedbackThreads(state);
+      state.settings.packclawView = "chat";
+      state.requestUpdate();
     },
     onNewContentChange: (value: string) => {
       feedbackPanelState = { ...feedbackPanelState, newContent: value };
@@ -906,17 +892,10 @@ function buildFeedbackPanelCallbacks(state: AppViewState) {
           email: feedbackPanelState.newEmail || undefined,
         });
         if (result?.ok) {
-          feedbackPanelState = { ...feedbackPanelState, newSubmitting: false };
+          feedbackPanelState = { ...feedbackPanelState, newSubmitting: false, newContent: "", newScreenshots: [], newScreenshotPreviews: [], newFileNames: [], newEmail: "", newIncludeLogs: true };
           showToast(state, t("feedback.success"));
-          if (result.id) {
-            // 有 id → 直接跳转新建的 thread 详情
-            loadFeedbackThreads(state);
-            void loadFeedbackThreadDetail(state, result.id);
-          } else {
-            // 无 id → 回退到列表
-            feedbackPanelState = { ...feedbackPanelState, view: "list" };
-            loadFeedbackThreads(state);
-          }
+          state.settings.packclawView = "chat";
+          state.requestUpdate();
         } else {
           feedbackPanelState = { ...feedbackPanelState, newSubmitting: false, newError: result?.error || t("feedback.error") };
         }
