@@ -19,19 +19,6 @@ export const PROVIDER_51KEY: ProviderDef = {
   ],
 };
 
-const MODEL_LIST_URL = "https://packclaw.cn/models/51key-model-options.json";
-
-export async function fetch51keyModels(): Promise<void> {
-  try {
-    const resp = await fetch(MODEL_LIST_URL, { cache: "no-store" });
-    if (!resp.ok) return;
-    const data = await resp.json();
-    if (Array.isArray(data.models) && data.models.length > 0) {
-      PROVIDER_51KEY.models = data.models;
-    }
-  } catch {}
-}
-
 export const KEY_51KEY_LOCAL_STATE = "packclaw.51key.state";
 
 export const API_51KEY = {

@@ -15,7 +15,7 @@ WS="$ROOT/workspace"
 
 echo "==> [03] Patching upstream files (feedback email + disable kimi-claw)..."
 
-patch -p1 -d "$WS" < "$ROOT/patches/03-feedback-email-and-disable-kimi-claw.patch" || {
+patch --batch -p1 -d "$WS" < "$ROOT/patches/03-feedback-email-and-disable-kimi-claw.patch" || {
   echo "  ⚠ Patch failed. Check rejects and apply manually."
 }
 

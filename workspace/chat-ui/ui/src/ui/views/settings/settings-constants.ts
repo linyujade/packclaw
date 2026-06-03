@@ -14,7 +14,7 @@ export const CHANNEL_PLATFORMS: ChannelPlatform[] = [
   { id: "feishu", labelKey: "settings.channels.feishu", descKey: "settings.channels.feishu.desc" },
   { id: "wecom", labelKey: "settings.channels.wecom", descKey: "settings.channels.wecom.desc" },
   { id: "dingtalk", labelKey: "settings.channels.dingtalk", descKey: "settings.channels.dingtalk.desc" },
-  // { id: "kimiclaw", labelKey: "settings.channels.kimiclaw", descKey: "settings.channels.kimiclaw.desc" },
+  { id: "kimiclaw", labelKey: "settings.channels.kimiclaw", descKey: "settings.channels.kimiclaw.desc" },
   { id: "qqbot", labelKey: "settings.channels.qqbot", descKey: "settings.channels.qqbot.desc" },
 ];
 
@@ -26,6 +26,7 @@ export interface SettingsTab {
 export const SETTINGS_TABS: SettingsTab[] = [
   { id: "channels", labelKey: "settings.nav.channels" },
   { id: "provider", labelKey: "settings.nav.provider" },
+  { id: "search", labelKey: "settings.nav.search" },
   { id: "memory", labelKey: "settings.nav.memory" },
   { id: "appearance", labelKey: "settings.nav.appearance" },
   { id: "advanced", labelKey: "settings.nav.advanced" },

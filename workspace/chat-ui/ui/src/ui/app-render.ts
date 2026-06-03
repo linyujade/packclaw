@@ -252,11 +252,15 @@ function setPackClawView(state: AppViewState, next: "chat" | "setup" | "settings
   if (prev === next) {
     return;
   }
+  // 离开反馈视图：释放截图缓存 + 暂停思考定时器（保留 thinkingThreadIds）+ 断 SSE
   if (prev === "feedback" && next !== "feedback") {
     feedbackPanelState = { ...feedbackPanelState, newScreenshots: [], newScreenshotPreviews: [], newFileNames: [] };
     pauseThinking();
+    unsubscribeFeedbackSse(state);
   }
+  // 进入反馈视图：建立 SSE 长连接（实时推送）+ 恢复思考动画
   if (prev !== "feedback" && next === "feedback") {
+    subscribeFeedbackSse(state);
     resumeThinking(state);
   }
   if (prev === "settings" && next !== "settings") {
@@ -297,6 +301,7 @@ function openSettingsView(state: AppViewState, tabHint: string | null = null) {
 // ── 反馈面板逻辑 ──
 
 async function openFeedbackView(state: AppViewState) {
+  // 先截图（视图切换前），再打开新建表单
   let capturedBase64: string | null = null;
   try {
     capturedBase64 = (await window.packclaw?.captureWindow?.()) ?? null;
@@ -326,6 +331,8 @@ async function openFeedbackView(state: AppViewState) {
     newSubmitting: false,
     newError: null,
   };
+
+  loadFeedbackThreads(state);
 }
 
 async function loadFeedbackThreads(state: AppViewState) {
@@ -901,7 +908,15 @@ function buildFeedbackPanelCallbacks(state: AppViewState) {
         if (result?.ok) {
           feedbackPanelState = { ...feedbackPanelState, newSubmitting: false };
           showToast(state, t("feedback.success"));
-          setPackClawView(state, "chat");
+          if (result.id) {
+            // 有 id → 直接跳转新建的 thread 详情
+            loadFeedbackThreads(state);
+            void loadFeedbackThreadDetail(state, result.id);
+          } else {
+            // 无 id → 回退到列表
+            feedbackPanelState = { ...feedbackPanelState, view: "list" };
+            loadFeedbackThreads(state);
+          }
         } else {
           feedbackPanelState = { ...feedbackPanelState, newSubmitting: false, newError: result?.error || t("feedback.error") };
         }

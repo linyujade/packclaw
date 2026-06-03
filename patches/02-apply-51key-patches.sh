@@ -19,8 +19,8 @@ echo "==> [51key] Patching upstream files..."
 # Patch is generated as diff between upstream/ and workspace/
 # After pull-upstream.sh, workspace is a fresh copy of upstream,
 # so we strip the "upstream/" prefix with -p1
-patch -p1 -d "$WS" < "$ROOT/patches/51key-upstream-changes.patch" || {
-  echo "  ⚠ Patch failed. Check rejects and apply manually."
+patch --batch -p1 -d "$WS" < "$ROOT/patches/51key-upstream-changes.patch" || {
+  echo "  ⚠ Patch failed. Skipped. Regenerate patch against new upstream."
 }
 
 # ─── 2. Copy new 51key files from overlay (if not already present) ───

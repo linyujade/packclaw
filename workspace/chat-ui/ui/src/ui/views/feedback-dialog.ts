@@ -312,10 +312,16 @@ export function renderFeedbackPanel(
   state: FeedbackPanelState,
   callbacks: FeedbackPanelCallbacks,
 ) {
+  const selectedId = state.detailThread?.id ?? null;
   return html`
-    <div class="feedback-layout feedback-layout--no-sidebar">
+    <div class="feedback-layout">
+      ${renderSidebarNav(state, callbacks, selectedId)}
       <div class="feedback-layout__content">
-        ${renderNewContent(state, callbacks)}
+        ${state.view === "detail"
+          ? renderDetailContent(state, callbacks)
+          : state.view === "new"
+            ? renderNewContent(state, callbacks)
+            : renderEmptyContent()}
       </div>
     </div>
     ${state.newPreviewSrc ? html`

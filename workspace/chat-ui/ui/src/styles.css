@@ -9046,11 +9046,6 @@ img.chat-avatar {
   height: 100%;
 }
 
-.feedback-layout--no-sidebar .feedback-layout__content {
-  flex: 1;
-  max-width: 100%;
-}
-
 /* Left sidebar nav */
 
 .feedback-layout__sidebar {

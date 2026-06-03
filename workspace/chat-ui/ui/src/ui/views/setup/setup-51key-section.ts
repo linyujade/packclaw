@@ -5,9 +5,8 @@ import * as ipc from "../../data/ipc-bridge.ts";
 import "../../components/password-input.ts";
 import "../../components/message-box.ts";
 import {
-  PROVIDERS, CUSTOM_MODEL_SENTINEL, KEY_51KEY_LOCAL_STATE, API_51KEY,
+  PROVIDERS, CUSTOM_MODEL_SENTINEL,
 } from "./setup-constants.ts";
-import { fetch51keyModels } from "./provider-51key-config.ts";
 import { API_51KEY, KEY_51KEY_LOCAL_STATE } from "./provider-51key-config.ts";
 
 export interface Setup51keyState {
@@ -81,11 +80,8 @@ export function ensure51keyStateLoaded(s: Setup51keyState) {
     localStorage.setItem(KEY_51KEY_LOADED, "1");
   } catch {}
   load51keyState(s);
-  (async () => {
-    await fetch51keyModels();
-    const models = PROVIDERS["51key"]?.models ?? [];
-    if (!s.modelId && models.length) s.modelId = models[0];
-  })();
+  const models = PROVIDERS["51key"]?.models ?? [];
+  if (!s.modelId && models.length) s.modelId = models[0];
 }
 
 export function handle51keyProviderChange(s: Setup51keyState, state: AppViewState) {
@@ -95,22 +91,6 @@ export function handle51keyProviderChange(s: Setup51keyState, state: AppViewStat
     if (models.length) s.modelId = models[0];
   }
   state.requestUpdate();
-}
-
-export async function refresh51keyBalance(s: Setup51keyState, state: AppViewState) {
-  if (!s["51keyToken"]) return;
-  try {
-    const meResp = await fetch(API_51KEY.USER_INFO, {
-      method: "GET",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s["51keyToken"]}` },
-    });
-    const meData = await meResp.json();
-    if (meResp.ok && meData.code === 0) {
-      s["51keyBalance"] = meData.data?.apiNum ?? "";
-      save51keyState(s);
-      state.requestUpdate();
-    }
-  } catch {}
 }
 
 export async function handle51keySendCode(s: Setup51keyState, state: AppViewState) {

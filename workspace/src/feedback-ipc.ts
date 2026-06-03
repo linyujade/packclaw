@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as http from "http";
 import * as https from "https";
-import * as nodemailer from "nodemailer";
 import { resolveUserStateDir } from "./constants";
 import type { GatewayState } from "./gateway-process";
 import * as log from "./logger";
@@ -395,16 +394,19 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
       return { ok: false, error: "content is required" };
     }
 
+    // 截图数量上限：最多 5 张
     if (screenshots.length > 5) {
       return { ok: false, error: "too many screenshots (max 5)" };
     }
 
+    // 单张截图大小上限：~5MB 原始数据（base64 膨胀约 1.33x → 阈值 7MB）
     for (let i = 0; i < screenshots.length; i++) {
       if (screenshots[i].length > 7_000_000) {
         return { ok: false, error: `screenshot ${i + 1} exceeds 5MB limit` };
       }
     }
 
+    // 采集诊断元数据
     const now = Date.now();
     const gwStartedAt = deps.getGatewayStartedAt();
     const metadataObj: Record<string, unknown> = {
@@ -419,12 +421,14 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
     };
     if (email) metadataObj.email = email;
 
+    // 读取用户默认模型和 baseUrl
     try {
       const cfgPath = path.join(resolveUserStateDir(), "openclaw.json");
       if (fs.existsSync(cfgPath)) {
         const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
         const primary: string = cfg?.agents?.defaults?.model?.primary || "";
         if (primary) {
+          // primary 格式: "providerKey/modelId"
           const slashIdx = primary.indexOf("/");
           const provKey = slashIdx > 0 ? primary.slice(0, slashIdx) : primary;
           const modelId = slashIdx > 0 ? primary.slice(slashIdx + 1) : primary;
@@ -433,31 +437,33 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
           if (baseUrl) metadataObj.baseUrl = baseUrl;
         }
       }
-    } catch {}
+    } catch {
+      // 配置读取失败不阻塞提交
+    }
 
-    const metadata = JSON.stringify(metadataObj, null, 2);
+    const metadata = JSON.stringify(metadataObj);
 
-    const htmlBody = `
-      <h2>PackClaw 用户反馈</h2>
-      <p><strong>反馈内容：</strong></p>
-      <pre style="white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:6px;">${content.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
-      ${email ? `<p><strong>用户邮箱：</strong>${email.replace(/</g, "&lt;")}</p>` : ""}
-      <p><strong>设备信息：</strong></p>
-      <pre style="white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:6px;font-size:12px;">${metadata.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
-    `;
+    // 构造 multipart body
+    const boundary = `----FeedbackBoundary${Date.now()}`;
+    const parts: Buffer[] = [];
 
-    const attachments: nodemailer.SendMailOptions["attachments"] = [];
+    // 文本字段
+    parts.push(buildTextField(boundary, "content", content));
+    parts.push(buildTextField(boundary, "metadata", metadata));
 
+    // 附件文件（base64 → Buffer）
     for (let i = 0; i < screenshots.length; i++) {
       const buf = Buffer.from(screenshots[i], "base64");
       const fileName = fileNames?.[i] || `screenshot-${i + 1}.png`;
-      attachments.push({ filename: fileName, content: buf });
+      const contentType = guessContentType(fileName);
+      parts.push(buildFileField(boundary, "screenshots", fileName, buf, contentType));
     }
 
+    // 日志文件：超过 10MB 只取末尾 10 万行，并脱敏含密钥的行
     if (includeLogs) {
       const stateDir = resolveUserStateDir();
       const sensitiveRe = /key=|token=|secret=|password=|authorization:|"apiKey"|"api_key"|"apikey"|bearer |sk-[a-zA-Z0-9]{8}/i;
-      const MAX_LOG_SIZE = 10 * 1024 * 1024;
+      const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10 MB
       for (const name of ["app.log", "gateway.log"]) {
         const logPath = path.join(stateDir, name);
         try {
@@ -467,20 +473,26 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
           if (stat.size <= MAX_LOG_SIZE) {
             raw = fs.readFileSync(logPath, "utf-8");
           } else {
+            // 大文件：只读取末尾 10MB
             const fd = fs.openSync(logPath, "r");
             const buf = Buffer.alloc(MAX_LOG_SIZE);
             fs.readSync(fd, buf, 0, MAX_LOG_SIZE, stat.size - MAX_LOG_SIZE);
             fs.closeSync(fd);
             raw = buf.toString("utf-8");
+            // 丢弃第一个不完整行
             const firstNewline = raw.indexOf("\n");
             if (firstNewline > 0) raw = raw.slice(firstNewline + 1);
           }
           const lines = raw.split("\n").filter((l) => !sensitiveRe.test(l));
-          attachments.push({ filename: name, content: lines.join("\n") });
-        } catch {}
+          const tailBuf = Buffer.from(lines.join("\n"), "utf-8");
+          parts.push(buildFileField(boundary, "logs", name, tailBuf, "text/plain"));
+        } catch {
+          // 读取日志失败不阻塞提交
+        }
       }
     }
 
+    // 诊断文件：打码后的配置 + workspace 目录树
     const stateDir2 = resolveUserStateDir();
     try {
       const configPath = path.join(stateDir2, "openclaw.json");
@@ -488,40 +500,33 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
         const raw = fs.readFileSync(configPath, "utf-8");
         const parsed = JSON.parse(raw);
         const masked = maskConfigValues(parsed);
-        attachments.push({ filename: "openclaw.masked.json", content: JSON.stringify(masked, null, 2) });
+        const maskedBuf = Buffer.from(JSON.stringify(masked, null, 2), "utf-8");
+        parts.push(buildFileField(boundary, "diagnostics", "openclaw.masked.json", maskedBuf, "application/json"));
       }
-    } catch {}
+    } catch {
+      // 配置读取失败不阻塞提交
+    }
     try {
       const tree = buildStateTree();
-      attachments.push({ filename: "state-tree.csv", content: tree });
-    } catch {}
-
-    const transporter = nodemailer.createTransport({
-      host: "smtp.163.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: "linyujade@163.com",
-        pass: "CKVZGjpsVrntzHge",
-      },
-    });
-
-    log.info(`反馈提交(邮件): content=${content.length}字, screenshots=${screenshots.length}, includeLogs=${includeLogs}`);
-
-    try {
-      const info = await transporter.sendMail({
-        from: '"PackClaw 反馈" <linyujade@163.com>',
-        to: "linyujade@163.com",
-        subject: `[PackClaw 反馈] ${content.slice(0, 50).replace(/\n/g, " ")}${content.length > 50 ? "..." : ""}`,
-        html: htmlBody,
-        attachments,
-      });
-      log.info(`反馈邮件发送成功: messageId=${info.messageId}`);
-      return { ok: true, id: Date.now() };
-    } catch (err: any) {
-      log.error(`反馈邮件发送失败: ${err.message}`);
-      return { ok: false, error: err.message || "邮件发送失败" };
+      const treeBuf = Buffer.from(tree, "utf-8");
+      parts.push(buildFileField(boundary, "diagnostics", "state-tree.csv", treeBuf, "text/csv"));
+    } catch {
+      // workspace 树构建失败不阻塞提交
     }
+
+    // 结束标记
+    parts.push(Buffer.from(`--${boundary}--\r\n`));
+
+    const body = Buffer.concat(parts);
+    log.info(`反馈提交: content=${content.length}字, screenshots=${screenshots.length}, includeLogs=${includeLogs}`);
+
+    const result = await postMultipart(FEEDBACK_URL, body, boundary);
+    if (result.ok) {
+      log.info(`反馈提交成功: id=${result.id}`);
+    } else {
+      log.error(`反馈提交失败: ${result.error}`);
+    }
+    return result;
   });
 
   // feedback:subscribe — 建立 SSE 长连接（幂等）

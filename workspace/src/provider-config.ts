@@ -16,7 +16,6 @@ export const PROVIDER_PRESETS: Record<string, ProviderPreset> = {
   anthropic: { baseUrl: "https://api.anthropic.com/v1", api: "anthropic-messages" },
   openai: { baseUrl: "https://api.openai.com/v1", api: "openai-completions" },
   google: { baseUrl: "https://generativelanguage.googleapis.com/v1beta", api: "google-generative-ai" },
-  "51key": { baseUrl: "https://api.lmdone.com/v1", api: "openai-completions" },
 };
 
 // Moonshot 三个子平台配置
@@ -478,8 +477,6 @@ export async function verifyProvider(params: {
         break;
       case "google":
         await verifyGoogle(apiKey!);
-        break;
-      case "51key":
         break;
       case "moonshot":
         if (subPlatform === "kimi-code") {

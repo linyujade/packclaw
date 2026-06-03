@@ -13,19 +13,14 @@ import {
   PROVIDERS, CUSTOM_PRESETS, KIMI_CODE_MODELS, SUB_PLATFORM_URLS,
   CUSTOM_MODEL_SENTINEL, PROVIDER_DISPLAY_ORDER, getProviderLabels,
 } from "./setup-constants.ts";
-import {
-  init51keyDefaults, ensure51keyStateLoaded, handle51keyProviderChange,
-  handle51keyVerifyAndContinue, render51keySection,
-} from "./setup-51key-section.ts";
 
 const s = {
-  currentProvider: "51key",
+  currentProvider: "moonshot",
   subPlatform: "kimi-code" as string,
   customPreset: "" as string,
   apiKey: "",
   modelId: "",
   customModelId: "",
-  modelAlias: "",
   baseUrl: "",
   apiType: "openai-completions",
   imageSupport: true,
@@ -35,7 +30,6 @@ const s = {
   oauthSuccess: false,
   oauthNoMembership: false,
   error: null as string | null,
-  ...init51keyDefaults(),
 };
 
 function getSubPlatform(): string {
@@ -228,12 +222,9 @@ function onProviderChange(provider: string, state: AppViewState) {
   if (provider === "moonshot") {
     s.subPlatform = "kimi-code";
   }
-  if (provider === "51key") {
-    handle51keyProviderChange(s, state);
-  } else {
-    const models = getModels();
-    if (models.length) s.modelId = models[0];
-  }
+  // Auto-select first model
+  const models = getModels();
+  if (models.length) s.modelId = models[0];
   state.requestUpdate();
 }
 
@@ -272,16 +263,14 @@ function onPresetChange(value: string, state: AppViewState) {
   state.requestUpdate();
 }
 
-
 export function renderStep2(state: AppViewState, goToStep: (step: number) => void) {
-  if (s.currentProvider === "51key") ensure51keyStateLoaded(s);
   const models = getModels();
   const platformUrl = getPlatformUrl();
   const isOAuth = s.currentProvider === "moonshot" && s.subPlatform === "kimi-code";
   const isCustom = s.currentProvider === "custom";
   const isManualCustom = isCustom && !s.customPreset;
-  const is51key = s.currentProvider === "51key";
 
+  // Ensure modelId has a value
   if (!s.modelId && models.length) s.modelId = models[0];
 
   return html`
@@ -296,144 +285,134 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
         @select=${(e: CustomEvent) => onProviderChange(e.detail.provider, state)}
       ></oc-provider-segment>
 
-      ${is51key ? render51keySection(s, state) : html`
-        ${s.currentProvider === "moonshot" ? html`
-          <div class="oc-setup-form-group">
-            <label class="oc-setup-label">${t("setup.provider.platform")}</label>
-            <div class="oc-setup-radio-group">
-              <label class="oc-setup-radio">
-                <input type="radio" name="subPlatform" value="kimi-code" .checked=${s.subPlatform === "kimi-code"}
-                  @change=${() => onSubPlatformChange("kimi-code", state)} />
-                ${t("setup.provider.subPlatform.kimiCode")}<span class="oc-settings__badge">${t("setup.provider.subPlatform.searchBadge")}</span>
-              </label>
-              <label class="oc-setup-radio">
-                <input type="radio" name="subPlatform" value="moonshot-cn" .checked=${s.subPlatform === "moonshot-cn"}
-                  @change=${() => onSubPlatformChange("moonshot-cn", state)} />
-                ${t("setup.provider.subPlatform.moonshotCn")}
-              </label>
-            </div>
+      ${s.currentProvider === "moonshot" ? html`
+        <div class="oc-setup-form-group">
+          <label class="oc-setup-label">${t("setup.provider.platform")}</label>
+          <div class="oc-setup-radio-group">
+            <label class="oc-setup-radio">
+              <input type="radio" name="subPlatform" value="kimi-code" .checked=${s.subPlatform === "kimi-code"}
+                @change=${() => onSubPlatformChange("kimi-code", state)} />
+              ${t("setup.provider.subPlatform.kimiCode")}<span class="oc-settings__badge">${t("setup.provider.subPlatform.searchBadge")}</span>
+            </label>
+            <label class="oc-setup-radio">
+              <input type="radio" name="subPlatform" value="moonshot-cn" .checked=${s.subPlatform === "moonshot-cn"}
+                @change=${() => onSubPlatformChange("moonshot-cn", state)} />
+              ${t("setup.provider.subPlatform.moonshotCn")}
+            </label>
           </div>
-        ` : nothing}
+        </div>
+      ` : nothing}
 
-        ${platformUrl ? html`
-          <div style="display:flex;gap:16px;margin-bottom:16px">
-            <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal(platformUrl); }}>${getPlatformLinkText()}</a>
-            <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://packclaw.cn/docs?utm_source=packclaw"); }}>${t("setup.provider.docsLink")}</a>
+      ${platformUrl ? html`
+        <div style="display:flex;gap:16px;margin-bottom:16px">
+          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal(platformUrl); }}>${getPlatformLinkText()}</a>
+          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://packclaw.cn/docs?utm_source=packclaw"); }}>${t("setup.provider.docsLink")}</a>
+        </div>
+      ` : nothing}
+
+      ${isOAuth ? renderOAuthSection(state, goToStep) : nothing}
+
+      ${isCustom ? html`
+        <div class="oc-setup-form-group">
+          <label class="oc-setup-label">${t("setup.provider.preset")}</label>
+          <select class="oc-setup-select" .value=${s.customPreset}
+            @change=${(e: Event) => onPresetChange((e.target as HTMLSelectElement).value, state)}>
+            <option value="__placeholder__" disabled ?selected=${!s.customPreset}>${t("setup.provider.presetPlaceholder")}</option>
+            ${Object.entries(CUSTOM_PRESETS).map(([k, v]) => html`
+              <option value=${k} ?selected=${s.customPreset === k}>${v.providerKey}</option>
+            `)}
+            <option value="">${t("setup.provider.presetManual")}</option>
+          </select>
+        </div>
+      ` : nothing}
+
+      ${isManualCustom ? html`
+        <div class="oc-setup-form-group">
+          <label class="oc-setup-label">${t("setup.provider.baseUrl")}</label>
+          <input class="oc-setup-input" .value=${s.baseUrl}
+            @input=${(e: Event) => { s.baseUrl = (e.target as HTMLInputElement).value; }} />
+        </div>
+        <div class="oc-setup-form-group">
+          <label class="oc-setup-label">${t("setup.provider.apiType")}</label>
+          <div class="oc-setup-radio-group">
+            <label class="oc-setup-radio">
+              <input type="radio" name="apiType" value="openai-completions" .checked=${s.apiType === "openai-completions"}
+                @change=${() => { s.apiType = "openai-completions"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.openaiCompletions")}
+            </label>
+            <label class="oc-setup-radio">
+              <input type="radio" name="apiType" value="anthropic-messages" .checked=${s.apiType === "anthropic-messages"}
+                @change=${() => { s.apiType = "anthropic-messages"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.anthropicMessages")}
+            </label>
+            <label class="oc-setup-radio">
+              <input type="radio" name="apiType" value="openai-responses" .checked=${s.apiType === "openai-responses"}
+                @change=${() => { s.apiType = "openai-responses"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.openaiResponses")}
+            </label>
           </div>
-        ` : nothing}
+        </div>
+      ` : nothing}
 
-        ${isOAuth ? renderOAuthSection(state, goToStep) : nothing}
+      ${(!isOAuth || (isOAuth && !s.oauthSuccess)) ? html`
+        <div class="oc-setup-form-group" style="${isOAuth ? 'display:none' : ''}">
+          <label class="oc-setup-label">${t("setup.provider.apiKey")}</label>
+          <oc-password-input .value=${s.apiKey} .placeholder=${getPlaceholder()}
+            @input=${(e: CustomEvent) => { s.apiKey = e.detail.value; state.requestUpdate(); }}
+          ></oc-password-input>
+        </div>
+      ` : nothing}
 
-        ${isCustom ? html`
-          <div class="oc-setup-form-group">
-            <label class="oc-setup-label">${t("setup.provider.preset")}</label>
-            <select class="oc-setup-select" .value=${s.customPreset}
-              @change=${(e: Event) => onPresetChange((e.target as HTMLSelectElement).value, state)}>
-              <option value="__placeholder__" disabled ?selected=${!s.customPreset}>${t("setup.provider.presetPlaceholder")}</option>
-              ${Object.entries(CUSTOM_PRESETS).map(([k, v]) => html`
-                <option value=${k} ?selected=${s.customPreset === k}>${v.providerKey}</option>
-              `)}
-              <option value="">${t("setup.provider.presetManual")}</option>
-            </select>
-          </div>
-        ` : nothing}
+      ${models.length > 0 ? html`
+        <div class="oc-setup-form-group">
+          <label class="oc-setup-label">${t("setup.provider.model")}</label>
+          <select class="oc-setup-select" .value=${s.modelId}
+            @change=${(e: Event) => onModelSelectChange((e.target as HTMLSelectElement).value, state)}>
+            ${models.map(m => html`<option value=${m} ?selected=${s.modelId === m}>${m}</option>`)}
+            <option value=${CUSTOM_MODEL_SENTINEL}>${t("setup.provider.customModelOption")}</option>
+          </select>
+        </div>
+      ` : nothing}
 
-        ${isManualCustom ? html`
-          <div class="oc-setup-form-group">
-            <label class="oc-setup-label">${t("setup.provider.baseUrl")}</label>
-            <input class="oc-setup-input" .value=${s.baseUrl}
-              @input=${(e: Event) => { s.baseUrl = (e.target as HTMLInputElement).value; }} />
-          </div>
-          <div class="oc-setup-form-group">
-            <label class="oc-setup-label">${t("setup.provider.apiType")}</label>
-            <div class="oc-setup-radio-group">
-              <label class="oc-setup-radio">
-                <input type="radio" name="apiType" value="openai-completions" .checked=${s.apiType === "openai-completions"}
-                  @change=${() => { s.apiType = "openai-completions"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.openaiCompletions")}
-              </label>
-              <label class="oc-setup-radio">
-                <input type="radio" name="apiType" value="anthropic-messages" .checked=${s.apiType === "anthropic-messages"}
-                  @change=${() => { s.apiType = "anthropic-messages"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.anthropicMessages")}
-              </label>
-              <label class="oc-setup-radio">
-                <input type="radio" name="apiType" value="openai-responses" .checked=${s.apiType === "openai-responses"}
-                  @change=${() => { s.apiType = "openai-responses"; state.requestUpdate(); }} /> ${t("setup.provider.apiType.openaiResponses")}
-              </label>
-            </div>
-          </div>
-        ` : nothing}
+      ${(s.showCustomModelInput || (isManualCustom && !s.customPreset)) ? html`
+        <div class="oc-setup-form-group">
+          <label class="oc-setup-label">${t("setup.provider.customModelId")}</label>
+          <input class="oc-setup-input" .value=${s.customModelId}
+            @input=${(e: Event) => { s.customModelId = (e.target as HTMLInputElement).value; }} />
+        </div>
+      ` : nothing}
 
-        ${(!isOAuth || (isOAuth && !s.oauthSuccess)) ? html`
-          <div class="oc-setup-form-group" style="${isOAuth ? 'display:none' : ''}">
-            <label class="oc-setup-label">${t("setup.provider.apiKey")}</label>
-            <oc-password-input .value=${s.apiKey} .placeholder=${getPlaceholder()}
-              @input=${(e: CustomEvent) => { s.apiKey = e.detail.value; state.requestUpdate(); }}
-            ></oc-password-input>
-          </div>
-        ` : nothing}
+      ${isManualCustom ? html`
+        <div class="oc-setup-form-group">
+          <oc-toggle-switch .label=${t("setup.provider.imageSupport")} .checked=${s.imageSupport}
+            @change=${(e: CustomEvent) => { s.imageSupport = e.detail.checked; state.requestUpdate(); }}
+          ></oc-toggle-switch>
+        </div>
+      ` : nothing}
 
-        ${models.length > 0 ? html`
-          <div class="oc-setup-form-group">
-            <label class="oc-setup-label">${t("setup.provider.model")}</label>
-            <select class="oc-setup-select" .value=${s.modelId}
-              @change=${(e: Event) => onModelSelectChange((e.target as HTMLSelectElement).value, state)}>
-              ${models.map(m => html`<option value=${m} ?selected=${s.modelId === m}>${m}</option>`)}
-              <option value=${CUSTOM_MODEL_SENTINEL}>${t("setup.provider.customModelOption")}</option>
-            </select>
-          </div>
-        ` : nothing}
+      <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>
 
-        ${(s.showCustomModelInput || (isManualCustom && !s.customPreset)) ? html`
-          <div class="oc-setup-form-group">
-            <label class="oc-setup-label">${t("setup.provider.customModelId")}</label>
-            <input class="oc-setup-input" .value=${s.customModelId}
-              @input=${(e: Event) => { s.customModelId = (e.target as HTMLInputElement).value; }} />
-          </div>
-        ` : nothing}
-
-        ${isManualCustom ? html`
-          <div class="oc-setup-form-group">
-            <oc-toggle-switch .label=${t("setup.provider.imageSupport")} .checked=${s.imageSupport}
-              @change=${(e: CustomEvent) => { s.imageSupport = e.detail.checked; state.requestUpdate(); }}
-            ></oc-toggle-switch>
-          </div>
-        ` : nothing}
-
-    ${!s["51keyApiKeyRetrieved"] ? html`<oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>` : nothing}
-
-        ${s.oauthNoMembership ? html`
-          <div class="oc-setup-oauth-no-membership">
-            <span>${t("setup.provider.oauth.noMembership")}</span>
-            <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=packclaw"); }}>
-              ${t("setup.provider.oauth.subscribeLink")}
-            </a>
-          </div>
-        ` : nothing}
-      `}
-
+      ${s.oauthNoMembership ? html`
+        <div class="oc-setup-oauth-no-membership">
+          <span>${t("setup.provider.oauth.noMembership")}</span>
+          <a class="oc-setup-link" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://kimi.com/pricing?utm_source=packclaw"); }}>
+            ${t("setup.provider.oauth.subscribeLink")}
+          </a>
+        </div>
+      ` : nothing}
       </div>
 
       <div class="oc-setup-btn-row">
         <button class="oc-setup-btn oc-setup-btn--secondary" @click=${() => goToStep(1)}>
           ${t("setup.provider.back")}
         </button>
-        ${!isOAuth && !is51key ? html`
+        ${!isOAuth ? html`
           <button class="oc-setup-btn oc-setup-btn--primary" ?disabled=${s.verifying}
             @click=${() => handleVerify(state, goToStep)}>
             ${s.verifying ? "..." : t("setup.provider.verify")}
-          </button>
-        ` : nothing}
-        ${is51key && s["51keyApiKeyRetrieved"] ? html`
-          <button class="oc-setup-btn oc-setup-btn--primary" ?disabled=${s.verifying}
-            @click=${() => handle51keyVerifyAndContinue(s, state, goToStep)}>
-            ${s.verifying ? "..." : t("setup.provider.51key.verifyAndContinue")}
           </button>
         ` : nothing}
       </div>
     </div>
   `;
 }
-
 
 function renderOAuthSection(state: AppViewState, goToStep: (step: number) => void) {
   return html`

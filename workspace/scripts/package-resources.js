@@ -455,6 +455,7 @@ function writeNpmrc(runtimeDir) {
   const content = [
     "registry=https://registry.npmmirror.com",
     "disturl=https://npmmirror.com/mirrors/node",
+    "@aws-sdk:registry=https://registry.npmjs.org",
     "",
   ].join("\n");
   fs.writeFileSync(npmrcPath, content);
