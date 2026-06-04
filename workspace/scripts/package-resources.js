@@ -634,11 +634,19 @@ function getWeixinPluginPackageSource() {
 }
 
 // 读取 gateway 依赖平台戳
+// ASAR 模式打包后 gateway/ 目录被删除，stamp 会被移到 targetBase 下备份。
+// 优先读原始位置，fallback 到备份位置。
 function readGatewayStamp(stampPath) {
   try {
     return fs.readFileSync(stampPath, "utf-8").trim();
   } catch {
-    return "";
+    // fallback: ASAR 模式下 stamp 已备份到 targetBase/.gateway-stamp.bak
+    const backupPath = path.join(path.dirname(path.dirname(stampPath)), ".gateway-stamp.bak");
+    try {
+      return fs.readFileSync(backupPath, "utf-8").trim();
+    } catch {
+      return "";
+    }
   }
 }
 
@@ -2309,6 +2317,13 @@ async function packGatewayAsar(gatewayDir, targetBase, platform, arch) {
     log(`gateway.asar.unpacked: ${unpackedFiles} 个文件`);
   }
 
+  // 备份 stamp 文件（ASAR 打包后 gateway/ 被删除，下次构建需要 stamp 做增量检测）
+  const stampPath = path.join(gatewayDir, ".gateway-stamp");
+  const stampBackup = path.join(targetBase, ".gateway-stamp.bak");
+  if (fs.existsSync(stampPath)) {
+    fs.copyFileSync(stampPath, stampBackup);
+  }
+
   // 删除散文件目录
   rmDir(gatewayDir);
   log("已删除 gateway/ 散文件目录");
@@ -2663,6 +2678,55 @@ function assertPluginsNativeEntry(targetPaths) {
   }
 }
 
+// ─── 全局快速检测 ───
+
+// 检查所有步骤的缓存是否全部命中，命中则跳过整个打包流程。
+// 返回 true 表示可以完全跳过。
+function canSkipAll(opts, targetPaths) {
+  const { targetBase, runtimeDir, gatewayDir, iconPath, buildConfigPath } = targetPaths;
+
+  // ASAR 模式下 gateway/ 不存在，用 gateway.asar 存在性代替
+  const asarMode = opts.asar;
+  const asarPath = path.join(targetBase, "gateway.asar");
+  const stampBackup = path.join(targetBase, ".gateway-stamp.bak");
+
+  // Step 1: runtime stamp
+  const nodeStampFile = path.join(runtimeDir, ".node-stamp");
+  if (!fs.existsSync(nodeStampFile)) return false;
+
+  // Step 2: gateway stamp（散文件 or ASAR 备份）
+  const gatewayStampPath = path.join(gatewayDir, ".gateway-stamp");
+  const gatewayStamp = readGatewayStamp(gatewayStampPath);
+  if (!gatewayStamp) return false;
+  const sourceInfo = getPackageSource();
+  const expectedStamp = `${opts.platform}-${opts.arch}|${sourceInfo.stampSource}`;
+  if (gatewayStamp !== expectedStamp) return false;
+
+  // ASAR 模式：gateway.asar 必须存在
+  if (asarMode && !fs.existsSync(asarPath)) return false;
+
+  // 非 ASAR 模式：gateway entry.js 必须存在
+  if (!asarMode && !fs.existsSync(path.join(gatewayDir, "node_modules", "openclaw", "dist", "entry.js"))) return false;
+
+  // Step 4: app icon
+  if (!fs.existsSync(iconPath)) return false;
+
+  // Step 7: officecli stamp
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+  const officecliVersion = pkg.packclaw?.officecli;
+  if (officecliVersion) {
+    const officecliOutputDir = path.join(targetBase, "officecli");
+    const officecliBin = path.join(officecliOutputDir, opts.platform === "win32" ? "officecli.exe" : "officecli");
+    const officecliStamp = path.join(officecliOutputDir, ".officecli-stamp");
+    if (!fs.existsSync(officecliBin) || !fs.existsSync(officecliStamp)) return false;
+    const stampPrefix = `${officecliVersion}-${opts.platform}-${opts.arch}`;
+    const rawStamp = fs.readFileSync(officecliStamp, "utf-8").trim();
+    if (!rawStamp.startsWith(stampPrefix)) return false;
+  }
+
+  return true;
+}
+
 // ─── 主流程 ───
 
 async function main() {
@@ -2676,6 +2740,15 @@ async function main() {
   log(`目标: ${targetPaths.targetId}`);
   log("========================================");
   console.log();
+
+  // 全局快速检测：所有步骤缓存命中则跳过
+  if (canSkipAll(opts, targetPaths)) {
+    log("所有资源已就绪（缓存全部命中），跳过打包");
+    verifyOutput(targetPaths, opts);
+    console.log();
+    log("资源打包完成！");
+    return;
+  }
 
   // Step 1: 下载 Node.js 22 运行时
   log("Step 1: 下载 Node.js 22 运行时");

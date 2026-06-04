@@ -20,7 +20,7 @@ run_task() {
 # macOS 和 Windows 之间无冲突，可以并行。
 
 echo "[parallel] === macOS 构建（arm64 → x64 串行） ==="
-run_task "dist:mac:arm64" &
+( run_task "dist:mac:arm64" && run_task "dist:mac:x64" ) &
 MAC_PID=$!
 
 echo "[parallel] === Windows 构建（x64 → arm64 串行） ==="

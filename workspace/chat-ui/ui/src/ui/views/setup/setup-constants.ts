@@ -125,12 +125,10 @@ export const PROVIDER_DISPLAY_ORDER = ["51key", "anthropic", "openai", "google",
 /** Returns i18n-driven display labels for the provider segment selector. */
 export function getProviderLabels(): Record<string, string> {
   return {
-    moonshot: t("setup.provider.label.moonshot"),
     anthropic: t("setup.provider.label.anthropic"),
     openai: t("setup.provider.label.openai"),
     google: t("setup.provider.label.google"),
     "51key": t("setup.provider.label.51key"),
-    moonshot: t("setup.provider.label.moonshot"),
     custom: t("setup.provider.label.custom"),
   };
 }

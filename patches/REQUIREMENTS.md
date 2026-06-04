@@ -468,6 +468,101 @@ state.requestUpdate();
 
 ---
 
+## R18: Fix macOS Parallel Build Missing x64 Target
+
+**File:** `workspace/scripts/dist-all-parallel.sh`
+
+**Description:** The macOS build line only ran `dist:mac:arm64` as a standalone background task, but the script comment says "arm64 → x64 串行". The Windows line correctly uses `( dist:win:x64 && dist:win:arm64 ) &` for serial execution. macOS needs the same pattern to build both architectures.
+
+**Changes:**
+```bash
+# Before:
+run_task "dist:mac:arm64" &
+
+# After:
+( run_task "dist:mac:arm64" && run_task "dist:mac:x64" ) &
+```
+
+**Verify:** `npm run dist:all:parallel` produces all 4 output directories (`darwin-arm64`, `darwin-x64`, `win32-x64`, `win32-arm64`).
+
+---
+
+## R19: ASAR Stamp Backup + Global Fast-Path for package-resources
+
+**File:** `workspace/scripts/package-resources.js`
+
+**Description:** Two problems cause repeated full rebuilds:
+1. ASAR mode deletes `gateway/` directory after packing, which also deletes `.gateway-stamp`. Next build has no stamp → full `npm install openclaw` every time (~2-3 min).
+2. Even when individual steps have caches, the script still runs through all steps sequentially (version check, stamp reads, etc.) adding ~10-20s overhead.
+
+Three patches address this:
+
+**Change 1: `readGatewayStamp()` fallback to backup**
+```javascript
+// Before:
+function readGatewayStamp(stampPath) {
+  try {
+    return fs.readFileSync(stampPath, "utf-8").trim();
+  } catch {
+    return "";
+  }
+}
+
+// After:
+function readGatewayStamp(stampPath) {
+  try {
+    return fs.readFileSync(stampPath, "utf-8").trim();
+  } catch {
+    const backupPath = path.join(path.dirname(path.dirname(stampPath)), ".gateway-stamp.bak");
+    try {
+      return fs.readFileSync(backupPath, "utf-8").trim();
+    } catch {
+      return "";
+    }
+  }
+}
+```
+
+**Change 2: Backup stamp before deleting `gateway/` in `packGatewayAsar()`**
+```javascript
+// Insert before "rmDir(gatewayDir)":
+const stampPath = path.join(gatewayDir, ".gateway-stamp");
+const stampBackup = path.join(targetBase, ".gateway-stamp.bak");
+if (fs.existsSync(stampPath)) {
+  fs.copyFileSync(stampPath, stampBackup);
+}
+```
+
+**Change 3: Add `canSkipAll()` function + early return in `main()`**
+
+New function `canSkipAll(opts, targetPaths)` checks:
+- Runtime `.node-stamp` exists
+- Gateway stamp matches current platform/arch/source (via `readGatewayStamp` with backup fallback)
+- ASAR file exists (if ASAR mode) or `entry.js` exists (if non-ASAR)
+- App icon exists
+- OfficeCLI stamp and binary exist (if pinned in package.json)
+
+If all pass, `main()` prints "所有资源已就绪（缓存全部命中），跳过打包" and returns immediately after `verifyOutput()`.
+
+**Verify:** Run `npm run package:resources` twice. Second run should complete in <2 seconds with "缓存全部命中" message.
+
+---
+
+## R20: Remove Moonshot Provider Label
+
+**File:** `workspace/chat-ui/ui/src/ui/views/setup/setup-constants.ts`
+
+**Description:** Remove `moonshot` from `getProviderLabels()`. PackClaw uses 51key as default provider and doesn't need moonshot in the label map (it's not in `PROVIDER_DISPLAY_ORDER` either).
+
+**Changes:** Delete the line:
+```typescript
+    moonshot: t("setup.provider.label.moonshot"),
+```
+
+**Verify:** `tsc --noEmit` passes. No moonshot label in setup constants.
+
+---
+
 ## Overlay Files (New Files — No Patching Needed)
 
 These files are already in `overlay/` and copied via `rsync`:
