@@ -14,6 +14,7 @@ import {
   setupAutoUpdater,
   checkForUpdates,
   downloadAndInstallUpdate,
+  openUpdateInstaller,
   getUpdateBannerState,
   startAutoCheckSchedule,
   stopAutoCheckSchedule,
@@ -579,6 +580,7 @@ ipcMain.on("app:quit", () => app.quit());
 ipcMain.on("app:check-updates", () => checkForUpdates(true));
 ipcMain.handle("app:get-update-state", () => getUpdateBannerState());
 ipcMain.handle("app:download-and-install-update", () => downloadAndInstallUpdate());
+ipcMain.handle("app:open-update-installer", () => openUpdateInstaller());
 ipcMain.handle("app:open-external", (_e, url: string) => shell.openExternal(appendChannelUtm(url)));
 ipcMain.handle("app:open-path", (_e, filePath: string) => shell.openPath(filePath));
 

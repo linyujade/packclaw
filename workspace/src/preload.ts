@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("packclaw", {
   checkForUpdates: () => ipcRenderer.send("app:check-updates"),
   getUpdateState: () => ipcRenderer.invoke("app:get-update-state"),
   downloadAndInstallUpdate: () => ipcRenderer.invoke("app:download-and-install-update"),
+  openUpdateInstaller: () => ipcRenderer.invoke("app:open-update-installer"),
 
   // Setup 相关
   verifyKey: (params: Record<string, unknown>) =>
@@ -254,7 +255,7 @@ contextBridge.exposeInMainWorld("packclaw", {
   },
   onUpdateState: (
     cb: (payload: {
-      status: "hidden" | "available" | "downloading";
+      status: "hidden" | "available" | "downloading" | "ready-to-install";
       version: string | null;
       percent: number | null;
       showBadge: boolean;
@@ -263,7 +264,7 @@ contextBridge.exposeInMainWorld("packclaw", {
     const listener = (
       _event: Electron.IpcRendererEvent,
       payload: {
-        status: "hidden" | "available" | "downloading";
+        status: "hidden" | "available" | "downloading" | "ready-to-install";
         version: string | null;
         percent: number | null;
         showBadge: boolean;

@@ -116,7 +116,7 @@ type SharePromptStore = {
 };
 
 type PackClawUpdateState = {
-  status: "hidden" | "available" | "downloading";
+  status: "hidden" | "available" | "downloading" | "ready-to-install";
   version: string | null;
   percent: number | null;
   showBadge: boolean;
@@ -812,7 +812,7 @@ export class OpenClawApp extends LitElement {
   // 规范化更新状态 payload，保证渲染层只消费合法值。
   private applyUpdateBannerState(payload: PackClawUpdateState | null | undefined) {
     const nextStatus = payload?.status;
-    if (nextStatus !== "hidden" && nextStatus !== "available" && nextStatus !== "downloading") {
+    if (nextStatus !== "hidden" && nextStatus !== "available" && nextStatus !== "downloading" && nextStatus !== "ready-to-install") {
       return;
     }
     this.updateBannerState = {

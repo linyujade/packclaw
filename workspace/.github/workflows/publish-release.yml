@@ -45,11 +45,3 @@ jobs:
           aws configure set default.s3.addressing_style virtual
           aws s3 cp out/release/ "s3://$TOS_BUCKET/releases/" --recursive --endpoint-url "$TOS_ENDPOINT" --include "*.yml"
           echo "latest yml 上传完成"
-
-      # 刷新 CDN 缓存
-      - name: 刷新 CDN 缓存
-        run: |
-          node scripts/volcengine-cdn-refresh.js \
-            "https://${{ env.CDN_DOMAIN }}/releases/latest-mac.yml" \
-            "https://${{ env.CDN_DOMAIN }}/releases/latest.yml"
-          echo "CDN 缓存刷新已提交"

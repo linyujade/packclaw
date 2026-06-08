@@ -23,7 +23,7 @@ export type SidebarProps = {
   feedbackActive: boolean;
   feedbackHasReply: boolean;
   onOpenFeedback: () => void;
-  updateStatus: "hidden" | "available" | "downloading";
+  updateStatus: "hidden" | "available" | "downloading" | "ready-to-install";
   updateVersion: string | null;
   updatePercent: number | null;
   updateShowBadge: boolean;
@@ -49,6 +49,7 @@ export type SidebarProps = {
   onOpenDocs: () => void;
   errors: string[];
   onApplyUpdate: () => void;
+  onOpenUpdateInstaller: () => void;
   onReconnect: () => void;
 };
 
@@ -113,7 +114,9 @@ export function renderSidebar(props: SidebarProps) {
         "{percent}",
         String(Math.max(0, Math.min(100, Math.round(props.updatePercent ?? 0)))),
       )
-    : t("sidebar.updateReady");
+    : props.updateStatus === "ready-to-install"
+      ? t("sidebar.updateReadyToInstall")
+      : t("sidebar.updateReady");
 
   return html`
     <aside class="packclaw-sidebar">
@@ -233,17 +236,20 @@ export function renderSidebar(props: SidebarProps) {
                   ? "is-loading"
                   : ""}"
                 type="button"
-                @click=${props.onApplyUpdate}
+                @click=${props.updateStatus === "ready-to-install" ? props.onOpenUpdateInstaller : props.onApplyUpdate}
                 ?disabled=${props.updateStatus === "downloading"}
               >
                 <span class="packclaw-sidebar__icon">
-                  ${props.updateStatus === "downloading" ? icons.loader : icons.zap}
+                  ${props.updateStatus === "downloading" ? icons.loader : props.updateStatus === "ready-to-install" ? icons.download : icons.zap}
                 </span>
                 <span class="packclaw-sidebar__label">${updateLabel}</span>
                 ${props.updateShowBadge
                   ? html`<span class="packclaw-sidebar__update-dot" aria-hidden="true"></span>`
                   : nothing}
               </button>
+              ${props.updateStatus === "ready-to-install"
+                ? html`<a href="https://www.packclaw.cn/#download" target="_blank" rel="noopener" class="packclaw-sidebar__manual-dl">${t("settings.about.manualDownload")}</a>`
+                : nothing}
             `
           : nothing}
         <button

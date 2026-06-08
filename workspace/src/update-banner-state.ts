@@ -1,4 +1,4 @@
-export type UpdateBannerStatus = "hidden" | "available" | "downloading";
+export type UpdateBannerStatus = "hidden" | "available" | "downloading" | "ready-to-install";
 
 export type UpdateBannerState = {
   status: UpdateBannerStatus;
@@ -13,9 +13,9 @@ export type UpdateBannerEvent =
   | { type: "download-started" }
   | { type: "download-progress"; percent: number }
   | { type: "download-failed" }
-  | { type: "download-finished" };
+  | { type: "download-finished" }
+  | { type: "download-ready" };
 
-// 初始化侧栏更新提示状态：默认隐藏、无进度、无红点。
 export function createInitialUpdateBannerState(): UpdateBannerState {
   return {
     status: "hidden",
@@ -25,7 +25,6 @@ export function createInitialUpdateBannerState(): UpdateBannerState {
   };
 }
 
-// 规范化下载进度，避免出现 NaN、负值或超过 100 的异常值。
 function normalizePercent(input: number): number {
   if (!Number.isFinite(input)) {
     return 0;
@@ -39,7 +38,6 @@ function normalizePercent(input: number): number {
   return input;
 }
 
-// 纯状态机：把更新事件映射成 UI 可渲染状态，保持主流程可预测。
 export function reduceUpdateBannerState(
   state: UpdateBannerState,
   event: UpdateBannerEvent,
@@ -53,8 +51,19 @@ export function reduceUpdateBannerState(
         showBadge: true,
       };
     case "update-not-available":
+      return createInitialUpdateBannerState();
     case "download-finished":
       return createInitialUpdateBannerState();
+    case "download-ready":
+      if (!state.version) {
+        return createInitialUpdateBannerState();
+      }
+      return {
+        status: "ready-to-install",
+        version: state.version,
+        percent: null,
+        showBadge: true,
+      };
     case "download-started":
       if (state.status !== "available" || !state.version) {
         return state;
@@ -88,7 +97,6 @@ export function reduceUpdateBannerState(
   }
 }
 
-// 仅在“已发现更新”时允许启动下载，避免重复触发下载任务。
 export function canStartUpdateDownload(state: UpdateBannerState): boolean {
   return state.status === "available" && Boolean(state.version);
 }

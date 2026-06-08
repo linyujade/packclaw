@@ -26,5 +26,11 @@ sh ./patches/01-rebrand-oneclaw-to-packclaw.sh workspace
 # 第三步半：应用所有 PackClaw 定制补丁（R01-R17）
 sh ./patches/02-apply-packclaw-customizations.sh
 
+# 第三步又半：优化构建缓存（R18-R20）
+sh ./patches/03-optimize-build-caching.sh
+
+# 第三步再半：macOS 手动安装更新流程（R21-R28）
+sh ./patches/04-macos-manual-update-installer.sh
+
 # 第四步：覆盖 overlay
 rsync -av ./overlay/ workspace/

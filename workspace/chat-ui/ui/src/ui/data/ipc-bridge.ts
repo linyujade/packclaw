@@ -209,7 +209,7 @@ export interface AboutInfo {
 }
 
 export interface UpdateState {
-  status: "hidden" | "available" | "downloading";
+  status: "hidden" | "available" | "downloading" | "ready-to-install";
   version?: string | null;
   percent?: number | null;
   showBadge?: boolean;
@@ -349,6 +349,7 @@ interface PackClawBridgeExtended {
       getUpdateState?: () => Promise<any>;
       checkForUpdates?: () => void;
       downloadAndInstallUpdate?: () => Promise<any>;
+      openUpdateInstaller?: () => Promise<any>;
       onUpdateState?: (cb: (state: any) => void) => () => void;
       // Navigation
       onNavigate?: (cb: (payload: any) => void) => () => void;
@@ -755,6 +756,10 @@ export function checkForUpdates(): void {
 
 export function downloadAndInstallUpdate(): Promise<void> {
   return oc().downloadAndInstallUpdate() as Promise<void>;
+}
+
+export function openUpdateInstaller(): Promise<void> {
+  return oc().openUpdateInstaller() as Promise<void>;
 }
 
 export function onUpdateState(cb: (state: UpdateState) => void): () => void {

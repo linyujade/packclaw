@@ -1,5 +1,8 @@
 import { autoUpdater } from "electron-updater";
-import { dialog } from "electron";
+import { app, dialog, shell } from "electron";
+import * as child_process from "child_process";
+import * as fs from "fs";
+import * as path from "path";
 import * as log from "./logger";
 import { readPackclawConfig } from "./packclaw-config";
 import {
@@ -24,6 +27,7 @@ let beforeQuitForInstallCallback: (() => void) | null = null;
 let updateBannerStateCallback: ((state: UpdateBannerState) => void) | null = null;
 let updateBannerState = createInitialUpdateBannerState();
 let downloadInFlight: Promise<boolean> | null = null;
+let pendingUpdateFile: string | null = null;
 
 // 统一格式化更新错误，避免日志出现 [object Object]
 function formatUpdaterError(err: unknown): string {
@@ -132,19 +136,47 @@ export function setupAutoUpdater(): void {
     });
   });
 
-  // 下载完成后直接重启安装，不再二次确认弹窗。
-  autoUpdater.on("update-downloaded", () => {
+  // macOS: 下载完成后解压 zip，提取 .app 备用，点击"打开安装包"时直接复制到 /Applications 并重启。
+  // Windows: 保持原有 quitAndInstall 行为（NSIS 自动安装正常）。
+  autoUpdater.on("update-downloaded", (info) => {
     log.info("[updater] 更新下载完成");
     progressCallback?.(null);
-    publishUpdateBannerState({ type: "download-finished" });
-    log.info("[updater] 准备自动重启安装更新");
-    beforeQuitForInstallCallback?.();
-    // isSilent=false: 保留 NSIS 窗口以显示安装进度条（30s-1min）。
-    //   installer.nsh 通过 customWelcomePage / customInstallMode / customFinishPage 三个宏
-    //   在 --updated 模式下自动跳过 Welcome、安装模式选择、Finish 页面，
-    //   用户只看到进度条，无需任何点击。
-    // isForceRunAfter=true: 传递 --force-run 参数，Finish 页跳过后由 onFinishPagePre 启动 app
-    autoUpdater.quitAndInstall(false, true);
+
+    if (process.platform === "darwin") {
+      try {
+        const cacheDir = path.join(app.getPath("home"), "Library", "Caches", "packclaw-updater", "pending");
+        const infoPath = path.join(cacheDir, "update-info.json");
+        if (fs.existsSync(infoPath)) {
+          const raw = fs.readFileSync(infoPath, "utf-8");
+          const parsed = JSON.parse(raw);
+          const srcZip = path.join(cacheDir, parsed.fileName);
+          if (fs.existsSync(srcZip)) {
+            const extractDir = path.join(cacheDir, "extracted");
+            if (fs.existsSync(extractDir)) {
+              fs.rmSync(extractDir, { recursive: true, force: true });
+            }
+            fs.mkdirSync(extractDir, { recursive: true });
+            child_process.execSync(`unzip -o -q "${srcZip}" -d "${extractDir}"`);
+            const entries = fs.readdirSync(extractDir);
+            const appDir = entries.find((e) => e.endsWith(".app"));
+            if (appDir) {
+              pendingUpdateFile = path.join(extractDir, appDir);
+              log.info(`[updater] 已解压安装包: ${pendingUpdateFile}`);
+            } else {
+              log.error("[updater] 解压后未找到 .app");
+            }
+          }
+        }
+      } catch (copyErr) {
+        log.error(`[updater] 解压安装包失败: ${formatUpdaterError(copyErr)}`);
+      }
+      publishUpdateBannerState({ type: "download-ready" });
+    } else {
+      publishUpdateBannerState({ type: "download-finished" });
+      log.info("[updater] 准备自动重启安装更新");
+      beforeQuitForInstallCallback?.();
+      autoUpdater.quitAndInstall(false, true);
+    }
   });
 
   // 错误处理
@@ -241,4 +273,40 @@ export function setUpdateBannerStateCallback(cb: (state: UpdateBannerState) => v
 // 获取当前侧栏更新状态（供渲染层首屏同步）。
 export function getUpdateBannerState(): UpdateBannerState {
   return { ...updateBannerState };
+}
+
+// macOS: 将已解压的 .app 复制到 /Applications 并重启。
+// Windows: 不应走到这里（Windows 用 quitAndInstall）。
+export async function openUpdateInstaller(): Promise<boolean> {
+  if (!pendingUpdateFile) {
+    log.warn("[updater] 没有已下载的安装包可打开");
+    return false;
+  }
+
+  if (process.platform === "darwin") {
+    try {
+      const appName = path.basename(pendingUpdateFile);
+      const destApp = `/Applications/${appName}`;
+      log.info(`[updater] 开始安装: cp -R "${pendingUpdateFile}" "${destApp}"`);
+      child_process.execSync(`cp -R "${pendingUpdateFile}" "${destApp}"`);
+      log.info(`[updater] 安装完成，准备重启: ${destApp}`);
+      publishUpdateBannerState({ type: "download-finished" });
+      app.relaunch();
+      app.exit(0);
+      return true;
+    } catch (err) {
+      log.error(`[updater] 安装更新失败: ${formatUpdaterError(err)}`);
+      return false;
+    }
+  }
+
+  try {
+    await shell.openPath(pendingUpdateFile);
+    log.info(`[updater] 已打开安装包: ${pendingUpdateFile}`);
+    publishUpdateBannerState({ type: "download-finished" });
+    return true;
+  } catch (err) {
+    log.error(`[updater] 打开安装包失败: ${formatUpdaterError(err)}`);
+    return false;
+  }
 }

@@ -563,6 +563,217 @@ If all pass, `main()` prints "所有资源已就绪（缓存全部命中），�
 
 ---
 
+## R21: Add "ready-to-install" Status to Update Banner State Machine
+
+**File:** `workspace/src/update-banner-state.ts`
+
+**Description:** Add a new update status `"ready-to-install"` and event type `"download-ready"` to the state machine. On macOS, after downloading and extracting the update zip, the status transitions to `"ready-to-install"` instead of immediately restarting. The user clicks "open installer" to trigger the actual install.
+
+**Changes:**
+1. Expand `UpdateBannerStatus` type:
+```typescript
+export type UpdateBannerStatus = "hidden" | "available" | "downloading" | "ready-to-install";
+```
+
+2. Add `download-ready` event type:
+```typescript
+| { type: "download-ready" };
+```
+
+3. In `reduceUpdateBannerState`, add explicit `update-not-available` case (no longer falls through):
+```typescript
+case "update-not-available":
+  return createInitialUpdateBannerState();
+```
+
+4. Add `download-ready` case in reducer:
+```typescript
+case "download-ready":
+  if (!state.version) {
+    return createInitialUpdateBannerState();
+  }
+  return {
+    status: "ready-to-install",
+    version: state.version,
+    percent: null,
+    showBadge: true,
+  };
+```
+
+**Verify:** `tsc --noEmit` passes. State machine accepts "download-ready" event.
+
+---
+
+## R22: macOS Manual Installer: Extract ZIP Instead of Auto-Restart
+
+**File:** `workspace/src/auto-updater.ts`
+
+**Description:** On macOS, the upstream `quitAndInstall()` approach doesn't work well (DMG-based updates fail to restart properly). Instead, after downloading the update zip, extract it to find the `.app` bundle and store the path in `pendingUpdateFile`. When the user clicks "open installer", copy the `.app` to `/Applications` and restart via `app.relaunch()`. Windows keeps the original `quitAndInstall()` behavior.
+
+**Changes:**
+1. Expand imports:
+```typescript
+import { app, dialog, shell } from "electron";
+import * as child_process from "child_process";
+import * as fs from "fs";
+import * as path from "path";
+```
+
+2. Add state variable after `downloadInFlight`:
+```typescript
+let pendingUpdateFile: string | null = null;
+```
+
+3. Replace the `update-downloaded` handler:
+   - macOS: Read `update-info.json` from cache dir → extract zip via `unzip` → find `.app` → set `pendingUpdateFile` → emit `download-ready`
+   - Windows: Keep `publishUpdateBannerState({ type: "download-finished" })` + `quitAndInstall(false, true)`
+
+4. Add exported `openUpdateInstaller()` function:
+   - macOS: `cp -R` pending `.app` to `/Applications` → `app.relaunch()` + `app.exit(0)`
+   - Fallback: `shell.openPath(pendingUpdateFile)`
+
+**Verify:** On macOS, update download shows "点击打开安装包" pill. Clicking it copies app to /Applications and restarts.
+
+---
+
+## R23: IPC Plumbing for openUpdateInstaller
+
+**Files:** `workspace/src/main.ts`, `workspace/src/preload.ts`, `workspace/chat-ui/ui/src/ui/data/ipc-bridge.ts`
+
+**Description:** Wire `openUpdateInstaller` through the Electron IPC bridge so the renderer can call it.
+
+**Changes:**
+1. `main.ts`: Import `openUpdateInstaller` from auto-updater. Add IPC handler:
+```typescript
+ipcMain.handle("app:open-update-installer", () => openUpdateInstaller());
+```
+
+2. `preload.ts`: Add bridge method:
+```typescript
+openUpdateInstaller: () => ipcRenderer.invoke("app:open-update-installer"),
+```
+Also update status type in `onUpdateState` callback to include `"ready-to-install"`.
+
+3. `ipc-bridge.ts`: Update `UpdateState.status` type, add to `PackClawBridgeExtended` interface, add exported function:
+```typescript
+export function openUpdateInstaller(): Promise<void> {
+  return oc().openUpdateInstaller() as Promise<void>;
+}
+```
+
+**Verify:** `tsc --noEmit` passes. Renderer can call `openUpdateInstaller()` without type errors.
+
+---
+
+## R24: Sidebar Ready-to-Install UI
+
+**Files:** `workspace/chat-ui/ui/src/ui/sidebar.ts`, `workspace/chat-ui/ui/src/styles.css`, `workspace/chat-ui/ui/src/ui/app-render.ts`, `workspace/chat-ui/ui/src/ui/app.ts`
+
+**Description:** When update status is `"ready-to-install"`, the sidebar pill shows "点击打开安装包" with a download icon, and a "手动下载" link below. Clicking the pill calls `openUpdateInstaller` instead of `applyUpdate`.
+
+**Changes:**
+1. `app.ts`: Update `PackClawUpdateState` status type and `applyUpdateBannerState` validator to accept `"ready-to-install"`.
+
+2. `sidebar.ts`:
+   - Update `SidebarProps` types: `updateStatus` union + add `onOpenUpdateInstaller`
+   - Update label: `ready-to-install` → `t("sidebar.updateReadyToInstall")`, else → `t("sidebar.updateReady")`
+   - Button click: `ready-to-install` → `onOpenUpdateInstaller`, else → `onApplyUpdate`
+   - Icon: `ready-to-install` → `icons.download`, else → `icons.zap`
+   - Add manual download `<a>` link after button when `ready-to-install`
+
+3. `styles.css`: Add `.packclaw-sidebar__manual-dl` styles (centered, small text, hover color change).
+
+4. `app-render.ts`: Add `handleOpenUpdateInstaller` function (same pattern as `handleApplyUpdate` but checks `"ready-to-install"` status and calls `openUpdateInstaller`). Pass `onOpenUpdateInstaller` to sidebar props.
+
+**Verify:** Sidebar shows "点击打开安装包" with download icon after update download. Clicking copies app and restarts.
+
+---
+
+## R25: About Tab Open Installer Button
+
+**File:** `workspace/chat-ui/ui/src/ui/views/settings/tab-about.ts`
+
+**Description:** In the About → Software Update section, when status is `"ready-to-install"`, show the new version number, an "打开安装包" button, and a "手动下载" link.
+
+**Changes:**
+After the `downloading` status block, add:
+```typescript
+${us.status === "ready-to-install" ? html`
+  <div style="font-size:13px;margin-bottom:8px">${us.version ?? ""}</div>
+  <button class="oc-settings__btn oc-settings__btn--primary" @click=${() => ipc.openUpdateInstaller()}>
+    ${t("settings.about.openInstaller")}
+  </button>
+  <div style="margin-top:8px">
+    <a href="https://www.packclaw.cn/#download" target="_blank" rel="noopener" style="color:var(--oc-text-link);font-size:13px">${t("settings.about.manualDownload")}</a>
+  </div>
+` : nothing}
+```
+
+**Verify:** Settings → About → update ready shows "打开安装包" button and "手动下载" link.
+
+---
+
+## R26: i18n Strings for Update Installer Flow
+
+**File:** `workspace/chat-ui/ui/src/ui/i18n.ts`
+
+**Description:** Add Chinese and English i18n strings for the new update installer UI elements.
+
+**Changes:**
+1. Chinese (`zh` dict):
+```
+"sidebar.updateReadyToInstall": "点击打开安装包",
+"settings.about.openInstaller": "打开安装包",
+"settings.about.manualDownload": "手动下载",
+```
+
+2. English (`en` dict):
+```
+"sidebar.updateReadyToInstall": "Open installer",
+"settings.about.openInstaller": "Open Installer",
+"settings.about.manualDownload": "Manual Download",
+```
+
+**Verify:** Both locales show correct strings in sidebar and about tab.
+
+---
+
+## R27: Disable hardenedRuntime and Notarize in electron-builder.yml
+
+**File:** `workspace/electron-builder.yml`
+
+**Description:** Disable macOS `hardenedRuntime` and `notarize` for development builds. These require valid Apple Developer certificates and notarization credentials which are only available in CI with secrets.
+
+**Changes:**
+```yaml
+# Before:
+  hardenedRuntime: true
+  notarize: true
+
+# After:
+  hardenedRuntime: false
+  notarize: false
+```
+
+**Verify:** `npm run dist:mac` completes without code signing errors on dev machines.
+
+---
+
+## R28: Remove CDN Cache Refresh from CI Workflows
+
+**Files:** `workspace/.github/workflows/build-release.yml`, `workspace/.github/workflows/publish-release.yml`
+
+**Description:** Remove the `volcengine-cdn-refresh.js` CDN cache invalidation steps from both CI workflows. TOS CDN cache expires naturally via TTL. This simplifies CI and removes a dependency on the refresh script.
+
+**Changes:**
+1. `build-release.yml`: Remove the "刷新 dev 通道 CDN 缓存" step entirely. Update the comment on the "移除 dev yml" step to reflect that CDN refresh is no longer done.
+
+2. `publish-release.yml`: Remove the "刷新 CDN 缓存" step entirely.
+
+**Verify:** CI workflows no longer reference `volcengine-cdn-refresh.js`. Updates still propagate via CDN TTL expiry.
+
+---
+
 ## Overlay Files (New Files — No Patching Needed)
 
 These files are already in `overlay/` and copied via `rsync`:

@@ -76,6 +76,15 @@ export function renderTabAbout(state: AppViewState) {
         ${us.status === "downloading" ? html`
           <div style="font-size:13px">${t("settings.about.downloading").replace("{percent}", String(Math.round(us.percent ?? 0)))}</div>
         ` : nothing}
+        ${us.status === "ready-to-install" ? html`
+          <div style="font-size:13px;margin-bottom:8px">${us.version ?? ""}</div>
+          <button class="oc-settings__btn oc-settings__btn--primary" @click=${() => ipc.openUpdateInstaller()}>
+            ${t("settings.about.openInstaller")}
+          </button>
+          <div style="margin-top:8px">
+            <a href="https://www.packclaw.cn/#download" target="_blank" rel="noopener" style="color:var(--oc-text-link);font-size:13px">${t("settings.about.manualDownload")}</a>
+          </div>
+        ` : nothing}
       </div>
     </div>
   `;
