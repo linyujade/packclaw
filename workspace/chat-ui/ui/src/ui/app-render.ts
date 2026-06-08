@@ -1501,18 +1501,6 @@ async function handleApplyUpdate(state: AppViewState) {
   }
 }
 
-async function handleOpenUpdateInstaller(state: AppViewState) {
-  const current = state.updateBannerState;
-  if (current.status !== "ready-to-install") {
-    return;
-  }
-  try {
-    await window.packclaw?.openUpdateInstaller?.();
-  } catch {
-    // ignore bridge failure
-  }
-}
-
 // Settings iframe bridge + renderer removed: Settings is now a native Lit component (renderSettingsView)
 
 // 文件拖拽/粘贴事件桥接

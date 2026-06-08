@@ -438,7 +438,9 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
           if (baseUrl) metadataObj.baseUrl = baseUrl;
         }
       }
-    } catch {}
+    } catch {
+      // 配置读取失败不阻塞提交
+    }
 
     const metadata = JSON.stringify(metadataObj, null, 2);
 
@@ -451,7 +453,7 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
       <pre style="white-space:pre-wrap;background:#f5f5f5;padding:12px;border-radius:6px;font-size:12px;">${metadata.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
     `;
 
-    const attachments: nodemailer.SendMailOptions["attachments"] = [];
+    const attachments = [];
 
     for (let i = 0; i < screenshots.length; i++) {
       const buf = Buffer.from(screenshots[i], "base64");
@@ -468,7 +470,7 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
         try {
           if (!fs.existsSync(logPath)) continue;
           const stat = fs.statSync(logPath);
-          let raw: string;
+          let raw;
           if (stat.size <= MAX_LOG_SIZE) {
             raw = fs.readFileSync(logPath, "utf-8");
           } else {
@@ -523,9 +525,10 @@ export function registerFeedbackIpc(deps: FeedbackIpcDeps): void {
       });
       log.info(`反馈邮件发送成功: messageId=${info.messageId}`);
       return { ok: true, id: Date.now() };
-    } catch (err: any) {
-      log.error(`反馈邮件发送失败: ${err.message}`);
-      return { ok: false, error: err.message || "邮件发送失败" };
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      log.error(`反馈邮件发送失败: ${errMsg}`);
+      return { ok: false, error: errMsg || "邮件发送失败" };
     }
   });
 

@@ -2678,6 +2678,7 @@ function assertPluginsNativeEntry(targetPaths) {
   }
 }
 
+
 // ─── 全局快速检测 ───
 
 // 检查所有步骤的缓存是否全部命中，命中则跳过整个打包流程。

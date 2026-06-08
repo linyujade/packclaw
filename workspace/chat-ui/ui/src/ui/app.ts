@@ -129,10 +129,11 @@ type ReleaseNotesData = {
 };
 
 type PackClawNavigatePayload = IpcNavigatePayload;
+type GatewayReadyPayload = { token?: string | null; gatewayUrl?: string | null };
 
 type PackClawBridge = {
   onNavigate?: (cb: (payload: PackClawNavigatePayload) => void) => (() => void) | void;
-  onGatewayReady?: (cb: () => void) => (() => void) | void;
+  onGatewayReady?: (cb: (payload?: GatewayReadyPayload) => void) => (() => void) | void;
   reportSetupViewState?: (active: boolean) => void;
   onUpdateState?: (cb: (payload: PackClawUpdateState) => void) => (() => void) | void;
   getUpdateState?: () => Promise<PackClawUpdateState>;
@@ -936,8 +937,26 @@ export class OpenClawApp extends LitElement {
     if (this.gatewayReadyCleanup) return;
     const bridge = this.getPackClawBridge();
     if (bridge?.onGatewayReady) {
-      const unsubscribe = bridge.onGatewayReady(() => {
-        if (!this.connected && this.client) {
+      const unsubscribe = bridge.onGatewayReady((payload) => {
+        // Import can replace openclaw.json before the gateway restarts; refresh
+        // connection settings from the main-process payload before reconnecting.
+        const token = typeof payload?.token === "string" ? payload.token.trim() : "";
+        const gatewayUrl = typeof payload?.gatewayUrl === "string" ? payload.gatewayUrl.trim() : "";
+        const nextSettings = { ...this.settings };
+        let settingsChanged = false;
+        if (token && token !== this.settings.token) {
+          nextSettings.token = token;
+          settingsChanged = true;
+        }
+        if (gatewayUrl && gatewayUrl !== this.settings.gatewayUrl) {
+          nextSettings.gatewayUrl = gatewayUrl;
+          settingsChanged = true;
+        }
+
+        if (settingsChanged) {
+          this.applySettings(nextSettings);
+          this.connect();
+        } else if (!this.connected && this.client) {
           this.client.reconnectNow();
         }
         void this.runWebbridgeRepairTick();

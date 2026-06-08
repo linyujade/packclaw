@@ -435,12 +435,13 @@ else
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# R11: Update Channels Description (Settings JS)
-# File: settings/settings.js
+# R11: Update Channels Description (i18n)
+# File: chat-ui/ui/src/ui/i18n.ts
 # Desc: Remove "Kimi" from channel descriptions in both English and Chinese.
+#       Upstream moved settings from settings/settings.js to chat-ui i18n.
 # ═══════════════════════════════════════════════════════════════════════════════
-echo "==> [R11] Patching settings.js ..."
-FILE="$WS/settings/settings.js"
+echo "==> [R11] Patching i18n.ts (channels desc) ..."
+FILE="$WS/chat-ui/ui/src/ui/i18n.ts"
 if [ -f "$FILE" ]; then
   # English: remove ", Kimi"
   sed -i '' 's/WeCom, DingTalk, Kimi, or QQ/WeCom, DingTalk, or QQ/g' "$FILE"
@@ -448,7 +449,7 @@ if [ -f "$FILE" ]; then
   sed -i '' 's/钉钉、Kimi 或 QQ/钉钉 或 QQ/g' "$FILE"
   ok "R11"
 else
-  warn "R11: settings.js not found"
+  warn "R11: i18n.ts not found"
 fi
 
 # ═══════════════════════════════════════════════════════════════════════════════

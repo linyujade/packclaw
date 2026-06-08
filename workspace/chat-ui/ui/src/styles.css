@@ -6498,6 +6498,7 @@ img.chat-avatar {
   box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.15);
 }
 
+/* WebBridge 待修复提示：可点击，红色与"重启更新"pill 一致 */
 .packclaw-sidebar__manual-dl {
   display: block;
   text-align: center;
@@ -6511,7 +6512,6 @@ img.chat-avatar {
   color: var(--text-primary);
 }
 
-/* WebBridge 待修复提示：可点击，红色与"重启更新"pill 一致 */
 .packclaw-sidebar__item--webbridge-repair {
   width: 100%;
   position: relative;

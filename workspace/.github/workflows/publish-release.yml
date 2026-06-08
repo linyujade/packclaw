@@ -45,3 +45,4 @@ jobs:
           aws configure set default.s3.addressing_style virtual
           aws s3 cp out/release/ "s3://$TOS_BUCKET/releases/" --recursive --endpoint-url "$TOS_ENDPOINT" --include "*.yml"
           echo "latest yml 上传完成"
+

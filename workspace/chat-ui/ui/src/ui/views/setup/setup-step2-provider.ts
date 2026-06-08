@@ -94,7 +94,6 @@ function buildParams(apiKey: string): Record<string, unknown> | null {
       params.baseURL = s.baseUrl.trim();
       params.modelID = mid;
       params.apiType = s.apiType;
-      params.supportImage = s.imageSupport;
     }
   } else {
     const mid = s.showCustomModelInput ? s.customModelId.trim() : s.modelId;
@@ -116,7 +115,7 @@ function buildSavePayload(params: Record<string, unknown>) {
     baseURL: params.baseURL ?? "",
     api: params.apiType ?? "",
     subPlatform: params.subPlatform ?? "",
-    supportImage: params.supportImage ?? true,
+    supportImage: params.supportImage,
     customPreset: params.customPreset ?? "",
   };
 }
@@ -141,6 +140,7 @@ async function handleVerify(state: AppViewState, goToStep: (step: number) => voi
       state.requestUpdate();
       return;
     }
+    params.supportImage = result.supportsImage;
     await ipc.saveConfig(buildSavePayload(params));
     s.verifying = false;
     goToStep(3);
@@ -169,8 +169,8 @@ async function handleOAuthLogin(state: AppViewState, goToStep: (step: number) =>
     }
 
     const modelID = s.showCustomModelInput
-      ? (s.customModelId.trim() || "k2p5")
-      : (s.modelId || "k2p5");
+      ? (s.customModelId.trim() || "kimi-for-coding")
+      : (s.modelId || "kimi-for-coding");
 
     const verifyResult = await ipc.verifyKey({
       provider: "moonshot",
@@ -194,7 +194,7 @@ async function handleOAuthLogin(state: AppViewState, goToStep: (step: number) =>
       baseURL: "",
       api: "",
       subPlatform: "kimi-code",
-      supportImage: true,
+      supportImage: verifyResult.supportsImage,
       customPreset: "",
     });
 
@@ -281,6 +281,7 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
   const isManualCustom = isCustom && !s.customPreset;
   const is51key = s.currentProvider === "51key";
 
+  // Ensure modelId has a value
   if (!s.modelId && models.length) s.modelId = models[0];
 
   return html`
@@ -391,11 +392,7 @@ export function renderStep2(state: AppViewState, goToStep: (step: number) => voi
       ` : nothing}
 
       ${isManualCustom ? html`
-        <div class="oc-setup-form-group">
-          <oc-toggle-switch .label=${t("setup.provider.imageSupport")} .checked=${s.imageSupport}
-            @change=${(e: CustomEvent) => { s.imageSupport = e.detail.checked; state.requestUpdate(); }}
-          ></oc-toggle-switch>
-        </div>
+        <div class="oc-setup-form-group"></div>
       ` : nothing}
 
     ${!s["51keyApiKeyRetrieved"] ? html`<oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>` : nothing}

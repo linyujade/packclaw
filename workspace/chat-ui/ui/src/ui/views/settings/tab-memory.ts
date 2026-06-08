@@ -49,6 +49,7 @@ export function resetMemoryTab() { resetMemoryState(); }
 export function renderTabMemory(state: AppViewState) {
   if (!s.initialized) init(state);
 
+
   return html`
     <div class="oc-settings__section">
       <h2 class="oc-settings__section-title">${t("settings.memory.title")}</h2>
@@ -59,6 +60,7 @@ export function renderTabMemory(state: AppViewState) {
           @change=${(e: CustomEvent) => { s.sessionMemoryEnabled = e.detail.checked; state.requestUpdate(); }}
         ></oc-toggle-switch>
       </div>
+
 
       <oc-message-box .message=${s.error ?? ""} .type=${"error"} .visible=${!!s.error}></oc-message-box>
       <oc-message-box .message=${s.successMsg ?? ""} .type=${"success"} .visible=${!!s.successMsg}></oc-message-box>

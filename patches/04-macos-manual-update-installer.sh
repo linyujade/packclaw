@@ -36,7 +36,7 @@ if [ -f "$FILE" ] && ! grep -q 'ready-to-install' "$FILE"; then
 
   # 2. Expand event type: add download-ready
   perl -0777 -pi -e \
-    's/(\| \{ type: "download-failed" \};)/$1\n  | { type: "download-ready" };/' \
+    's/(\| \{ type: "download-finished" \};)/| { type: "download-finished" }\n  | { type: "download-ready" };/' \
     "$FILE"
 
   # 3. Add case for "update-not-available" and "download-ready" in reducer
@@ -89,113 +89,7 @@ fi
 echo "==> [R22] Patching auto-updater.ts ..."
 FILE="$WS/src/auto-updater.ts"
 if [ -f "$FILE" ] && ! grep -q 'openUpdateInstaller' "$FILE"; then
-  node -e "$(cat << 'NODEEOF'
-const fs = require("fs");
-const f = process.argv[1];
-let c = fs.readFileSync(f, "utf8");
-
-// 1. Expand imports
-c = c.replace(
-  `import { dialog } from "electron";`,
-  `import { app, dialog, shell } from "electron";\nimport * as child_process from "child_process";\nimport * as fs from "fs";\nimport * as path from "path";`
-);
-
-// 2. Add pendingUpdateFile variable after downloadInFlight
-c = c.replace(
-  `let downloadInFlight: Promise<boolean> | null = null;`,
-  `let downloadInFlight: Promise<boolean> | null = null;\nlet pendingUpdateFile: string | null = null;`
-);
-
-// 3. Replace update-downloaded handler
-c = c.replace(
-  /  \/\/ 下载完成后直接重启安装，不再二次确认弹窗。\n  autoUpdater\.on\("update-downloaded", \(\) => \{[\s\S]*?autoUpdater\.quitAndInstall\(false, true\);\n  \}\);/,
-  `  // macOS: 下载完成后解压 zip，提取 .app 备用，点击"打开安装包"时直接复制到 /Applications 并重启。
-  // Windows: 保持原有 quitAndInstall 行为（NSIS 自动安装正常）。
-  autoUpdater.on("update-downloaded", (info) => {
-    log.info("[updater] 更新下载完成");
-    progressCallback?.(null);
-
-    if (process.platform === "darwin") {
-      try {
-        const cacheDir = path.join(app.getPath("home"), "Library", "Caches", "packclaw-updater", "pending");
-        const infoPath = path.join(cacheDir, "update-info.json");
-        if (fs.existsSync(infoPath)) {
-          const raw = fs.readFileSync(infoPath, "utf-8");
-          const parsed = JSON.parse(raw);
-          const srcZip = path.join(cacheDir, parsed.fileName);
-          if (fs.existsSync(srcZip)) {
-            const extractDir = path.join(cacheDir, "extracted");
-            if (fs.existsSync(extractDir)) {
-              fs.rmSync(extractDir, { recursive: true, force: true });
-            }
-            fs.mkdirSync(extractDir, { recursive: true });
-            child_process.execSync(\\`unzip -o -q "\${srcZip}" -d "\${extractDir}"\\`);
-            const entries = fs.readdirSync(extractDir);
-            const appDir = entries.find((e) => e.endsWith(".app"));
-            if (appDir) {
-              pendingUpdateFile = path.join(extractDir, appDir);
-              log.info(\\`[updater] 已解压安装包: \${pendingUpdateFile}\\`);
-            } else {
-              log.error("[updater] 解压后未找到 .app");
-            }
-          }
-        }
-      } catch (copyErr) {
-        log.error(\\`[updater] 解压安装包失败: \${formatUpdaterError(copyErr)}\\`);
-      }
-      publishUpdateBannerState({ type: "download-ready" });
-    } else {
-      publishUpdateBannerState({ type: "download-finished" });
-      log.info("[updater] 准备自动重启安装更新");
-      beforeQuitForInstallCallback?.();
-      autoUpdater.quitAndInstall(false, true);
-    }
-  });`
-);
-
-// 4. Add openUpdateInstaller function at end of file
-c += `
-
-// macOS: 将已解压的 .app 复制到 /Applications 并重启。
-// Windows: 不应走到这里（Windows 用 quitAndInstall）。
-export async function openUpdateInstaller(): Promise<boolean> {
-  if (!pendingUpdateFile) {
-    log.warn("[updater] 没有已下载的安装包可打开");
-    return false;
-  }
-
-  if (process.platform === "darwin") {
-    try {
-      const appName = path.basename(pendingUpdateFile);
-      const destApp = \\`/Applications/\${appName}\\`;
-      log.info(\\`[updater] 开始安装: cp -R "\${pendingUpdateFile}" "\${destApp}"\\`);
-      child_process.execSync(\\`cp -R "\${pendingUpdateFile}" "\${destApp}"\\`);
-      log.info(\\`[updater] 安装完成，准备重启: \${destApp}\\`);
-      publishUpdateBannerState({ type: "download-finished" });
-      app.relaunch();
-      app.exit(0);
-      return true;
-    } catch (err) {
-      log.error(\\`[updater] 安装更新失败: \${formatUpdaterError(err)}\\`);
-      return false;
-    }
-  }
-
-  try {
-    await shell.openPath(pendingUpdateFile);
-    log.info(\\`[updater] 已打开安装包: \${pendingUpdateFile}\\`);
-    publishUpdateBannerState({ type: "download-finished" });
-    return true;
-  } catch (err) {
-    log.error(\\`[updater] 打开安装包失败: \${formatUpdaterError(err)}\\`);
-    return false;
-  }
-}
-`;
-
-fs.writeFileSync(f, c);
-NODEEOF
-)" "$FILE"
+  node "$ROOT/patches/r22-auto-updater.js" "$FILE"
   grep -q 'openUpdateInstaller' "$FILE" && ok "R22" || warn "R22: auto-updater.ts patch failed"
 else
   echo "  (skipped: already patched or file missing)"
@@ -395,19 +289,7 @@ fi
 echo "==> [R26] Patching i18n.ts ..."
 FILE="$WS/chat-ui/ui/src/ui/i18n.ts"
 if [ -f "$FILE" ] && ! grep -q 'sidebar.updateReadyToInstall' "$FILE"; then
-  # zh strings
-  sed -i '' '/"sidebar.updateDownloading"/a\
-    "sidebar.updateReadyToInstall": "点击打开安装包",' "$FILE"
-  sed -i '' '/"settings.about.installUpdate"/a\
-    "settings.about.openInstaller": "打开安装包",\n    "settings.about.manualDownload": "手动下载",' "$FILE"
-
-  # en strings
-  sed -i '' '/"sidebar.updateDownloading": "Downloading update {percent}%"/a\
-    "sidebar.updateReadyToInstall": "Open installer",' "$FILE"
-  # For en settings.about: add after installUpdate
-  sed -i '' '/"settings.about.installUpdate": "Install & Restart"/,/"/a\
-    "settings.about.openInstaller": "Open Installer",\n    "settings.about.manualDownload": "Manual Download",' "$FILE"
-
+  node "$ROOT/patches/r26-i18n.js" "$FILE"
   grep -q 'sidebar.updateReadyToInstall' "$FILE" && ok "R26" || warn "R26: i18n.ts patch failed"
 else
   echo "  (skipped: already patched or file missing)"

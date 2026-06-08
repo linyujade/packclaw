@@ -311,18 +311,18 @@ function migrateDisableKimiClaw(): void {
 
 ---
 
-## R11: Update Channels Description (Settings JS)
+## R11: Update Channels Description (i18n)
 
-**File:** `workspace/settings/settings.js`
+**File:** `workspace/chat-ui/ui/src/ui/i18n.ts`
 
-**Description:** Remove "Kimi" from the channels description in both English and Chinese i18n strings.
+**Description:** Remove "Kimi" from the channels description in both English and Chinese i18n strings. Upstream moved settings from `settings/settings.js` (deleted) to `chat-ui` i18n.
 
 **Changes:**
-1. English: Change `"Connect WeChat, Feishu, WeCom, DingTalk, Kimi, or QQ to control PackClaw remotely from your messaging app"` to `"Connect WeChat, Feishu, WeCom, DingTalk, or QQ to control PackClaw remotely from your messaging app"`
+1. English: Change `"Connect WeChat, Feishu, WeCom, DingTalk, Kimi, or QQ to remote-control PackClaw from chat apps"` to `"Connect WeChat, Feishu, WeCom, DingTalk, or QQ to remote-control PackClaw from chat apps"`
 
 2. Chinese: Change `"连接微信、飞书、企业微信、钉钉、Kimi 或 QQ，从聊天软件远程控制 PackClaw"` to `"连接微信、飞书、企业微信、钉钉 或 QQ，从聊天软件远程控制 PackClaw"`
 
-**Verify:** Settings → Remote Control description no longer mentions Kimi.
+**Verify:** Settings → Channels tab description no longer mentions Kimi.
 
 ---
 

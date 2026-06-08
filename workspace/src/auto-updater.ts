@@ -1,7 +1,7 @@
 import { autoUpdater } from "electron-updater";
 import { app, dialog, shell } from "electron";
 import * as child_process from "child_process";
-import * as fs from "fs";
+import * as fsSync from "fs";
 import * as path from "path";
 import * as log from "./logger";
 import { readPackclawConfig } from "./packclaw-config";
@@ -146,18 +146,18 @@ export function setupAutoUpdater(): void {
       try {
         const cacheDir = path.join(app.getPath("home"), "Library", "Caches", "packclaw-updater", "pending");
         const infoPath = path.join(cacheDir, "update-info.json");
-        if (fs.existsSync(infoPath)) {
-          const raw = fs.readFileSync(infoPath, "utf-8");
+        if (fsSync.existsSync(infoPath)) {
+          const raw = fsSync.readFileSync(infoPath, "utf-8");
           const parsed = JSON.parse(raw);
           const srcZip = path.join(cacheDir, parsed.fileName);
-          if (fs.existsSync(srcZip)) {
+          if (fsSync.existsSync(srcZip)) {
             const extractDir = path.join(cacheDir, "extracted");
-            if (fs.existsSync(extractDir)) {
-              fs.rmSync(extractDir, { recursive: true, force: true });
+            if (fsSync.existsSync(extractDir)) {
+              fsSync.rmSync(extractDir, { recursive: true, force: true });
             }
-            fs.mkdirSync(extractDir, { recursive: true });
+            fsSync.mkdirSync(extractDir, { recursive: true });
             child_process.execSync(`unzip -o -q "${srcZip}" -d "${extractDir}"`);
-            const entries = fs.readdirSync(extractDir);
+            const entries = fsSync.readdirSync(extractDir);
             const appDir = entries.find((e) => e.endsWith(".app"));
             if (appDir) {
               pendingUpdateFile = path.join(extractDir, appDir);
@@ -274,6 +274,7 @@ export function setUpdateBannerStateCallback(cb: (state: UpdateBannerState) => v
 export function getUpdateBannerState(): UpdateBannerState {
   return { ...updateBannerState };
 }
+
 
 // macOS: 将已解压的 .app 复制到 /Applications 并重启。
 // Windows: 不应走到这里（Windows 用 quitAndInstall）。

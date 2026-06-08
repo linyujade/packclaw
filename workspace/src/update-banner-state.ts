@@ -97,6 +97,7 @@ export function reduceUpdateBannerState(
   }
 }
 
+// 仅在“已发现更新”时允许启动下载，避免重复触发下载任务。
 export function canStartUpdateDownload(state: UpdateBannerState): boolean {
   return state.status === "available" && Boolean(state.version);
 }

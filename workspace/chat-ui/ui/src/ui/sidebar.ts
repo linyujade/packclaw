@@ -247,9 +247,6 @@ export function renderSidebar(props: SidebarProps) {
                   ? html`<span class="packclaw-sidebar__update-dot" aria-hidden="true"></span>`
                   : nothing}
               </button>
-              ${props.updateStatus === "ready-to-install"
-                ? html`<a href="https://www.packclaw.cn/#download" target="_blank" rel="noopener" class="packclaw-sidebar__manual-dl">${t("settings.about.manualDownload")}</a>`
-                : nothing}
             `
           : nothing}
         <button

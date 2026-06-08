@@ -78,7 +78,7 @@ export function renderTabAbout(state: AppViewState) {
         ` : nothing}
         ${us.status === "ready-to-install" ? html`
           <div style="font-size:13px;margin-bottom:8px">${us.version ?? ""}</div>
-          <button class="oc-settings__btn oc-settings__btn--primary" @click=${() => ipc.openUpdateInstaller()}>
+          <button class="oc-settings__btn oc-settings__btn--primary" =${() => ipc.openUpdateInstaller()}>
             ${t("settings.about.openInstaller")}
           </button>
           <div style="margin-top:8px">

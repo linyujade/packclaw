@@ -1,4 +1,4 @@
-import { app, ipcMain, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import * as os from "os";
 import { pathToFileURL } from "url";
 import { spawn } from "child_process";
@@ -66,6 +66,7 @@ import {
   saveMoonshotConfig,
   readUserConfig,
   writeUserConfig,
+  resolveModelInput,
 } from "./provider-config";
 import { SHARE_COPY_PAYLOAD } from "./share-copy";
 import { readSkillStoreRegistry, writeSkillStoreRegistry } from "./skill-store";
@@ -125,6 +126,14 @@ import { ensureGatewayAuthTokenInConfig, resolveGatewayAuthToken } from "./gatew
 import { callGatewayRpc } from "./gateway-rpc";
 import { getLaunchAtLoginState, setLaunchAtLoginEnabled } from "./launch-at-login";
 import { installCli, uninstallCli, getCliStatus } from "./cli-integration";
+import {
+  buildOpenclawStateArchiveDefaultFileName,
+  exportOpenclawStateToArchive,
+} from "./openclaw-state-archive";
+import {
+  buildOpenclawStateExportOverwriteWarning,
+  resolveOpenclawStateExportTarget,
+} from "./openclaw-state-export-target";
 import * as analytics from "./analytics";
 import * as log from "./logger";
 import * as path from "path";
@@ -234,12 +243,13 @@ async function runTrackedSettingsAction<T extends SettingsActionResult>(
 }
 
 interface SettingsIpcOptions {
+  importOpenclawState: (filePath: string) => Promise<void>;
   requestGatewayRestart?: () => void;
   getGatewayToken?: () => string;
 }
 
 // 注册 Settings 相关 IPC
-export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
+export function registerSettingsIpc(opts: SettingsIpcOptions): void {
   // 写入配置后自动重启 gateway，避免新增 handler 遗漏重启调用
   const writeUserConfigAndRestart: typeof writeUserConfig = (config) => {
     writeUserConfig(config);
@@ -558,7 +568,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
                 prov.models[modelIdx] = entry;
               }
               if (supportImage !== undefined) {
-                entry.input = supportImage ? ["text", "image"] : ["text"];
+                entry.input = resolveModelInput(providerKey, modelId, supportImage);
               }
             }
           }
@@ -595,11 +605,11 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
                 }
               }
               if (!Array.isArray(existingProv.models)) existingProv.models = [];
-              existingProv.models.push({ id: modelID, name: modelID, input: ["text", "image"] });
+              existingProv.models.push({ id: modelID, name: modelID, input: resolveModelInput(provKey, modelID, supportImage) });
             } else {
               // provider 不存在 → 用 saveMoonshotConfig 创建
               const prevPrimary = config.agents.defaults.model.primary;
-              saveMoonshotConfig(config, apiKey, modelID, subPlatform);
+              saveMoonshotConfig(config, apiKey, modelID, subPlatform, supportImage);
               // 恢复 primary（add 模式不切换默认）
               if (prevPrimary) {
                 config.agents.defaults.model.primary = prevPrimary;
@@ -644,8 +654,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
               }
               existingProv.apiKey = apiKey;
               if (!Array.isArray(existingProv.models)) existingProv.models = [];
-              const input = supportImage !== false ? ["text", "image"] : ["text"];
-              existingProv.models.push({ id: modelID, name: modelID, input });
+              existingProv.models.push({ id: modelID, name: modelID, input: resolveModelInput(configKey, modelID, supportImage) });
             } else {
               // provider 不存在 → 创建新 provider entry
               config.models.providers[configKey] = buildProviderConfig(provider, apiKey, modelID, baseURL, api, supportImage, customPreset);
@@ -667,7 +676,7 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
             const prevModels: any[] = config.models.providers[provKey]?.models ?? [];
 
             const prevPrimary = config.agents.defaults.model.primary;
-            saveMoonshotConfig(config, apiKey, modelID, subPlatform);
+            saveMoonshotConfig(config, apiKey, modelID, subPlatform, supportImage);
 
             if (setAsDefault === false && prevPrimary) {
               config.agents.defaults.model.primary = prevPrimary;
@@ -1620,9 +1629,10 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
   ipcMain.handle("kimi:get-usage", async () => {
     try {
       const config = readUserConfig();
-      const info = extractProviderInfo(config);
-      // 仅 kimi-code 子平台支持用量查询
-      if (info.provider !== "moonshot" || info.subPlatform !== "kimi-code") {
+      // 仅要求 Kimi Code provider 已配置即可，不再绑定默认模型。
+      // 允许「列表里选中 Kimi Code 但当前默认是别的模型」时也能查到用量。
+      const isKimiCodeConfigured = !!(config?.models?.providers?.["kimi-coding"]?.apiKey);
+      if (!isKimiCodeConfigured) {
         return { success: false, message: "Usage is only available for Kimi." };
       }
       const { loadOAuthToken, refreshOAuthToken } = await import("./kimi-oauth");
@@ -2319,6 +2329,82 @@ export function registerSettingsIpc(opts: SettingsIpcOptions = {}): void {
   ipcMain.handle("settings:list-config-backups", async () => {
     try {
       return { success: true, data: getConfigRecoveryData() };
+    } catch (err: any) {
+      return { success: false, message: err.message || String(err) };
+    }
+  });
+
+  // ── 导出 .openclaw 为标准 ZIP ──
+  ipcMain.handle("settings:export-openclaw-state", async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const options: Electron.SaveDialogOptions = {
+        defaultPath: buildOpenclawStateArchiveDefaultFileName(),
+        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
+      };
+      const result = win
+        ? await dialog.showSaveDialog(win, options)
+        : await dialog.showSaveDialog(options);
+      if (result.canceled || !result.filePath) {
+        return { success: true, data: { canceled: true } };
+      }
+
+      const target = resolveOpenclawStateExportTarget(result.filePath);
+      if (target.overwriteExisting) {
+        const warning = buildOpenclawStateExportOverwriteWarning(target.filePath);
+        const warningOptions: Electron.MessageBoxOptions = {
+          type: "warning",
+          buttons: [warning.confirmLabel, warning.cancelLabel],
+          defaultId: warning.defaultId,
+          cancelId: warning.cancelId,
+          noLink: true,
+          message: warning.message,
+          detail: warning.detail,
+        };
+        const confirmation = win
+          ? await dialog.showMessageBox(win, warningOptions)
+          : await dialog.showMessageBox(warningOptions);
+        if (confirmation.response !== 0) {
+          return { success: true, data: { canceled: true } };
+        }
+      }
+
+      await exportOpenclawStateToArchive(resolveUserStateDir(), target.filePath);
+      return { success: true, data: { canceled: false, filePath: target.filePath } };
+    } catch (err: any) {
+      return { success: false, message: err.message || String(err) };
+    }
+  });
+
+  // ── 选择 .openclaw ZIP；前端会先预检，再停 gateway，再导入 ──
+  ipcMain.handle("settings:select-openclaw-state-archive", async (event) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const options: Electron.OpenDialogOptions = {
+        properties: ["openFile"],
+        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
+      };
+      const result = win
+        ? await dialog.showOpenDialog(win, options)
+        : await dialog.showOpenDialog(options);
+      if (result.canceled || result.filePaths.length === 0) {
+        return { success: true, data: { canceled: true } };
+      }
+      return { success: true, data: { canceled: false, filePath: result.filePaths[0] } };
+    } catch (err: any) {
+      return { success: false, message: err.message || String(err) };
+    }
+  });
+
+  // ── 导入 .openclaw ZIP：受保护流程在停 gateway 前完成唯一校验，失败时不触碰 .openclaw ──
+  ipcMain.handle("settings:import-openclaw-state", async (_event, params) => {
+    const filePath = typeof params?.filePath === "string" ? params.filePath : "";
+    try {
+      if (!filePath) {
+        return { success: false, message: "请选择要导入的 ZIP 数据包。" };
+      }
+      await opts.importOpenclawState(filePath);
+      return { success: true };
     } catch (err: any) {
       return { success: false, message: err.message || String(err) };
     }
@@ -3174,4 +3260,3 @@ function maskApiKey(key: string): string {
   if (!key || key.length <= 8) return key ? "••••••••" : "";
   return key.slice(0, 4) + "••••" + key.slice(-4);
 }
-
