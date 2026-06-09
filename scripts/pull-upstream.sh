@@ -11,6 +11,12 @@ rm -rf workspace/*.tsbuildinfo
 rm -rf workspace/resources/runtime
 rm -rf workspace/resources/gateway
 rm -rf workspace/.DS_Store
+
+# 创建临时目录并复制构建缓存和安装依赖
+mkdir -p temp
+cp -r workspace/.cache temp/
+cp -r workspace/node_modules temp/
+
 # 备份旧 workspace 代码到 workspace-时间戳
 mv workspace "workspace-$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
 cp -r upstream workspace
@@ -29,7 +35,8 @@ sh ./patches/04-macos-manual-update-installer.sh
 # 第四步：覆盖 overlay
 rsync -av ./overlay/ workspace/
 
-# 第五步：复制安装依赖、构建缓存、node_modules
-cp -r workspace-$(date +%Y%m%d)*/.cache workspace/.cache
-cp -r workspace-$(date +%Y%m%d)*/node_modules workspace/node_modules
+# 第五步：复制安装依赖、构建缓存、node_modules，并删除临时目录
+cp -r temp/.cache workspace/
+cp -r temp/node_modules workspace/
+rm -rf temp
 npm install
