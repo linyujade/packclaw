@@ -8,15 +8,9 @@ git subtree pull --prefix=upstream oneclaw main --squash
 rm -rf workspace/dist
 rm -rf workspace/out
 rm -rf workspace/*.tsbuildinfo
-rm -rf workspace/chat-ui/dist
-rm -rf workspace/chat-ui/ui/node_modules
 rm -rf workspace/resources/runtime
 rm -rf workspace/resources/gateway
-rm -rf workspace/resources/app-icon.png
-rm -rf workspace/resources/targets
-rm -rf workspace/.cache
 rm -rf workspace/.DS_Store
-rm -rf workspace/node_modules
 # 备份旧 workspace 代码到 workspace-时间戳
 mv workspace "workspace-$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
 cp -r upstream workspace
@@ -34,3 +28,8 @@ sh ./patches/04-macos-manual-update-installer.sh
 
 # 第四步：覆盖 overlay
 rsync -av ./overlay/ workspace/
+
+# 第五步：复制安装依赖、构建缓存、node_modules
+cp -r workspace-$(date +%Y%m%d)*/.cache workspace/.cache
+cp -r workspace-$(date +%Y%m%d)*/node_modules workspace/node_modules
+npm install
