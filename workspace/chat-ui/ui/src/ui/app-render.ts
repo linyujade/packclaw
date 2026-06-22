@@ -67,6 +67,7 @@ declare global {
       skillStoreInstall?: (params?: Record<string, unknown>) => Promise<any>;
       skillStoreUninstall?: (params?: Record<string, unknown>) => Promise<any>;
       skillStoreListInstalled?: () => Promise<any>;
+      skillStoreGetDisplayNames?: () => Promise<{ success: boolean; data?: Record<string, string> }>;
       workspaceSetRoot?: (root: string) => Promise<any>;
       workspaceOpenFile?: (filePath: string) => Promise<any>;
       workspaceOpenFolder?: (filePath: string) => Promise<any>;
@@ -1173,40 +1174,43 @@ async function refreshInstalledSlugs() {
 }
 
 // 安装技能
-async function installSkillFromStore(state: AppViewState, slug: string) {
+async function installSkillFromStore(state: AppViewState, slug: string, displayName?: string, ownerHandle?: string, version?: string, downloads?: number) {
   if (!window.packclaw?.skillStoreInstall) return;
-  skillStoreState.installingSlugs.add(slug);
+  const installKey = ownerHandle ? `@${ownerHandle}/${slug}` : slug;
+  skillStoreState.installingSlugs.add(installKey);
   state.requestUpdate();
   try {
-    const result = await window.packclaw.skillStoreInstall({ slug });
+    const result = await window.packclaw.skillStoreInstall({ slug, displayName, ownerHandle, version, downloads });
     if (result?.success) {
-      skillStoreState.installedSlugs.add(slug);
+      skillStoreState.installedSlugs.add(installKey);
     } else {
       showToast(state, t("skillStore.installFailed"));
     }
   } catch {
     showToast(state, t("skillStore.installFailed"));
   }
-  skillStoreState.installingSlugs.delete(slug);
+  skillStoreState.installingSlugs.delete(installKey);
   state.requestUpdate();
 }
 
 // 卸载技能
-async function uninstallSkillFromStore(state: AppViewState, slug: string) {
+async function uninstallSkillFromStore(state: AppViewState, slug: string, ref?: string) {
   if (!window.packclaw?.skillStoreUninstall) return;
-  skillStoreState.installingSlugs.add(slug);
+  const busyKey = ref || slug;
+  skillStoreState.installingSlugs.add(busyKey);
   state.requestUpdate();
   try {
     const result = await window.packclaw.skillStoreUninstall({ slug });
     if (result?.success) {
-      skillStoreState.installedSlugs.delete(slug);
+      // 从后端重新同步已安装列表（返回 ref 格式，确保歧义 slug 的卡片状态正确）
+      await refreshInstalledSlugs();
     } else {
       showToast(state, t("skillStore.uninstallFailed"));
     }
   } catch {
     showToast(state, t("skillStore.uninstallFailed"));
   }
-  skillStoreState.installingSlugs.delete(slug);
+  skillStoreState.installingSlugs.delete(busyKey);
   state.requestUpdate();
 }
 
@@ -1288,12 +1292,15 @@ function clamp(text: string | undefined, max: number): string {
 function renderInstalledSkillsView(state: AppViewState) {
   const report = state.skillsReport;
   const allSkills = report?.skills ?? [];
-  // 1. 过滤被阻止的 skill（blockedByAllowlist 或 eligible === false）
-  const visibleSkills = allSkills.filter((s: SkillStatusEntry) => s.eligible !== false);
-  const filter = ((state as any).skillsFilter ?? "").trim().toLowerCase();
-  const filtered = filter
+  // 1. 已安装管理视图显示全部技能（含禁用、缺依赖的），让用户可以重新启用或补配置
+  const visibleSkills = allSkills;
+  // 搜索时统一分隔符：技能 name 是 slug（如 stock-watcher），商店显示名带空格（Stock Watcher）
+  // 把连字符/下划线/多空格都归一为单空格，使 "stock watcher" 能匹配 "stock-watcher"
+  const norm = (s: string) => s.toLowerCase().replace(/[-_\s]+/g, " ").trim();
+  const filterQ = norm((state as any).skillsFilter ?? "");
+  const filtered = filterQ
     ? visibleSkills.filter((s: SkillStatusEntry) =>
-        [s.name, s.description, s.source].join(" ").toLowerCase().includes(filter),
+        norm([(s as any).displayName ?? s.name, s.name, s.description, s.source].join(" ")).includes(filterQ),
       )
     : visibleSkills;
   const groups = groupLocalSkills(filtered);
@@ -1335,9 +1342,11 @@ function renderInstalledSkillsView(state: AppViewState) {
                     <span class="skill-store__card-letter">${letter}</span>
                   </div>
                   <div class="skill-store__card-info">
-                    <div class="skill-store__card-name">${skill.name ?? key}</div>
+                    <div class="skill-store__card-name">${(skill as any).displayName ?? skill.name ?? key}</div>
                     <div class="skill-store__card-meta">
                       <span class="skills-badge">${skill.source}</span>
+                      ${(skill as any).version ? html`v${(skill as any).version}` : nothing}
+                      ${(skill as any).downloads > 0 ? html`<span class="skill-store__card-downloads">${(skill as any).downloads >= 1000 ? `${((skill as any).downloads / 1000).toFixed(1)}k` : (skill as any).downloads} ${t("skillStore.downloads")}</span>` : nothing}
                     </div>
                   </div>
                   <div class="skill-store__card-action">
@@ -1800,8 +1809,8 @@ export function renderApp(state: AppViewState) {
                       ${skillsSubTab === "installed"
                         ? renderInstalledSkillsView(state)
                         : renderSkillStoreView(skillStoreState, {
-                            onInstall: (slug) => void installSkillFromStore(state, slug),
-                            onUninstall: (slug) => void uninstallSkillFromStore(state, slug),
+                            onInstall: (slug, displayName, ownerHandle, version, downloads) => void installSkillFromStore(state, slug, displayName, ownerHandle, version, downloads),
+                            onUninstall: (slug, ref) => void uninstallSkillFromStore(state, slug, ref),
                           })
                       }
                     </section>

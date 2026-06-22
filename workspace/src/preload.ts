@@ -152,6 +152,8 @@ contextBridge.exposeInMainWorld("packclaw", {
     ipcRenderer.invoke("skill-store:uninstall", params),
   skillStoreListInstalled: () =>
     ipcRenderer.invoke("skill-store:list-installed"),
+  skillStoreGetDisplayNames: () =>
+    ipcRenderer.invoke("skill-store:get-display-names"),
 
   // 工作空间文件操作
   workspaceSetRoot: (root: string) =>

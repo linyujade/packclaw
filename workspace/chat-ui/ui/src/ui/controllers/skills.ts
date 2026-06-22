@@ -58,6 +58,26 @@ export async function loadSkills(state: SkillsState, options?: LoadSkillsOptions
   try {
     const res = await state.client.request<SkillStatusReport | undefined>("skills.status", {});
     if (res) {
+      // 加载展示名映射 + 商店元数据（version, downloads），注入到每个 skill 条目
+      let displayNames: Record<string, string> = {};
+      let storeMeta: Record<string, { version?: string; downloads?: number }> = {};
+      try {
+        const r = await (window as any).packclaw?.skillStoreGetDisplayNames?.();
+        if (r?.success && r.data) displayNames = r.data as Record<string, string>;
+        if (r?.meta) storeMeta = r.meta as Record<string, { version?: string; downloads?: number }>;
+      } catch { /* ignore */ }
+      for (const s of res.skills ?? []) {
+        const slug = (String((s as any).skillKey ?? "")).split(":").pop() ?? "";
+        // 注入 displayName
+        const dn = displayNames[s.name ?? ""] ?? displayNames[slug] ?? displayNames[s.id ?? ""];
+        if (dn) (s as any).displayName = dn;
+        // 注入 version + downloads
+        const meta = storeMeta[s.name ?? ""] ?? storeMeta[slug] ?? storeMeta[s.id ?? ""];
+        if (meta) {
+          if (meta.version) (s as any).version = meta.version;
+          if (meta.downloads !== undefined) (s as any).downloads = meta.downloads;
+        }
+      }
       state.skillsReport = res;
     }
   } catch (err) {

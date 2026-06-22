@@ -517,8 +517,8 @@ function ensureClawhubWrapper(nodeBin: string): void {
   const binDir = resolveUserBinDir();
   fs.mkdirSync(binDir, { recursive: true });
 
-  // 默认 workdir 指向 ~/.openclaw/workspace
-  const workdir = path.join(resolveUserStateDir(), "workspace");
+  // workdir 指向 ~/.openclaw，技能装到 ~/.openclaw/skills（网关 openclaw-managed 目录）
+  const workdir = resolveUserStateDir();
 
   if (IS_WIN) {
     const wrapper = [

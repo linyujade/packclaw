@@ -14,6 +14,8 @@ export type SkillItem = {
   highlighted: boolean;
   updatedAt: string;
   author: string;
+  ownerHandle: string;
+  ref: string;
 };
 
 export type SkillStoreState = {
@@ -29,8 +31,8 @@ export type SkillStoreState = {
 };
 
 export type SkillStoreCallbacks = {
-  onInstall: (slug: string) => void;
-  onUninstall: (slug: string) => void;
+  onInstall: (slug: string, displayName: string, ownerHandle: string, version: string, downloads: number) => void;
+  onUninstall: (slug: string, ref: string) => void;
 };
 
 // 字母头像颜色表（根据 slug 哈希取色）
@@ -74,6 +76,7 @@ function renderSkillCard(
         <div class="skill-store__card-info">
           <div class="skill-store__card-name">${skill.name}</div>
           <div class="skill-store__card-meta">
+            ${skill.ownerHandle ? html`<span class="skill-store__card-author">@${skill.ownerHandle}</span>` : nothing}
             ${skill.version ? html`v${skill.version}` : nothing}
             ${skill.downloads > 0 ? html`<span class="skill-store__card-downloads">${formatDownloads(skill.downloads)} ${t("skillStore.downloads")}</span>` : nothing}
           </div>
@@ -86,7 +89,7 @@ function renderSkillCard(
                   type="button"
                   @click=${onUninstall}
                   ?disabled=${installing}
-                >${t("skillStore.uninstall")}</button>
+                >${installing ? t("skillStore.uninstalling") : t("skillStore.uninstall")}</button>
               `
             : html`
                 <button
@@ -131,10 +134,10 @@ export function renderSkillStoreView(
       ${sorted.map((skill) =>
         renderSkillCard(
           skill,
-          state.installedSlugs.has(skill.slug),
-          state.installingSlugs.has(skill.slug),
-          () => callbacks.onInstall(skill.slug),
-          () => callbacks.onUninstall(skill.slug),
+          state.installedSlugs.has(skill.ref) || state.installedSlugs.has(skill.slug),
+          state.installingSlugs.has(skill.ref || skill.slug),
+          () => callbacks.onInstall(skill.slug, skill.name, skill.ownerHandle, skill.version, skill.downloads),
+          () => callbacks.onUninstall(skill.slug, skill.ref || skill.slug),
         ),
       )}
     </div>

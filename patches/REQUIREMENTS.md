@@ -787,3 +787,198 @@ These files are already in `overlay/` and copied via `rsync`:
 | `overlay/chat-ui/ui/src/ui/i18n-51key.ts` | 51key i18n strings (zh + en) |
 | `overlay/scripts/dist-all-parallel.sh` | Parallel build script for 4 targets |
 | `overlay/assets/*` | Custom app icons (icon.png, icon.icns, icon.ico, tray icons) |
+| `overlay/src/skill-store.ts` | Full PackClaw skill store backend (replaces upstream) |
+
+---
+
+## R29: clawhub Workdir Alignment
+
+**File:** `workspace/src/gateway-process.ts`
+
+**Problem:** The clawhub wrapper script pointed `--workdir` to `~/.openclaw/workspace`, causing skills to be installed to `~/.openclaw/workspace/skills/`. The gateway labels these as source `"openclaw-workspace"`, so they don't appear in the "已安装技能" group (which only accepts source `"openclaw-managed"`).
+
+**Fix:** Change workdir from `path.join(resolveUserStateDir(), "workspace")` to `resolveUserStateDir()`. Skills now install to `~/.openclaw/skills/` → source `"openclaw-managed"` → visible in installed list.
+
+**Changes:** In `ensureClawhubWrapper`:
+```typescript
+// Before:
+const workdir = path.join(resolveUserStateDir(), "workspace");
+// After:
+const workdir = resolveUserStateDir();
+```
+
+**Verify:** Install a skill → it appears under `~/.openclaw/skills/` and shows in the "已安装" list.
+
+---
+
+## R30: skillStoreGetDisplayNames IPC Bridge
+
+**File:** `workspace/src/preload.ts`
+
+**Problem:** The renderer has no way to access the persisted `skill-display-names.json` and `skill-store-meta.json` caches, so the installed skills list can't show friendly display names or version/downloads.
+
+**Fix:** Expose a new IPC method that returns `{ data: displayNames, meta: storeMeta }`.
+
+**Changes:** After `skillStoreListInstalled`, add:
+```typescript
+skillStoreGetDisplayNames: () =>
+    ipcRenderer.invoke("skill-store:get-display-names"),
+```
+
+**Verify:** `window.packclaw.skillStoreGetDisplayNames()` returns `{ success: true, data: {...}, meta: {...} }`.
+
+---
+
+## R31: skill-store-view.ts — Types, Callbacks, Card Rendering
+
+**File:** `workspace/chat-ui/ui/src/ui/skill-store-view.ts`
+
+**Problem:** Store cards can't distinguish skills with the same slug from different authors. The uninstall button doesn't show a busy state. The install callback doesn't pass enough data to persist version/downloads.
+
+**Fix:**
+1. Add `ownerHandle` and `ref` fields to `SkillItem` type
+2. Update `SkillStoreCallbacks`: `onInstall` passes `(slug, displayName, ownerHandle, version, downloads)`, `onUninstall` passes `(slug, ref)`
+3. Render `@author` in card meta row
+4. Show "uninstalling" text when uninstall is in progress
+5. Match installed/installing state by `ref || slug`
+
+**Changes:**
+- `SkillItem` type: add `ownerHandle: string; ref: string;`
+- `SkillStoreCallbacks`: update signatures
+- `renderSkillCard`: add `@${skill.ownerHandle}` span in meta, change uninstall button text to `installing ? t("skillStore.uninstalling") : t("skillStore.uninstall")`
+- `renderSkillStoreView`: change installed check to `state.installedSlugs.has(skill.ref) || state.installedSlugs.has(skill.slug)`, pass full params to callbacks
+
+**Verify:** Store cards show `@author` when available. Uninstall button shows "卸载中…" during uninstall.
+
+---
+
+## R32: app-render.ts — Install/Uninstall/Search/Display
+
+**File:** `workspace/chat-ui/ui/src/ui/app-render.ts`
+
+**Problem:**
+1. Install doesn't pass displayName/ownerHandle/version/downloads
+2. Uninstall doesn't use ref for busy key, doesn't refresh installed slugs
+3. Installed view filters out `eligible !== false` skills (hides disabled/blocked)
+4. Search doesn't normalize separators (can't find "stock watcher" → "stock-watcher")
+5. Installed cards don't show displayName/version/downloads
+
+**Fix:**
+1. `installSkillFromStore`: accept and pass `(slug, displayName, ownerHandle, version, downloads)` to IPC; use `installKey = ownerHandle ? @owner/slug : slug`
+2. `uninstallSkillFromStore`: accept `ref` param, use as `busyKey`, call `refreshInstalledSlugs()` on success instead of manual delete
+3. `renderInstalledSkillsView`: show ALL skills (`visibleSkills = allSkills`), normalize search with `[-_\s]+` → single space
+4. Installed card: show `displayName ?? name`, add `version` and `downloads` to meta row
+5. `renderApp`: update callback wiring to pass new params
+
+**Verify:** Search "stock watcher" finds "stock-watcher". Installed list shows version and downloads.
+
+---
+
+## R33: controllers/skills.ts — Inject displayName + Meta
+
+**File:** `workspace/chat-ui/ui/src/ui/controllers/skills.ts`
+
+**Problem:** Gateway `skills.status` returns only frontmatter `name` (slug-style). The installed list needs friendly display names and version/downloads from the registry.
+
+**Fix:** After `skills.status` response, call `skillStoreGetDisplayNames` IPC and inject `displayName`, `version`, `downloads` into each skill entry by looking up `s.name`, `slug` (from skillKey), and `s.id`.
+
+**Changes:** After `const res = await state.client.request(...)`, before `state.skillsReport = res`:
+```typescript
+let displayNames: Record<string, string> = {};
+let storeMeta: Record<string, { version?: string; downloads?: number }> = {};
+try {
+  const r = await (window as any).packclaw?.skillStoreGetDisplayNames?.();
+  if (r?.success && r.data) displayNames = r.data;
+  if (r?.meta) storeMeta = r.meta;
+} catch { /* ignore */ }
+for (const s of res.skills ?? []) {
+  const slug = (String((s as any).skillKey ?? "")).split(":").pop() ?? "";
+  const dn = displayNames[s.name ?? ""] ?? displayNames[slug] ?? displayNames[s.id ?? ""];
+  if (dn) (s as any).displayName = dn;
+  const meta = storeMeta[s.name ?? ""] ?? storeMeta[slug] ?? storeMeta[s.id ?? ""];
+  if (meta) {
+    if (meta.version) (s as any).version = meta.version;
+    if (meta.downloads !== undefined) (s as any).downloads = meta.downloads;
+  }
+}
+```
+
+**Verify:** Installed skills show display names (e.g., "Stock Watcher" instead of "stock-watcher") and version numbers.
+
+---
+
+## R34: i18n — "uninstalling" Key
+
+**File:** `workspace/chat-ui/ui/src/ui/i18n.ts`
+
+**Problem:** No i18n key for the uninstall button busy state.
+
+**Fix:** Add `skillStore.uninstalling` to both zh and en dicts.
+
+**Changes:**
+- zh: `"skillStore.uninstalling": "卸载中…",`
+- en: `"skillStore.uninstalling": "Uninstalling…",`
+
+**Verify:** Uninstall button shows localized "uninstalling" text.
+
+---
+
+## R35: styles.css — Disabled Button Opacity
+
+**File:** `workspace/chat-ui/ui/src/styles.css`
+
+**Problem:** The uninstall button doesn't visually indicate a disabled state during uninstall.
+
+**Fix:** Add a CSS rule for `.skill-store__btn--installed:disabled`.
+
+**Changes:**
+```css
+.skill-store__btn--installed:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+```
+
+**Verify:** Uninstall button dims during uninstall.
+
+---
+
+## R36: extract-zip Dependency
+
+**File:** `workspace/package.json`
+
+**Problem:** `skill-store.ts` imports `extract-zip` for manual skill installation (ambiguous slug fallback). It's only available as a transitive dep of `electron`.
+
+**Fix:** Add `extract-zip` as an explicit dependency.
+
+**Changes:** In `dependencies`:
+```json
+"extract-zip": "^2.0.1"
+```
+
+**Verify:** `npm install` succeeds. `require("extract-zip")` works in production builds.
+
+---
+
+## Overlay: skill-store.ts (Full File Override)
+
+**File:** `overlay/src/skill-store.ts`
+
+**Why overlay instead of patch:** The upstream `skill-store.ts` is a basic ~350-line file. PackClaw adds ~450 lines of new functionality (display names, store meta, frontmatter fix, ambiguous slug support, legacy migration, lock file migration, seed-from-lock). A targeted patch would be fragile and nearly impossible to maintain. The full file is in `overlay/src/skill-store.ts`.
+
+**Key features in the PackClaw version:**
+
+| Feature | Function | Purpose |
+|---------|----------|---------|
+| Display name persistence | `readDisplayNames` / `writeDisplayNames` / `putDisplayName` | Store registry displayName at install time, keyed by slug AND frontmatter name |
+| Store meta cache | `readStoreMeta` / `writeStoreMeta` / `putStoreMeta` | Persist version + downloads for installed skills |
+| Frontmatter fix | `ensureFrontmatter` / `parseFrontmatterBlock` / `extractDescriptionFromBody` / `serializeFrontmatter` | Auto-patch SKILL.md with missing `name` or `description` fields (gateway requires both) |
+| Ambiguous slug install | `manualInstallSkill` / `binaryGet` | Download zip directly from API when clawhub CLI returns `AMBIGUOUS_SKILL_SLUG` |
+| ownerHandle tracking | `saveOwnerHandle` in `installSkill` | Write `_meta.json` with ownerHandle for ref-based matching |
+| Legacy path migration | `migrateLegacySkills` / `migrateLegacyClawhubLock` | Move skills from `~/.openclaw/workspace/skills/` to `~/.openclaw/skills/` + merge lock.json |
+| Meta seed from lock | `seedStoreMetaFromLock` | At startup, populate `skill-store-meta.json` from `lock.json` so version shows immediately |
+| Always --force install | `installSkill` uses `["install", "--force", slug]` | Avoid "Already installed" errors when gateway re-creates files |
+| Uninstall cleanup | `uninstallSkill` clears displayNames + storeMeta + handles missing dir | Clean up all caches; treat "Not installed" and missing dir as success |
+| Backfill on store load | `backfillDisplayNames` writes both displayNames and storeMeta | When store list loads, persist metadata for already-installed skills |
+| ref-based installed list | `list-installed` IPC returns `@owner/slug` refs | Match store cards by ref for ambiguous slugs |
+| Expanded install IPC | `install` handler accepts `version`, `downloads` params | Persist metadata at install time |

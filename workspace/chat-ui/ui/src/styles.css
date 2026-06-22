@@ -6965,6 +6965,11 @@ img.chat-avatar {
   color: var(--accent);
 }
 
+.skill-store__btn--installed:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .skill-store__btn--load-more {
   background: none;
   border: 1px solid var(--border);

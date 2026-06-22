@@ -1,6 +1,6 @@
 {
   "name": "PackClaw",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "PackClaw desktop app — cross-platform Electron shell for openclaw",
   "main": "dist/main.js",
@@ -24,7 +24,8 @@
   "dependencies": {
     "electron-updater": "^6.3.9",
     "nodemailer": "^8.0.10",
-    "fflate": "^0.8.3"
+    "fflate": "^0.8.3",
+    "extract-zip": "^2.0.1"
   },
   "devDependencies": {
     "@electron/asar": "^4.1.0",

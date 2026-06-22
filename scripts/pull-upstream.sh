@@ -32,7 +32,10 @@ sh ./patches/03-optimize-build-caching.sh
 # 第三步再半：macOS 手动安装更新流程（R21-R28）
 sh ./patches/04-macos-manual-update-installer.sh
 
-# 第四步：覆盖 overlay
+# 第三步末：技能商店增强（R29-R36）
+sh ./patches/05-skill-store-enhancements.sh
+
+# 第四步：覆盖 overlay（含 skill-store.ts 全量覆盖）
 rsync -av ./overlay/ workspace/
 
 # 第五步：复制安装依赖、构建缓存、node_modules，并删除临时目录
