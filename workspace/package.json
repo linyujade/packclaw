@@ -1,6 +1,6 @@
 {
   "name": "PackClaw",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "private": true,
   "description": "PackClaw desktop app — cross-platform Electron shell for openclaw",
   "main": "dist/main.js",

@@ -86,6 +86,12 @@ export function renderTabAbout(state: AppViewState) {
           </div>
         ` : nothing}
       </div>
+
+      <!-- Manual Download -->
+      <div class="oc-settings__card">
+        <div class="oc-settings__card-title">${t("settings.about.manualDownload")}</div>
+        <a style="color:var(--accent);font-size:13px;cursor:pointer" @click=${(e: Event) => { e.preventDefault(); ipc.openExternal("https://www.packclaw.cn/#download"); }}>${t("settings.about.gotoWebsite")}</a>
+      </div>
     </div>
   `;
 }

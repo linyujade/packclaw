@@ -1499,15 +1499,7 @@ async function handleOpenWebUI(state: AppViewState) {
 
 // 仅在存在可用更新时触发下载与安装，避免误触发无效 IPC 调用。
 async function handleApplyUpdate(state: AppViewState) {
-  const current = state.updateBannerState;
-  if (current.status !== "available") {
-    return;
-  }
-  try {
-    await window.packclaw?.downloadAndInstallUpdate?.();
-  } catch {
-    // ignore bridge failure; main process会记录日志并回退状态
-  }
+  openSettingsView(state, "about");
 }
 
 // Settings iframe bridge + renderer removed: Settings is now a native Lit component (renderSettingsView)

@@ -35,6 +35,9 @@ sh ./patches/04-macos-manual-update-installer.sh
 # 第三步末：技能商店增强（R29-R36）
 sh ./patches/05-skill-store-enhancements.sh
 
+# 第三步末末：软件更新页改进（R37-R39）
+sh ./patches/06-about-page-improvements.sh
+
 # 第四步：覆盖 overlay（含 skill-store.ts 全量覆盖）
 rsync -av ./overlay/ workspace/
 
