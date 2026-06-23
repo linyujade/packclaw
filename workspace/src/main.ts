@@ -315,6 +315,41 @@ function migrateDisableKimiClaw(): void {
   }
 }
 
+// PackClaw 默认只启用 9 个通用 bundled 技能，其余 13 个默认禁用。
+// 用户可在设置→技能页面手动启用需要的技能。
+// 幂等：已有 enabled 字段的技能不覆盖（包括用户手动启用的）。
+const NON_DEFAULT_BUNDLED_SKILLS = [
+  "apple-notes", "apple-reminders", "camsnap", "canvas", "discord",
+  "github", "healthcheck", "imsg", "model-usage", "notion",
+  "peekaboo", "tmux", "video-frames",
+];
+
+function migrateDisableNonDefaultBundledSkills(): void {
+  try {
+    const config = readUserConfig();
+    if (!config || typeof config !== "object") return;
+    config.skills ??= {};
+    (config.skills as any).entries ??= {};
+    const entries = (config.skills as any).entries;
+    let changed = false;
+    for (const name of NON_DEFAULT_BUNDLED_SKILLS) {
+      if (!entries[name]) {
+        entries[name] = { enabled: false };
+        changed = true;
+      } else if (entries[name].enabled === undefined) {
+        entries[name].enabled = false;
+        changed = true;
+      }
+    }
+    if (changed) {
+      writeUserConfig(config);
+      log.info(`[migrate] 已禁用 ${NON_DEFAULT_BUNDLED_SKILLS.length} 个非默认 bundled 技能`);
+    }
+  } catch {
+    // 迁移失败不阻塞启动
+  }
+}
+
 // 存量用户迁移：openclaw 2026.4.x 的 dingtalk-connector 新 schema 设置 additionalProperties: false，
 // 拒绝旧版本遗留的 gatewayToken / sessionTimeout 字段，会导致 gateway 启动时配置校验失败。
 // 幂等删除这两个字段；失败不阻塞启动。
@@ -973,6 +1008,7 @@ app.whenReady().then(async () => {
       migrateBrowserProfileConfig();
       migrateKimiPluginDeviceId();
       migrateDisableKimiClaw();
+      migrateDisableNonDefaultBundledSkills();
       void reconcileCliOnAppLaunch().catch((err) => {
         log.error(`[migrate] CLI launch reconciliation failed: ${err instanceof Error ? err.message : String(err)}`);
       });
@@ -989,6 +1025,7 @@ app.whenReady().then(async () => {
       migrateBrowserProfileConfig();
       migrateKimiPluginDeviceId();
       migrateDisableKimiClaw();
+      migrateDisableNonDefaultBundledSkills();
       void reconcileCliOnAppLaunch().catch((err) => {
         log.error(`[migrate] CLI launch reconciliation failed: ${err instanceof Error ? err.message : String(err)}`);
       });

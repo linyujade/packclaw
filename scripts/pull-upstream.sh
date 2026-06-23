@@ -38,6 +38,9 @@ sh ./patches/05-skill-store-enhancements.sh
 # 第三步末末：软件更新页改进（R37-R39）
 sh ./patches/06-about-page-improvements.sh
 
+# 第三步末末末：默认技能白名单（R40）
+sh ./patches/07-default-skills.sh
+
 # 第四步：覆盖 overlay（含 skill-store.ts 全量覆盖）
 rsync -av ./overlay/ workspace/
 
