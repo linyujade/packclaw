@@ -41,6 +41,9 @@ sh ./patches/06-about-page-improvements.sh
 # 第三步末末末：默认技能白名单（R40）
 sh ./patches/07-default-skills.sh
 
+# 第三步末末末末：聊天界面修复 + 字体大小（R41-R46）
+sh ./patches/08-chat-ui-fixes.sh
+
 # 第四步：覆盖 overlay（含 skill-store.ts 全量覆盖）
 rsync -av ./overlay/ workspace/
 

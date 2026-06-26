@@ -310,7 +310,7 @@ function renderGroupedMessage(
   const markdownBase = extractedText?.trim() ? extractedText : null;
   const reasoningMarkdown = extractedThinking ? formatReasoningMarkdown(extractedThinking) : null;
   const markdown = markdownBase;
-  const canCopyMarkdown = role === "assistant" && Boolean(markdown?.trim());
+  const canCopyMarkdown = (role === "assistant" || role === "user") && Boolean(markdown?.trim());
 
   // 检测纯 JSON 消息，用折叠块展示
   const jsonResult = markdown && !opts.isStreaming ? detectJson(markdown) : null;

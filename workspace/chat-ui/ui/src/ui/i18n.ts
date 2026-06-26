@@ -234,6 +234,13 @@ const dict: Record<Locale, Record<string, string>> = {
     "settings.appearance.desc": "调整主题和聊天展示相关设置",
     "settings.appearance.theme": "主题",
     "settings.appearance.showThinking": "显示思考过程",
+    "settings.appearance.fontSize": "字体大小",
+
+    // Font size labels
+    "fontSize.0.85": "小",
+    "fontSize.1": "默认",
+    "fontSize.1.1": "大",
+    "fontSize.1.2": "更大",
 
     // Settings: Search
     "settings.search.title": "搜索配置",
@@ -813,6 +820,13 @@ const dict: Record<Locale, Record<string, string>> = {
     "settings.appearance.desc": "Adjust theme and chat display settings",
     "settings.appearance.theme": "Theme",
     "settings.appearance.showThinking": "Show thinking process",
+    "settings.appearance.fontSize": "Font Size",
+
+    // Font size labels
+    "fontSize.0.85": "Small",
+    "fontSize.1": "Default",
+    "fontSize.1.1": "Large",
+    "fontSize.1.2": "Extra Large",
 
     // Settings: Search
     "settings.search.title": "Search Configuration",

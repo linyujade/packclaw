@@ -354,6 +354,30 @@ function putDisplayName(map: Record<string, string>, slug: string, displayName: 
   }
 }
 
+// 安装技能后：如果目录下有 requirements.txt，自动 pip3 install
+function pipInstallRequirements(slug: string): void {
+  const reqPath = path.join(skillsBaseDir(), slug, "requirements.txt");
+  if (!fs.existsSync(reqPath)) return;
+  try {
+    const content = fs.readFileSync(reqPath, "utf-8").trim();
+    if (!content) return;
+    debugLog(`pipInstallRequirements: ${slug} has requirements.txt, installing...`);
+    const pipBin = IS_WIN ? "pip3" : "pip3";
+    execFile(pipBin, ["install", "-r", reqPath, "--quiet", "--disable-pip-version-check"], {
+      timeout: 120_000,
+      windowsHide: true,
+      env: { ...process.env },
+    }, (err, _stdout, stderr) => {
+      if (err) {
+        debugLog(`pipInstallRequirements: FAILED for ${slug}: ${err.message}`);
+      } else {
+        debugLog(`pipInstallRequirements: OK for ${slug}`);
+      }
+      if (stderr) debugLog(`pip stderr: ${stderr.toString().trim().slice(0, 500)}`);
+    });
+  } catch { /* non-critical */ }
+}
+
 // 确保技能 SKILL.md 有 YAML frontmatter（含 name + description 字段）
 // 网关 loadSingleSkillDirectory 要求 frontmatter 同时包含 name 和 description，否则跳过该技能
 function ensureFrontmatter(slug: string): void {
@@ -676,6 +700,7 @@ async function installSkill(slug: string, displayName?: string, ownerHandle?: st
     saveStoreMeta(slug);
     saveOwnerHandle(slug);
     ensureFrontmatter(slug);
+    pipInstallRequirements(slug);
     return { success: true };
   } catch (err: any) {
     const msg = err?.message ?? String(err);
@@ -687,6 +712,7 @@ async function installSkill(slug: string, displayName?: string, ownerHandle?: st
         saveDisplayName(dirName);
         saveStoreMeta(dirName);
         ensureFrontmatter(dirName);
+        pipInstallRequirements(dirName);
         return { success: true };
       } catch (err2: any) {
         return { success: false, message: err2?.message ?? String(err2) };

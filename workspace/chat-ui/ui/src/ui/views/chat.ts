@@ -655,7 +655,7 @@ export function renderChat(props: ChatProps) {
   `;
 }
 
-const CHAT_HISTORY_RENDER_LIMIT = 200;
+const CHAT_HISTORY_RENDER_LIMIT = 10000;
 
 // 分组用 role：tool 和 assistant 归为同一组，共享 avatar 和 footer
 function groupingRole(role: string): string {

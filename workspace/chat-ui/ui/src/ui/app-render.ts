@@ -1654,7 +1654,7 @@ export function renderApp(state: AppViewState) {
                       <button
                         class="packclaw-floating-btn"
                         type="button"
-                        @click=${() => handleSessionChange(state, generateSessionKey())}
+                        @click=${() => createNewSession(state)}
                         data-tooltip=${t("sidebar.newChat")}
                         data-tooltip-pos="bottom"
                         aria-label=${t("sidebar.newChat")}

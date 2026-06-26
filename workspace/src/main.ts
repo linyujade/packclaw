@@ -690,6 +690,13 @@ ipcMain.handle("app:get-update-state", () => getUpdateBannerState());
 ipcMain.handle("app:download-and-install-update", () => downloadAndInstallUpdate());
 ipcMain.handle("app:open-update-installer", () => openUpdateInstaller());ipcMain.handle("app:open-external", (_e, url: string) => shell.openExternal(appendChannelUtm(url)));
 ipcMain.handle("app:open-path", (_e, filePath: string) => shell.openPath(filePath));
+ipcMain.handle("app:set-zoom-factor", (e, factor: number) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (win) {
+    const clamped = Math.max(0.85, Math.min(1.3, factor));
+    win.webContents.setZoomFactor(clamped);
+  }
+});
 
 // 文件选择对话框 — 返回文件绝对路径数组
 ipcMain.handle("dialog:select-files", async (_e, options?: { filters?: Electron.FileFilter[] }) => {

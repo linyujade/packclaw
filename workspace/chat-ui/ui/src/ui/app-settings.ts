@@ -106,6 +106,7 @@ export function applySettings(host: SettingsHost, next: UiSettings) {
     ...next,
     lastActiveSessionKey: next.lastActiveSessionKey?.trim() || next.sessionKey.trim() || "main",
   };
+  const prevFontScale = host.settings.fontScale;
   host.settings = normalized;
   saveSettings(normalized);
   if (previousView === "setup" && normalized.packclawView !== "setup") {
@@ -114,6 +115,9 @@ export function applySettings(host: SettingsHost, next: UiSettings) {
   if (next.theme !== host.theme) {
     host.theme = next.theme;
     applyResolvedTheme(host, resolveTheme(next.theme));
+  }
+  if (normalized.fontScale !== prevFontScale) {
+    applyFontScale(normalized.fontScale);
   }
   host.applySessionKey = host.settings.lastActiveSessionKey;
 }
@@ -326,6 +330,15 @@ export function inferBasePath() {
 export function syncThemeWithSettings(host: SettingsHost) {
   host.theme = host.settings.theme ?? "system";
   applyResolvedTheme(host, resolveTheme(host.theme));
+  applyFontScale(host.settings.fontScale ?? 1.0);
+}
+
+export function applyFontScale(fontScale: number): void {
+  const clamped = Math.max(0.85, Math.min(1.3, fontScale));
+  const packclaw = (window as any).packclaw;
+  if (packclaw?.setZoomFactor) {
+    packclaw.setZoomFactor(clamped);
+  }
 }
 
 export function applyResolvedTheme(host: SettingsHost, resolved: ResolvedTheme) {

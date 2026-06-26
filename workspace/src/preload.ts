@@ -177,6 +177,8 @@ contextBridge.exposeInMainWorld("packclaw", {
   openExternal: (url: string) => ipcRenderer.invoke("app:open-external", url),
   // 打开本地文件/目录
   openPath: (path: string) => ipcRenderer.invoke("app:open-path", path),
+  // 设置窗口缩放（字体大小）
+  setZoomFactor: (factor: number) => ipcRenderer.invoke("app:set-zoom-factor", factor),
 
   // 文件选择
   selectFiles: (options?: { filters?: Array<{ name: string; extensions: string[] }> }) =>

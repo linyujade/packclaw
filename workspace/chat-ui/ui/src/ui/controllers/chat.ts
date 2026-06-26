@@ -134,7 +134,7 @@ export async function loadChatHistory(state: ChatState) {
       "chat.history",
       {
         sessionKey: requestSessionKey,
-        limit: 200,
+        limit: 1000,
       },
     );
     if (state.sessionKey !== requestSessionKey) {
@@ -143,11 +143,15 @@ export async function loadChatHistory(state: ChatState) {
     const raw = Array.isArray(res.messages) ? res.messages : [];
     const deduplicated = deduplicateDeliveryMirrors(raw);
     state.chatMessages = deduplicated;
-    state.chatVisibleMessageCount = Math.min(
-      deduplicated.length,
-      INITIAL_CHAT_HISTORY_RENDER_COUNT,
-    );
-    scheduleChatHistoryHydration(state, requestSessionKey, deduplicated.length);
+    // 切换会话时 chatVisibleMessageCount 被 session-transition 重置为 0 → 走渐进渲染。
+    // AI 回复结束后 reload 时 count > 0 → 直接全量显示，避免内容缩短导致滚动条跳动。
+    const isReload = state.chatVisibleMessageCount > 0;
+    state.chatVisibleMessageCount = isReload
+      ? deduplicated.length
+      : Math.min(deduplicated.length, INITIAL_CHAT_HISTORY_RENDER_COUNT);
+    if (!isReload) {
+      scheduleChatHistoryHydration(state, requestSessionKey, deduplicated.length);
+    }
     state.chatThinkingLevel = res.thinkingLevel ?? null;
   } catch (err) {
     if (state.sessionKey !== requestSessionKey) {
@@ -284,6 +288,8 @@ export async function abortChatRun(state: ChatState): Promise<boolean> {
     return false;
   }
   const runId = state.chatRunId;
+  // 先立即重置本地状态，让 UI 瞬停；不等网关的 state:"aborted" 事件
+  resetChatStreamState(state);
   try {
     await state.client.request(
       "chat.abort",

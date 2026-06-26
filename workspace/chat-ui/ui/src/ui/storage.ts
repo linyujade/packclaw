@@ -14,6 +14,7 @@ export type UiSettings = {
   splitRatio: number; // Sidebar split ratio (0.4 to 0.7, default 0.6)
   navCollapsed: boolean; // Collapsible sidebar state
   navGroupsCollapsed: Record<string, boolean>; // Which nav groups are collapsed
+  fontScale: number; // UI font scale (0.85–1.3, default 1.0)
 };
 
 type LocationLike = Pick<Location, "host" | "protocol" | "search" | "hash">;
@@ -85,6 +86,7 @@ export function parseUiSettings(raw: string | null, locationLike: LocationLike):
     splitRatio: 0.6,
     navCollapsed: false,
     navGroupsCollapsed: {},
+    fontScale: 1.0,
   };
 
   try {
@@ -131,6 +133,12 @@ export function parseUiSettings(raw: string | null, locationLike: LocationLike):
         typeof parsed.navGroupsCollapsed === "object" && parsed.navGroupsCollapsed !== null
           ? parsed.navGroupsCollapsed
           : defaults.navGroupsCollapsed,
+      fontScale:
+        typeof parsed.fontScale === "number" &&
+        parsed.fontScale >= 0.85 &&
+        parsed.fontScale <= 1.3
+          ? parsed.fontScale
+          : defaults.fontScale,
     };
   } catch {
     return defaults;

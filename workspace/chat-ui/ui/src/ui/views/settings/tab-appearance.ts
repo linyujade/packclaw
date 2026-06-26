@@ -13,6 +13,7 @@ function createAppearanceState() {
   return {
     theme: "system" as "system" | "light" | "dark",
     showThinking: false,
+    fontScale: 1.0,
     successMsg: null as string | null,
     initialized: false,
   };
@@ -30,6 +31,7 @@ function init(state: AppViewState) {
   s.initialized = true;
   s.theme = (state.settings?.theme as any) ?? "system";
   s.showThinking = state.settings?.chatShowThinking ?? false;
+  s.fontScale = state.settings?.fontScale ?? 1.0;
 }
 
 function handleSave(state: AppViewState) {
@@ -37,6 +39,7 @@ function handleSave(state: AppViewState) {
     ...state.settings,
     theme: s.theme,
     chatShowThinking: s.showThinking,
+    fontScale: s.fontScale,
   });
   s.successMsg = t("settings.saved");
   state.requestUpdate();
@@ -60,6 +63,19 @@ export function renderTabAppearance(state: AppViewState) {
               <input type="radio" name="ap-theme" value=${v} .checked=${s.theme === v}
                 @change=${() => { s.theme = v; state.requestUpdate(); }} />
               ${t(`theme.${v}`)}
+            </label>
+          `)}
+        </div>
+      </div>
+
+      <div class="oc-settings__form-group">
+        <label class="oc-settings__label">${t("settings.appearance.fontSize")}</label>
+        <div class="oc-settings__radio-group">
+          ${([0.85, 1.0, 1.1, 1.2] as const).map(v => html`
+            <label class="oc-settings__radio">
+              <input type="radio" name="ap-font-scale" value=${v} .checked=${s.fontScale === v}
+                @change=${() => { s.fontScale = v; state.requestUpdate(); }} />
+              ${t(`fontSize.${v}`)}
             </label>
           `)}
         </div>
