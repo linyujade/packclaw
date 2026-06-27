@@ -693,7 +693,7 @@ ipcMain.handle("app:open-path", (_e, filePath: string) => shell.openPath(filePat
 ipcMain.handle("app:set-zoom-factor", (e, factor: number) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   if (win) {
-    const clamped = Math.max(0.85, Math.min(1.3, factor));
+    const clamped = Math.max(0.85, Math.min(2.2, factor));
     win.webContents.setZoomFactor(clamped);
   }
 });

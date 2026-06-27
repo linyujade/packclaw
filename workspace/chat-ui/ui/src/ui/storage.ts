@@ -136,7 +136,7 @@ export function parseUiSettings(raw: string | null, locationLike: LocationLike):
       fontScale:
         typeof parsed.fontScale === "number" &&
         parsed.fontScale >= 0.85 &&
-        parsed.fontScale <= 1.3
+        parsed.fontScale <= 2.2
           ? parsed.fontScale
           : defaults.fontScale,
     };

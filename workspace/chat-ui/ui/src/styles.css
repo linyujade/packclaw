@@ -1764,20 +1764,21 @@ select {
   gap: 12px;
   align-items: flex-start;
   margin-bottom: 16px;
-  margin-left: 4px;
-  margin-right: 16px
+  margin-left: 16px;
+  margin-right: 16px;
 }
 
 .chat-group.user {
   flex-direction: row-reverse;
-  justify-content: flex-start
+  justify-content: flex-start;
 }
 
 .chat-group-messages {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-width: min(900px, calc(100% - 60px))
+  min-width: 0;
+  flex: 1
 }
 
 .chat-group.user .chat-group-messages {
@@ -1868,15 +1869,16 @@ img.chat-avatar {
 
 .chat-bubble {
   position: relative;
-  display: inline-block;
+  display: block;
+  width: auto;
   border: 1px solid transparent;
   background: var(--card);
   border-radius: var(--radius-lg);
   padding: 10px 14px;
   box-shadow: none;
   transition: background .15s ease-out, border-color .15s ease-out;
-  max-width: 100%;
-  word-wrap: break-word
+  overflow-wrap: anywhere;
+  word-break: break-word
 }
 
 .chat-bubble.has-copy {
@@ -1987,18 +1989,21 @@ img.chat-avatar {
   background: var(--bg-hover)
 }
 
-.chat-group.user .chat-bubble {
-  background: var(--accent-subtle);
-  border-color: transparent
+/* ── 微信风格配色：仅浅色主题 ── */
+
+/* AI 回复消息：浅灰背景、深色文字 */
+:root[data-theme=light] .chat-group.assistant .chat-bubble:not(:has(.chat-tool-msg-collapse)) {
+  background: #efefef;
+  color: #1a1a1a;
+  --chat-text: #1a1a1a
 }
 
+/* 用户消息：绿色背景、深色文字 */
 :root[data-theme=light] .chat-group.user .chat-bubble {
-  border-color: #ea580c33;
-  background: #fb923c1f
-}
-
-.chat-group.user .chat-bubble:hover {
-  background: #ff4d4d26
+  background: #95ec69;
+  border-color: transparent;
+  color: #1a1a1a;
+  --chat-text: #1a1a1a
 }
 
 .chat-bubble.streaming {
@@ -2519,7 +2524,7 @@ img.chat-avatar {
 }
 
 .chat-main {
-  min-width: 400px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -3757,7 +3762,11 @@ img.chat-avatar {
   background: var(--card);
   border-radius: var(--radius-lg);
   padding: 10px 14px;
-  min-width: 0
+  min-width: 0;
+  max-width: 100%;
+  width: fit-content;
+  overflow-wrap: anywhere;
+  word-break: break-word
 }
 
 :root[data-theme=light] .chat-bubble {
@@ -6125,7 +6134,6 @@ img.chat-avatar {
   flex: 1;
   border-radius: 0;
   border: none;
-  margin: 0;
 }
 
 .packclaw-sidebar {
@@ -6148,6 +6156,7 @@ img.chat-avatar {
   padding: 12px 12px 8px;
   color: var(--text);
   -webkit-app-region: drag;
+  flex-shrink: 0
 }
 
 .packclaw-sidebar__brand-main {
@@ -6251,6 +6260,11 @@ img.chat-avatar {
   flex: 1;
   min-height: 0;
   -webkit-app-region: no-drag;
+}
+
+/* 防止大字号时导航项被压缩，只有会话列表区域可滚动 */
+.packclaw-sidebar__nav > :not(.packclaw-sidebar__session-list) {
+  flex-shrink: 0;
 }
 
 .packclaw-sidebar__section-title {
@@ -6561,6 +6575,7 @@ img.chat-avatar {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  flex-shrink: 0
 }
 
 /* 断开连接按钮容器，撑满宽度 + 支持 hover 弹出错误列表 */

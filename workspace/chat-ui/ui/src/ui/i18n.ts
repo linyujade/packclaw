@@ -239,8 +239,9 @@ const dict: Record<Locale, Record<string, string>> = {
     // Font size labels
     "fontSize.0.85": "小",
     "fontSize.1": "默认",
-    "fontSize.1.1": "大",
-    "fontSize.1.2": "更大",
+    "fontSize.1.3": "大",
+    "fontSize.1.6": "更大",
+    "fontSize.2.2": "超大",
 
     // Settings: Search
     "settings.search.title": "搜索配置",
@@ -825,8 +826,9 @@ const dict: Record<Locale, Record<string, string>> = {
     // Font size labels
     "fontSize.0.85": "Small",
     "fontSize.1": "Default",
-    "fontSize.1.1": "Large",
-    "fontSize.1.2": "Extra Large",
+    "fontSize.1.3": "Large",
+    "fontSize.1.6": "Extra Large",
+    "fontSize.2.2": "Huge",
 
     // Settings: Search
     "settings.search.title": "Search Configuration",

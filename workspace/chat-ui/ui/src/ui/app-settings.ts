@@ -334,7 +334,7 @@ export function syncThemeWithSettings(host: SettingsHost) {
 }
 
 export function applyFontScale(fontScale: number): void {
-  const clamped = Math.max(0.85, Math.min(1.3, fontScale));
+  const clamped = Math.max(0.85, Math.min(2.2, fontScale));
   const packclaw = (window as any).packclaw;
   if (packclaw?.setZoomFactor) {
     packclaw.setZoomFactor(clamped);

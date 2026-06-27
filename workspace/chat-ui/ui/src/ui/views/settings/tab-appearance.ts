@@ -71,7 +71,7 @@ export function renderTabAppearance(state: AppViewState) {
       <div class="oc-settings__form-group">
         <label class="oc-settings__label">${t("settings.appearance.fontSize")}</label>
         <div class="oc-settings__radio-group">
-          ${([0.85, 1.0, 1.1, 1.2] as const).map(v => html`
+          ${([0.85, 1.0, 1.3, 1.6, 2.2] as const).map(v => html`
             <label class="oc-settings__radio">
               <input type="radio" name="ap-font-scale" value=${v} .checked=${s.fontScale === v}
                 @change=${() => { s.fontScale = v; state.requestUpdate(); }} />
