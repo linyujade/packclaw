@@ -207,7 +207,7 @@ if [ -f "$FILE" ] && ! grep -q 'fontScale' "$FILE"; then
     // parse
     s = s.replace(
       "          : defaults.navGroupsCollapsed,\n    };",
-      "          : defaults.navGroupsCollapsed,\n      fontScale:\n        typeof parsed.fontScale === \"number\" &&\n        parsed.fontScale >= 0.85 &&\n        parsed.fontScale <= 2.2\n          ? parsed.fontScale\n          : defaults.fontScale,\n    };"
+      "          : defaults.navGroupsCollapsed,\n      fontScale:\n        typeof parsed.fontScale === \"number\" &&\n        parsed.fontScale >= 0.85 &&\n        parsed.fontScale <= 1.3\n          ? parsed.fontScale\n          : defaults.fontScale,\n    };"
     );
     fs.writeFileSync(f, s, "utf8");
   ' "$FILE"
@@ -235,7 +235,7 @@ if [ -f "$FILE" ] && ! grep -q 'applyFontScale' "$FILE"; then
     // 2. syncThemeWithSettings + applyFontScale function
     s = s.replace(
       "export function syncThemeWithSettings(host: SettingsHost) {\n  host.theme = host.settings.theme ?? \"system\";\n  applyResolvedTheme(host, resolveTheme(host.theme));\n}",
-      "export function syncThemeWithSettings(host: SettingsHost) {\n  host.theme = host.settings.theme ?? \"system\";\n  applyResolvedTheme(host, resolveTheme(host.theme));\n  applyFontScale(host.settings.fontScale ?? 1.0);\n}\n\nexport function applyFontScale(fontScale: number): void {\n  const clamped = Math.max(0.85, Math.min(2.2, fontScale));\n  const packclaw = (window as any).packclaw;\n  if (packclaw?.setZoomFactor) {\n    packclaw.setZoomFactor(clamped);\n  }\n}"
+      "export function syncThemeWithSettings(host: SettingsHost) {\n  host.theme = host.settings.theme ?? \"system\";\n  applyResolvedTheme(host, resolveTheme(host.theme));\n  applyFontScale(host.settings.fontScale ?? 1.0);\n}\n\nexport function applyFontScale(fontScale: number): void {\n  const clamped = Math.max(0.85, Math.min(1.3, fontScale));\n  const packclaw = (window as any).packclaw;\n  if (packclaw?.setZoomFactor) {\n    packclaw.setZoomFactor(clamped);\n  }\n}"
     );
     fs.writeFileSync(f, s, "utf8");
   ' "$FILE"
@@ -269,7 +269,7 @@ if [ -f "$FILE" ] && ! grep -q 'fontScale' "$FILE"; then
     // 4. radio group — insert after theme radio group closing </div>
     s = s.replace(
       "      </div>\n\n      <div class=\"oc-settings__form-group\">\n        <oc-toggle-switch",
-      "      </div>\n\n      <div class=\"oc-settings__form-group\">\n        <label class=\"oc-settings__label\">${t(\"settings.appearance.fontSize\")}</label>\n        <div class=\"oc-settings__radio-group\">\n          ${([0.85, 1.0, 1.3, 1.6, 2.2] as const).map(v => html`\n            <label class=\"oc-settings__radio\">\n              <input type=\"radio\" name=\"ap-font-scale\" value=${v} .checked=${s.fontScale === v}\n                @change=${() => { s.fontScale = v; state.requestUpdate(); }} />\n              ${t(`fontSize.${v}`)}\n            </label>\n          `)}\n        </div>\n      </div>\n\n      <div class=\"oc-settings__form-group\">\n        <oc-toggle-switch"
+      "      </div>\n\n      <div class=\"oc-settings__form-group\">\n        <label class=\"oc-settings__label\">${t(\"settings.appearance.fontSize\")}</label>\n        <div class=\"oc-settings__radio-group\">\n          ${([0.85, 1.0, 1.1, 1.2] as const).map(v => html`\n            <label class=\"oc-settings__radio\">\n              <input type=\"radio\" name=\"ap-font-scale\" value=${v} .checked=${s.fontScale === v}\n                @change=${() => { s.fontScale = v; state.requestUpdate(); }} />\n              ${t(`fontSize.${v}`)}\n            </label>\n          `)}\n        </div>\n      </div>\n\n      <div class=\"oc-settings__form-group\">\n        <oc-toggle-switch"
     );
     fs.writeFileSync(f, s, "utf8");
   ' "$FILE"
@@ -288,12 +288,12 @@ if [ -f "$FILE" ] && ! grep -q 'settings.appearance.fontSize' "$FILE"; then
     // ZH
     s = s.replace(
       /("settings\.appearance\.showThinking": "显示思考过程",)/,
-      `$1\n    "settings.appearance.fontSize": "字体大小",\n\n    "fontSize.0.85": "小",\n    "fontSize.1": "默认",\n    "fontSize.1.3": "大",\n    "fontSize.1.6": "更大",\n    "fontSize.2.2": "超大",`
+      `$1\n    "settings.appearance.fontSize": "字体大小",\n\n    "fontSize.0.85": "小",\n    "fontSize.1": "默认",\n    "fontSize.1.1": "大",\n    "fontSize.1.2": "更大",`
     );
     // EN
     s = s.replace(
       /("settings\.appearance\.showThinking": "Show thinking process",)/,
-      `$1\n    "settings.appearance.fontSize": "Font Size",\n\n    "fontSize.0.85": "Small",\n    "fontSize.1": "Default",\n    "fontSize.1.3": "Large",\n    "fontSize.1.6": "Extra Large",\n    "fontSize.2.2": "Huge",`
+      `$1\n    "settings.appearance.fontSize": "Font Size",\n\n    "fontSize.0.85": "Small",\n    "fontSize.1": "Default",\n    "fontSize.1.1": "Large",\n    "fontSize.1.2": "Extra Large",`
     );
     fs.writeFileSync(f, s, "utf8");
   ' "$FILE"
@@ -333,7 +333,7 @@ if [ -f "$FILE" ] && ! grep -q 'app:set-zoom-factor' "$FILE"; then
 ipcMain.handle("app:set-zoom-factor", (e, factor: number) => {
   const win = BrowserWindow.fromWebContents(e.sender);
   if (win) {
-    const clamped = Math.max(0.85, Math.min(2.2, factor));
+    const clamped = Math.max(0.85, Math.min(1.3, factor));
     win.webContents.setZoomFactor(clamped);
   }
 });`

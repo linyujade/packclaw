@@ -44,6 +44,9 @@ sh ./patches/07-default-skills.sh
 # 第三步末末末末：聊天界面修复 + 字体大小（R41-R46）
 sh ./patches/08-chat-ui-fixes.sh
 
+# 第三步末末末末末：大字号布局修复 + 微信配色 + 字体范围扩展（R47-R53）
+sh ./patches/09-layout-wechat-colors.sh
+
 # 第四步：覆盖 overlay（含 skill-store.ts 全量覆盖）
 rsync -av ./overlay/ workspace/
 
